@@ -1,12 +1,17 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from .database import engine, SessionLocal
 from .models import Base, User
 from .auth import get_password_hash
 from .routers import auth, users, work_records, payroll, closing, export
+
+STATIC_DIR = Path(__file__).parent.parent.parent / "frontend" / "dist"
 
 
 @asynccontextmanager
@@ -78,11 +83,20 @@ app.include_router(closing.router, prefix="/api/closing", tags=["月次締め"])
 app.include_router(export.router, prefix="/api/export", tags=["エクスポート"])
 
 
-@app.get("/", tags=["ヘルスチェック"])
-def root():
-    return {"message": "勤怠・給与計算システム API", "status": "running"}
-
-
 @app.get("/health", tags=["ヘルスチェック"])
 def health():
     return {"status": "ok"}
+
+
+# Serve React frontend static files (must be last)
+if STATIC_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_frontend(full_path: str = ""):
+        # Let API routes take priority; serve index.html for everything else
+        index = STATIC_DIR / "index.html"
+        if index.exists():
+            return FileResponse(str(index))
+        return {"message": "勤怠・給与計算システム API", "status": "running"}
