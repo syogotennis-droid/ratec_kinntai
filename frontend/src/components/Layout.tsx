@@ -15,6 +15,7 @@ const Layout: React.FC = () => {
   const employeeNavItems = [
     { to: '/calendar', label: 'カレンダー', icon: '📅' },
     { to: '/my-records', label: '勤務一覧', icon: '📋' },
+    { to: '/sales', label: '売上管理', icon: '💰' },
   ]
 
   const adminNavItems = [
@@ -22,6 +23,8 @@ const Layout: React.FC = () => {
     { to: '/admin/work-list', label: '勤務管理', icon: '📝' },
     { to: '/admin/payroll', label: '給与計算', icon: '💴' },
     { to: '/admin/employees', label: '従業員管理', icon: '👥' },
+    { to: '/admin/sales', label: '売上管理', icon: '💰' },
+    { to: '/admin/bonuses', label: 'ボーナス管理', icon: '🎁' },
     { to: '/admin/settings', label: '設定', icon: '⚙️' },
   ]
 

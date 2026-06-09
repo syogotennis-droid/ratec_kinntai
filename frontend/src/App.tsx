@@ -8,6 +8,9 @@ import AdminWorkListPage from './pages/AdminWorkListPage'
 import PayrollPage from './pages/PayrollPage'
 import SettingsPage from './pages/SettingsPage'
 import EmployeesPage from './pages/EmployeesPage'
+import SalesPage from './pages/SalesPage'
+import AdminSalesPage from './pages/AdminSalesPage'
+import BonusPage from './pages/BonusPage'
 import Layout from './components/Layout'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({
@@ -35,6 +38,9 @@ const AppRoutes: React.FC = () => {
         <Route path="admin/payroll" element={<ProtectedRoute adminOnly><PayrollPage /></ProtectedRoute>} />
         <Route path="admin/employees" element={<ProtectedRoute adminOnly><EmployeesPage /></ProtectedRoute>} />
         <Route path="admin/settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
+        <Route path="sales" element={<SalesPage />} />
+        <Route path="admin/sales" element={<ProtectedRoute adminOnly><AdminSalesPage /></ProtectedRoute>} />
+        <Route path="admin/bonuses" element={<ProtectedRoute adminOnly><BonusPage /></ProtectedRoute>} />
       </Route>
     </Routes>
   )
