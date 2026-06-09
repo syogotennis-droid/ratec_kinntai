@@ -12,12 +12,18 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const uploadsDir = path.join(__dirname, '..', 'data', 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir));
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/work-records', require('./routes/workRecords'));
 app.use('/api/payroll', require('./routes/payroll'));
 app.use('/api/closing', require('./routes/closing'));
 app.use('/api/export', require('./routes/export'));
+app.use('/api/sales', require('./routes/sales'));
+app.use('/api/bonuses', require('./routes/bonuses'));
 
 const distDir = path.join(__dirname, '..', '..', 'frontend', 'dist');
 if (fs.existsSync(distDir)) {

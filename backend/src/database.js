@@ -143,6 +143,36 @@ CREATE TABLE IF NOT EXISTS payroll_records (
   updated_at TEXT DEFAULT (datetime('now','localtime')),
   UNIQUE(year_month, user_id)
 );
+CREATE TABLE IF NOT EXISTS sales_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  record_date TEXT NOT NULL,
+  sales_amount REAL DEFAULT 0,
+  material_cost REAL DEFAULT 0,
+  notes TEXT,
+  created_by INTEGER,
+  created_at TEXT DEFAULT (datetime('now','localtime')),
+  updated_at TEXT DEFAULT (datetime('now','localtime')),
+  UNIQUE(user_id, record_date)
+);
+CREATE TABLE IF NOT EXISTS sales_photos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sales_record_id INTEGER NOT NULL,
+  file_path TEXT NOT NULL,
+  original_name TEXT,
+  created_at TEXT DEFAULT (datetime('now','localtime'))
+);
+CREATE TABLE IF NOT EXISTS bonuses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  year_month TEXT NOT NULL,
+  bonus_amount REAL DEFAULT 0,
+  notes TEXT,
+  created_by INTEGER,
+  created_at TEXT DEFAULT (datetime('now','localtime')),
+  updated_at TEXT DEFAULT (datetime('now','localtime')),
+  UNIQUE(user_id, year_month)
+);
 `;
 
 async function initDb() {

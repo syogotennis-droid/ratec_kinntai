@@ -74,4 +74,29 @@ export const exportApi = {
     api.get(`/export/payroll/${yearMonth}`, { responseType: 'blob' }),
 }
 
+export const salesApi = {
+  list: (params: { year_month?: string; user_id?: number }) =>
+    api.get('/sales', { params }),
+  create: (data: any) => api.post('/sales', data),
+  update: (id: number, data: any) => api.put(`/sales/${id}`, data),
+  delete: (id: number) => api.delete(`/sales/${id}`),
+  uploadPhotos: (id: number, files: File[]) => {
+    const form = new FormData()
+    files.forEach(f => form.append('photos', f))
+    return api.post(`/sales/${id}/photos`, form)
+  },
+  deletePhoto: (photoId: number) => api.delete(`/sales/photos/${photoId}`),
+  monthly: (yearMonth: string) => api.get(`/sales/monthly/${yearMonth}`),
+  exportCsv: (yearMonth: string) =>
+    api.get(`/sales/export/${yearMonth}`, { responseType: 'blob' }),
+}
+
+export const bonusApi = {
+  list: (yearMonth: string) => api.get(`/bonuses/${yearMonth}`),
+  update: (yearMonth: string, userId: number, data: any) =>
+    api.put(`/bonuses/${yearMonth}/${userId}`, data),
+  exportCsv: (yearMonth: string) =>
+    api.get(`/bonuses/export/${yearMonth}`, { responseType: 'blob' }),
+}
+
 export default api

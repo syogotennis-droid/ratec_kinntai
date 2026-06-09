@@ -86,3 +86,50 @@ export interface MonthlyClosing {
   status: 'open' | 'closed'
   closed_at: string | null
 }
+
+export interface SalesRecord {
+  id: number
+  user_id: number
+  user_name?: string
+  employee_id?: string
+  record_date: string
+  sales_amount: number
+  material_cost: number
+  profit: number
+  notes?: string
+  photos: SalesPhoto[]
+  created_at: string
+  updated_at: string
+}
+
+export interface SalesPhoto {
+  id: number
+  sales_record_id: number
+  file_path: string
+  original_name?: string
+  url: string
+  created_at: string
+}
+
+export interface MonthlySalesSummary {
+  user_id: number
+  user_name: string
+  employee_id: string
+  total_sales: number
+  total_material: number
+  total_profit: number
+  record_count: number
+}
+
+export interface Bonus {
+  id?: number
+  user_id: number
+  user_name?: string
+  employee_id?: string
+  year_month: string
+  bonus_amount: number
+  notes?: string
+  total_sales?: number
+  total_material?: number
+  total_profit?: number
+}
