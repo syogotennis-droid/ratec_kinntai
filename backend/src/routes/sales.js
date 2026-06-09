@@ -177,14 +177,9 @@ router.post('/', authMiddleware, (req, res) => {
 
     const targetUserId = req.user.is_admin && user_id ? parseInt(user_id) : req.user.id;
 
-    db.prepare(
+    const result = db.prepare(
       `INSERT INTO sales_records (user_id, record_date, sales_amount, material_cost, notes, created_by)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(user_id, record_date) DO UPDATE SET
-         sales_amount = excluded.sales_amount,
-         material_cost = excluded.material_cost,
-         notes = excluded.notes,
-         updated_at = datetime('now','localtime')`
+       VALUES (?, ?, ?, ?, ?, ?)`
     ).run(
       targetUserId,
       record_date,
@@ -194,7 +189,7 @@ router.post('/', authMiddleware, (req, res) => {
       req.user.id
     );
 
-    const record = db.prepare('SELECT * FROM sales_records WHERE user_id = ? AND record_date = ?').get(targetUserId, record_date);
+    const record = db.prepare('SELECT * FROM sales_records WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json(withProfit(attachPhotos(record)));
   } catch (err) {
     console.error('売上記録作成エラー:', err);

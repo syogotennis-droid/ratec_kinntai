@@ -152,8 +152,7 @@ CREATE TABLE IF NOT EXISTS sales_records (
   notes TEXT,
   created_by INTEGER,
   created_at TEXT DEFAULT (datetime('now','localtime')),
-  updated_at TEXT DEFAULT (datetime('now','localtime')),
-  UNIQUE(user_id, record_date)
+  updated_at TEXT DEFAULT (datetime('now','localtime'))
 );
 CREATE TABLE IF NOT EXISTS sales_photos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -182,6 +181,35 @@ async function initDb() {
     : new SQL.Database();
   rawDb.exec(SCHEMA);
   save();
+
+  // Migration: remove UNIQUE(user_id, record_date) from sales_records
+  try {
+    const res = rawDb.exec("SELECT sql FROM sqlite_master WHERE type='table' AND name='sales_records'");
+    if (res.length > 0 && res[0].values.length > 0) {
+      const tableSql = res[0].values[0][0] || '';
+      if (tableSql.includes('UNIQUE(user_id, record_date)')) {
+        rawDb.run('ALTER TABLE sales_records RENAME TO _sales_records_bak');
+        rawDb.run(`CREATE TABLE sales_records (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          record_date TEXT NOT NULL,
+          sales_amount REAL DEFAULT 0,
+          material_cost REAL DEFAULT 0,
+          notes TEXT,
+          created_by INTEGER,
+          created_at TEXT DEFAULT (datetime('now','localtime')),
+          updated_at TEXT DEFAULT (datetime('now','localtime'))
+        )`);
+        rawDb.run('INSERT INTO sales_records SELECT id,user_id,record_date,sales_amount,material_cost,notes,created_by,created_at,updated_at FROM _sales_records_bak');
+        rawDb.run('DROP TABLE _sales_records_bak');
+        save();
+        console.log('DB migration: sales_records の UNIQUE制約を削除しました');
+      }
+    }
+  } catch (e) {
+    console.error('DB migration エラー:', e.message);
+  }
+
   return db;
 }
 
