@@ -1,4 +1,5 @@
-import { auth } from '../firebase/config'
+import { auth, app } from '../firebase/config'
+import { initializeApp, deleteApp } from 'firebase/app'
 import {
   firestoreGetUsers,
   firestoreGetUserById,
@@ -28,7 +29,7 @@ import {
 } from '../firebase/firestore'
 import { uploadSalesPhoto, deleteSalesPhoto } from '../firebase/storage'
 import { aggregateMonthlyHours, calculatePayroll, calculateActualMinutes } from '../firebase/calculation'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth'
 
 // Wrap result in { data } to match axios-like interface
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -69,14 +70,18 @@ export const usersApi = {
     return wrap(users)
   },
   create: async (data: Record<string, unknown>) => {
-    // NOTE: createUserWithEmailAndPassword signs in as the new user.
-    // The admin will need to log back in after creating an employee.
-    // A production system should use Firebase Admin SDK via Cloud Functions.
-    const email = `${data.employee_id}@ratec.local`
-    const cred = await createUserWithEmailAndPassword(auth, email, (data.password as string) || 'changeme123')
-    const { password: _pw, ...userData } = data
-    const user = await firestoreCreateUser(cred.user.uid, userData)
-    return wrap(user)
+    // Use secondary app instance to avoid signing out the current admin
+    const secondaryApp = initializeApp(app.options, 'secondary-' + Date.now())
+    const secondaryAuth = getAuth(secondaryApp)
+    try {
+      const email = `${data.employee_id}@ratec.local`
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, (data.password as string) || 'changeme123')
+      const { password: _pw, ...userData } = data
+      const user = await firestoreCreateUser(cred.user.uid, userData)
+      return wrap(user)
+    } finally {
+      await deleteApp(secondaryApp)
+    }
   },
   get: async (id: number) => {
     const user = await firestoreGetUserById(id)
