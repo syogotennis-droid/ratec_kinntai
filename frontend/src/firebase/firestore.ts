@@ -34,6 +34,11 @@ function tsToString(ts: unknown): string {
 
 // ==================== USERS ====================
 
+export async function firestoreIsSetupRequired(): Promise<boolean> {
+  const snap = await getDocs(collection(db, 'users'))
+  return snap.empty
+}
+
 export async function firestoreGetUsers() {
   const snap = await getDocs(collection(db, 'users'))
   return snap.docs.map((d) => ({ ...d.data() as any, uid: d.id }))

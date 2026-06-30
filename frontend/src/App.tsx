@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import LoginPage from './pages/LoginPage'
 import CalendarPage from './pages/CalendarPage'
@@ -11,7 +12,9 @@ import EmployeesPage from './pages/EmployeesPage'
 import SalesPage from './pages/SalesPage'
 import AdminSalesPage from './pages/AdminSalesPage'
 import BonusPage from './pages/BonusPage'
+import SetupPage from './pages/SetupPage'
 import Layout from './components/Layout'
+import { firestoreIsSetupRequired } from './firebase/firestore'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({
   children,
@@ -47,6 +50,20 @@ const AppRoutes: React.FC = () => {
 }
 
 export default function App() {
+  const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    firestoreIsSetupRequired().then(setSetupRequired).catch(() => setSetupRequired(false))
+  }, [])
+
+  if (setupRequired === null) {
+    return <div className="flex items-center justify-center h-screen">読み込み中...</div>
+  }
+
+  if (setupRequired) {
+    return <SetupPage onComplete={() => setSetupRequired(false)} />
+  }
+
   return (
     <BrowserRouter>
       <AuthProvider>
