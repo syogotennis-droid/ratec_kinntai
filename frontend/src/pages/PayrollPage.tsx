@@ -52,7 +52,7 @@ const PayrollRow: React.FC<PayrollRowProps> = ({
 
   const adjustMutation = useMutation({
     mutationFn: (data: AdjustFormData) =>
-      payrollApi.adjust(yearMonth, record.user_id, data),
+      payrollApi.adjust(yearMonth, record.user_id, data as unknown as Record<string, unknown>),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payroll-list', yearMonth] })
     },
