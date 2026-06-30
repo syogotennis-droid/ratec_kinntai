@@ -99,24 +99,15 @@ export async function firestoreGetWorkRecords(params: {
   user_id?: number
   year_month?: string
 }) {
+  // user_id のみでクエリし、年月フィルタはコード側で実施（複合インデックス不要）
   const constraints: QueryConstraint[] = []
   if (params.user_id != null) constraints.push(where('user_id', '==', params.user_id))
-  if (params.year_month) {
-    const [y, m] = params.year_month.split('-')
-    const start = `${y}-${m}-01`
-    const endMonth =
-      parseInt(m) === 12
-        ? `${parseInt(y) + 1}-01-01`
-        : `${y}-${String(parseInt(m) + 1).padStart(2, '0')}-01`
-    constraints.push(where('work_date', '>=', start))
-    constraints.push(where('work_date', '<', endMonth))
-  }
   const q =
     constraints.length > 0
       ? query(collection(db, 'work_records'), ...constraints)
       : query(collection(db, 'work_records'))
   const snap = await getDocs(q)
-  return snap.docs.map((d) => {
+  let records = snap.docs.map((d) => {
     const data = d.data() as any
     return {
       ...data,
@@ -125,6 +116,12 @@ export async function firestoreGetWorkRecords(params: {
       updated_at: tsToString(data.updated_at),
     }
   })
+  if (params.year_month) {
+    records = records.filter((r: any) =>
+      typeof r.work_date === 'string' && r.work_date.startsWith(params.year_month!)
+    )
+  }
+  return records
 }
 
 export async function firestoreCreateWorkRecord(data: Record<string, unknown>) {
@@ -297,24 +294,15 @@ export async function firestoreGetSalesRecords(params: {
   year_month?: string
   user_id?: number
 }) {
+  // user_id のみでクエリし、年月フィルタはコード側で実施（複合インデックス不要）
   const constraints: QueryConstraint[] = []
   if (params.user_id != null) constraints.push(where('user_id', '==', params.user_id))
-  if (params.year_month) {
-    const [y, m] = params.year_month.split('-')
-    const start = `${y}-${m}-01`
-    const endMonth =
-      parseInt(m) === 12
-        ? `${parseInt(y) + 1}-01-01`
-        : `${y}-${String(parseInt(m) + 1).padStart(2, '0')}-01`
-    constraints.push(where('record_date', '>=', start))
-    constraints.push(where('record_date', '<', endMonth))
-  }
   const q =
     constraints.length > 0
       ? query(collection(db, 'sales_records'), ...constraints)
       : query(collection(db, 'sales_records'))
   const snap = await getDocs(q)
-  const records = snap.docs.map((d) => {
+  let records = snap.docs.map((d) => {
     const data = d.data() as any
     return {
       ...data,
@@ -325,6 +313,11 @@ export async function firestoreGetSalesRecords(params: {
       updated_at: tsToString(data.updated_at),
     }
   })
+  if (params.year_month) {
+    records = records.filter((r: any) =>
+      typeof r.record_date === 'string' && r.record_date.startsWith(params.year_month!)
+    )
+  }
   // Fetch photos for each record
   for (const record of records) {
     const photosSnap = await getDocs(
