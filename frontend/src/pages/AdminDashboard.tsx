@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, addMonths, subMonths } from 'date-fns'
-import { payrollApi, closingApi, exportApi } from '../services/api'
+import { payrollApi, closingApi, exportApi, systemApi } from '../services/api'
 import { MonthlySummary } from '../types'
 
 function formatHours(h: number): string {
@@ -9,6 +9,13 @@ function formatHours(h: number): string {
   const minutes = Math.round((h - hours) * 60)
   if (minutes === 0) return `${hours}時間`
   return `${hours}時間${minutes}分`
+}
+
+const FIRESTORE_FREE_LIMIT_BYTES = 1024 * 1024 * 1024 // 1GiB（Firestore無料枠の目安）
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -51,6 +58,11 @@ const AdminDashboard: React.FC = () => {
   const { data: closingStatus = [] } = useQuery<any[]>({
     queryKey: ['closing-status', yearMonth],
     queryFn: () => closingApi.status(yearMonth).then((r) => r.data),
+  })
+
+  const { data: usageStats } = useQuery<{ photoCount: number; estimatedPhotoBytes: number }>({
+    queryKey: ['usage-stats'],
+    queryFn: () => systemApi.usage().then((r) => r.data),
   })
 
   const calculateMutation = useMutation({
@@ -229,6 +241,35 @@ const AdminDashboard: React.FC = () => {
           給与一覧CSV
         </button>
       </div>
+
+      {/* Storage usage */}
+      {usageStats && (
+        <div className="mb-6 bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-gray-700">データ使用量（写真）</h2>
+            <span className="text-xs text-gray-500">
+              {usageStats.photoCount}枚 / 概算{formatBytes(usageStats.estimatedPhotoBytes)}
+            </span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+            <div
+              className={`h-2 rounded-full ${
+                usageStats.estimatedPhotoBytes / FIRESTORE_FREE_LIMIT_BYTES > 0.8
+                  ? 'bg-red-500'
+                  : usageStats.estimatedPhotoBytes / FIRESTORE_FREE_LIMIT_BYTES > 0.5
+                  ? 'bg-yellow-500'
+                  : 'bg-blue-500'
+              }`}
+              style={{
+                width: `${Math.min(100, (usageStats.estimatedPhotoBytes / FIRESTORE_FREE_LIMIT_BYTES) * 100)}%`,
+              }}
+            />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">
+            無料枠の目安 {formatBytes(FIRESTORE_FREE_LIMIT_BYTES)} に対する概算使用率
+          </p>
+        </div>
+      )}
 
       {/* Unsubmitted warning */}
       {openCount > 0 && (

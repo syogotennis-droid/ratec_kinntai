@@ -25,6 +25,7 @@ import {
   firestoreDeleteSalesRecord,
   firestoreGetMonthlySalesSummary,
   firestoreGetBonuses,
+  firestoreGetUsageStats,
   firestoreSetBonus,
 } from '../firebase/firestore'
 import { uploadSalesPhoto, deleteSalesPhoto } from '../firebase/storage'
@@ -424,6 +425,15 @@ export const bonusApi = {
     const csv = [header, ...rows].join('\n')
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
     return wrap(blob)
+  },
+}
+
+// ==================== SYSTEM API ====================
+
+export const systemApi = {
+  usage: async () => {
+    const stats = await firestoreGetUsageStats()
+    return wrap(stats)
   },
 }
 

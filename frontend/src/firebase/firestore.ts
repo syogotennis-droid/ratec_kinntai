@@ -391,6 +391,22 @@ export async function firestoreAddSalesPhoto(data: {
   return id
 }
 
+export async function firestoreGetUsageStats(): Promise<{
+  photoCount: number
+  estimatedPhotoBytes: number
+}> {
+  const snap = await getDocs(collection(db, 'sales_photos'))
+  let estimatedPhotoBytes = 0
+  snap.docs.forEach((d) => {
+    const data = d.data() as any
+    if (typeof data.url === 'string') {
+      // base64データURLの概算バイト数（base64は元データの約4/3倍）
+      estimatedPhotoBytes += Math.round((data.url.length * 3) / 4)
+    }
+  })
+  return { photoCount: snap.size, estimatedPhotoBytes }
+}
+
 export async function firestoreGetMonthlySalesSummary(yearMonth: string) {
   const [y, m] = yearMonth.split('-')
   const start = `${y}-${m}-01`
