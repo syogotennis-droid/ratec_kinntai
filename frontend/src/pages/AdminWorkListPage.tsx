@@ -1,10 +1,23 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, addMonths, subMonths, parseISO } from 'date-fns'
+import FullCalendar from '@fullcalendar/react'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import interactionPlugin from '@fullcalendar/interaction'
+import type { DateClickArg } from '@fullcalendar/interaction'
+import type { EventClickArg, EventInput } from '@fullcalendar/core'
 import { workRecordsApi, usersApi, payrollApi, closingApi, exportApi } from '../services/api'
 import { WorkRecord, User, MonthlySummary } from '../types'
 import WorkEntryModal from '../components/WorkEntryModal'
 import type { WorkEntryFormData } from '../components/WorkEntryModal'
+
+const workTypeColors: Record<string, string> = {
+  normal: '#3b82f6',
+  overtime: '#f97316',
+  holiday: '#ef4444',
+  training: '#22c55e',
+  paid_leave: '#a855f7',
+}
 
 const workTypeLabels: Record<string, string> = {
   normal: '通常勤務',
@@ -80,6 +93,7 @@ const EmployeeDetailView: React.FC<DetailViewProps> = ({
   showMessage,
 }) => {
   const queryClient = useQueryClient()
+  const [view, setView] = useState<'list' | 'calendar'>('list')
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<WorkRecord | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>('')
@@ -121,6 +135,16 @@ const EmployeeDetailView: React.FC<DetailViewProps> = ({
   const totalMinutes = workRecords.reduce((acc, r) => acc + (r.actual_minutes ?? 0), 0)
   const isClosed = closingStatus === 'closed'
 
+  const calendarEvents: EventInput[] = useMemo(() => workRecords.map((r) => ({
+    id: String(r.id),
+    title: `${r.start_time}〜${r.end_time} ${workTypeLabels[r.work_type] ?? r.work_type}`,
+    date: r.work_date,
+    backgroundColor: workTypeColors[r.work_type] ?? '#6b7280',
+    borderColor: workTypeColors[r.work_type] ?? '#6b7280',
+    textColor: '#ffffff',
+    extendedProps: { record: r },
+  })), [workRecords])
+
   const handleSave = async (formData: WorkEntryFormData) => {
     if (selectedRecord) {
       await updateMutation.mutateAsync({ id: selectedRecord.id, data: { ...formData, user_id: user.id } })
@@ -132,6 +156,20 @@ const EmployeeDetailView: React.FC<DetailViewProps> = ({
   const handleDelete = async () => {
     if (selectedRecord) await deleteMutation.mutateAsync(selectedRecord.id)
   }
+
+  const handleDateClick = useCallback((arg: DateClickArg) => {
+    if (isClosed) return
+    setSelectedRecord(null)
+    setSelectedDate(arg.dateStr)
+    setModalOpen(true)
+  }, [isClosed])
+
+  const handleEventClick = useCallback((arg: EventClickArg) => {
+    const record = arg.event.extendedProps.record as WorkRecord
+    setSelectedRecord(record)
+    setSelectedDate(record.work_date)
+    setModalOpen(true)
+  }, [])
 
   const getDayClass = (dateStr: string) => {
     const day = parseISO(dateStr).getDay()
@@ -193,8 +231,22 @@ const EmployeeDetailView: React.FC<DetailViewProps> = ({
         </div>
       </div>
 
-      {/* Add button */}
-      <div className="flex justify-end mb-4">
+      {/* View tabs + Add button */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex rounded-lg border border-gray-200 overflow-hidden bg-white">
+          <button
+            onClick={() => setView('list')}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${view === 'list' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            リスト
+          </button>
+          <button
+            onClick={() => setView('calendar')}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${view === 'calendar' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            カレンダー
+          </button>
+        </div>
         <button
           onClick={() => {
             setSelectedRecord(null)
@@ -209,8 +261,36 @@ const EmployeeDetailView: React.FC<DetailViewProps> = ({
         </button>
       </div>
 
-      {/* Table */}
-      {isLoading ? (
+      {/* Calendar view */}
+      {view === 'calendar' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" style={{ minHeight: 480 }}>
+          <style>{`
+            .fc-toolbar-title { font-size: 1rem !important; font-weight: 700 !important; }
+            .fc-button { font-size: 0.8rem !important; padding: 0.3rem 0.75rem !important; }
+            .fc-daygrid-event { cursor: pointer; }
+            .fc-day-today { background-color: #eff6ff !important; }
+          `}</style>
+          <FullCalendar
+            plugins={[dayGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            initialDate={yearMonth + '-01'}
+            locale="ja"
+            firstDay={1}
+            headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
+            buttonText={{ today: '今日' }}
+            events={calendarEvents}
+            dateClick={handleDateClick}
+            eventClick={handleEventClick}
+            height="auto"
+            eventDisplay="block"
+            dayMaxEvents={3}
+          />
+        </div>
+      )}
+
+      {/* List view */}
+      {view === 'list' && (
+        isLoading ? (
         <div className="flex items-center justify-center py-16">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
         </div>
@@ -282,6 +362,7 @@ const EmployeeDetailView: React.FC<DetailViewProps> = ({
             </table>
           </div>
         </div>
+      )
       )}
 
       <WorkEntryModal
