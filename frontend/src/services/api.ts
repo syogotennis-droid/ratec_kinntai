@@ -110,6 +110,12 @@ export const workRecordsApi = {
     return wrap(records)
   },
   create: async (data: Record<string, unknown>) => {
+    const yearMonth = (data.work_date as string).slice(0, 7)
+    const closingStatus = await firestoreGetClosingStatus(yearMonth)
+    const isClosed = closingStatus.some(
+      (c) => c.user_id === (data.user_id as number) && c.status === 'closed'
+    )
+    if (isClosed) throw new Error('この月は締め済みのため編集できません')
     const actual_minutes = calculateActualMinutes(
       data.start_time as string,
       data.end_time as string,
@@ -129,6 +135,12 @@ export const workRecordsApi = {
     return wrap(record)
   },
   update: async (id: number, data: Record<string, unknown>) => {
+    const yearMonth = (data.work_date as string).slice(0, 7)
+    const closingStatus = await firestoreGetClosingStatus(yearMonth)
+    const isClosed = closingStatus.some(
+      (c) => c.user_id === (data.user_id as number) && c.status === 'closed'
+    )
+    if (isClosed) throw new Error('この月は締め済みのため編集できません')
     const actual_minutes = calculateActualMinutes(
       data.start_time as string,
       data.end_time as string,
@@ -138,6 +150,15 @@ export const workRecordsApi = {
     return wrap(updated)
   },
   delete: async (id: number) => {
+    const record = await firestoreGetWorkRecordById(id)
+    if (record) {
+      const yearMonth = (record.work_date as string).slice(0, 7)
+      const closingStatus = await firestoreGetClosingStatus(yearMonth)
+      const isClosed = closingStatus.some(
+        (c) => c.user_id === (record.user_id as number) && c.status === 'closed'
+      )
+      if (isClosed) throw new Error('この月は締め済みのため削除できません')
+    }
     await firestoreDeleteWorkRecord(id)
     return wrap({ success: true })
   },

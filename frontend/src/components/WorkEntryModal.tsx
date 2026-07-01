@@ -110,7 +110,7 @@ const WorkEntryModal: React.FC<WorkEntryModalProps> = ({
       await onSave(form)
       onClose()
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? '保存に失敗しました')
+      setError(err?.response?.data?.detail ?? err?.message ?? '保存に失敗しました')
     } finally {
       setIsSaving(false)
     }
@@ -124,7 +124,7 @@ const WorkEntryModal: React.FC<WorkEntryModalProps> = ({
       await onDelete()
       onClose()
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? '削除に失敗しました')
+      setError(err?.response?.data?.detail ?? err?.message ?? '削除に失敗しました')
     } finally {
       setIsDeleting(false)
     }
