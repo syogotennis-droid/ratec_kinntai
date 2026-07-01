@@ -505,16 +505,17 @@ const AdminWorkListPage: React.FC = () => {
                   <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500">総実働</th>
                   <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 hidden md:table-cell">残業</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500">ステータス</th>
-                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500">締め操作</th>
-                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500">詳細</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {summaries.map((s) => {
                   const status = closingMap[s.user_id] ?? 'open'
-                  const isClosed = status === 'closed'
                   return (
-                    <tr key={s.user_id} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={s.user_id}
+                      onClick={() => setSelectedUserId(s.user_id)}
+                      className="hover:bg-blue-50 cursor-pointer transition-colors"
+                    >
                       <td className="px-4 py-3 font-medium text-gray-900">{s.user_name}</td>
                       <td className="px-3 py-3 text-right text-gray-700">{s.work_days}日</td>
                       <td className="px-3 py-3 text-right font-medium text-gray-900">{formatHoursDecimal(s.total_hours)}</td>
@@ -523,27 +524,6 @@ const AdminWorkListPage: React.FC = () => {
                       </td>
                       <td className="px-3 py-3 text-center">
                         <StatusBadge status={status} />
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <IndividualCloseButton
-                          userId={s.user_id}
-                          userName={s.user_name}
-                          yearMonth={yearMonth}
-                          isClosed={isClosed}
-                          onDone={() => {
-                            queryClient.invalidateQueries({ queryKey: ['closing-status', yearMonth] })
-                            queryClient.invalidateQueries({ queryKey: ['monthly-summary', yearMonth] })
-                          }}
-                          showMessage={showMessage}
-                        />
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <button
-                          onClick={() => setSelectedUserId(s.user_id)}
-                          className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg transition-colors"
-                        >
-                          詳細
-                        </button>
                       </td>
                     </tr>
                   )
