@@ -93,7 +93,7 @@ const EmployeeDetailView: React.FC<DetailViewProps> = ({
   showMessage,
 }) => {
   const queryClient = useQueryClient()
-  const [view, setView] = useState<'list' | 'calendar'>('list')
+  const [view, setView] = useState<'list' | 'calendar'>('calendar')
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<WorkRecord | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>('')
@@ -235,16 +235,16 @@ const EmployeeDetailView: React.FC<DetailViewProps> = ({
       <div className="flex items-center justify-between mb-4">
         <div className="flex rounded-lg border border-gray-200 overflow-hidden bg-white">
           <button
-            onClick={() => setView('list')}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${view === 'list' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
-          >
-            リスト
-          </button>
-          <button
             onClick={() => setView('calendar')}
             className={`px-4 py-2 text-sm font-medium transition-colors ${view === 'calendar' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
           >
             カレンダー
+          </button>
+          <button
+            onClick={() => setView('list')}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${view === 'list' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            リスト
           </button>
         </div>
         <button
@@ -269,6 +269,10 @@ const EmployeeDetailView: React.FC<DetailViewProps> = ({
             .fc-button { font-size: 0.8rem !important; padding: 0.3rem 0.75rem !important; }
             .fc-daygrid-event { cursor: pointer; }
             .fc-day-today { background-color: #eff6ff !important; }
+            .fc-daygrid-day { cursor: pointer; transition: background-color 0.1s; }
+            .fc-daygrid-day:hover { background-color: #dbeafe !important; }
+            .fc-daygrid-day:active { background-color: #bfdbfe !important; }
+            .fc-daygrid-day-number { pointer-events: none; }
           `}</style>
           <FullCalendar
             plugins={[dayGridPlugin, interactionPlugin]}
