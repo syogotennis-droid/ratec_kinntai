@@ -33,7 +33,7 @@ const AppRoutes: React.FC = () => {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route index element={user?.is_admin ? <Navigate to="/admin" /> : <Navigate to="/calendar" />} />
+        <Route index element={user?.is_admin ? <Navigate to="/admin/work-list" /> : <Navigate to="/calendar" />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="my-records" element={<WorkListPage />} />
         <Route path="admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
