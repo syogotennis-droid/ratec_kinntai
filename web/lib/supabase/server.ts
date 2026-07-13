@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 
 export async function createClient() {
   const cookieStore = await cookies()
-  return createServerClient(
+  const client = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -19,4 +19,7 @@ export async function createClient() {
       },
     }
   )
+  // セッションを初期化してPostgRESTクエリで認証済みロールが使われるようにする
+  await client.auth.getSession()
+  return client
 }
