@@ -26,7 +26,6 @@ const employeeNavItems = [
   { to: '/orders/invoices', label: '請求書', icon: '📄' },
   { to: '/orders/purchase-orders', label: '発注書', icon: '🛒' },
   { to: '/orders/suppliers', label: '仕入先', icon: '🏭' },
-  { to: '/orders/settings', label: '自社設定', icon: '⚙️' },
 ]
 
 interface Props {
