@@ -196,6 +196,14 @@ export default function SchedulePage() {
     }
   })
 
+  // Limit to 4 events per day before passing to FullCalendar to prevent "+more" link generation
+  const perDayCount: Record<string, number> = {}
+  const limitedEvents = [...holidayEvents, ...events].filter(e => {
+    const date = (e.date as string).slice(0, 10)
+    perDayCount[date] = (perDayCount[date] || 0) + 1
+    return perDayCount[date] <= 4
+  })
+
   const prevMonth = () => {
     const [y, m] = yearMonth.split('-').map(Number)
     const d = new Date(y, m - 2, 1)
@@ -245,6 +253,7 @@ export default function SchedulePage() {
             .fc-event { cursor: pointer; border-radius: 3px !important; padding: 0 !important; margin: 0 !important; }
             .fc-event-main { padding: 0 !important; line-height: 1 !important; }
             .fc-daygrid-more-link { display: none !important; }
+            .fc-day-other { opacity: 0.35; }
             .fc-toolbar { display: none !important; }
             .fc-daygrid-body { width: 100% !important; }
             .fc-scrollgrid-sync-table { width: 100% !important; }
@@ -283,7 +292,7 @@ export default function SchedulePage() {
               plugins={[dayGridPlugin, interactionPlugin]}
               initialView="dayGridMonth"
               locale="ja"
-              events={[...events, ...holidayEvents]}
+              events={limitedEvents}
               dateClick={handleDateClick}
               eventClick={handleEventClick}
               datesSet={handleDatesSet}
@@ -302,7 +311,7 @@ export default function SchedulePage() {
                   {arg.event.title}
                 </div>
               )}
-              dayMaxEvents={4}
+              fixedWeekCount={false}
               headerToolbar={{ left: '', center: '', right: '' }}
             />
           </div>
