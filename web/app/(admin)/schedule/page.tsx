@@ -222,7 +222,7 @@ export default function SchedulePage() {
             .fc-daygrid-day:active { background-color: #bfdbfe !important; }
             .fc-daygrid-day-number { pointer-events: none; font-size: 11px; padding: 1px 3px !important; line-height: 1.4; }
             .fc-daygrid-day-frame { overflow: hidden !important; min-height: 0 !important; height: 100%; }
-            .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; max-height: 68px !important; }
+            .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; max-height: 76px !important; }
             .fc-daygrid-event-harness { margin: 1px 0 0 !important; }
             .fc-event { cursor: pointer; border-radius: 3px !important; padding: 0 !important; margin: 0 !important; }
             .fc-event-main { padding: 0 !important; line-height: 1 !important; }
@@ -279,30 +279,11 @@ export default function SchedulePage() {
                 const color = isHoliday || day === 0 ? '#ef4444' : day === 6 ? '#3b82f6' : ''
                 return { html: `<span style="${color ? `color:${color}` : ''}">${d.getDate()}</span>` }
               }}
-              eventContent={(arg) => {
-                if (arg.event.extendedProps.isHoliday) {
-                  return (
-                    <div style={{ fontSize: 9, padding: '1px 3px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', lineHeight: '14px' }}>
-                      {arg.event.title}
-                    </div>
-                  )
-                }
-                const avatarChar = arg.event.extendedProps.avatarChar as string
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '1px 3px', overflow: 'hidden', height: '15px' }}>
-                    <span style={{
-                      width: 12, height: 12, borderRadius: '50%',
-                      backgroundColor: 'rgba(255,255,255,0.35)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 8, fontWeight: 'bold', flexShrink: 0, color: '#fff',
-                      lineHeight: 1,
-                    }}>{avatarChar}</span>
-                    <span style={{ fontSize: 9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, lineHeight: '14px' }}>
-                      {arg.event.title}
-                    </span>
-                  </div>
-                )
-              }}
+              eventContent={(arg) => (
+                <div style={{ fontSize: 10, padding: '1px 4px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', lineHeight: '16px', fontWeight: 500 }}>
+                  {arg.event.title}
+                </div>
+              )}
               dayMaxEvents={4}
               headerToolbar={{ left: '', center: '', right: '' }}
             />
