@@ -199,18 +199,6 @@ export default function SchedulePage() {
 
   return (
     <div className="px-2 pt-2 pb-0">
-      <div className="flex items-center justify-between mb-2 px-1">
-        <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-          <button onClick={() => setView('calendar')}
-            className={`px-3 py-1.5 transition-colors ${view === 'calendar' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-            📅 カレンダー
-          </button>
-          <button onClick={() => setView('list')}
-            className={`px-3 py-1.5 transition-colors ${view === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-            📋 リスト
-          </button>
-        </div>
-      </div>
 
       {view === 'calendar' ? (
         <>
@@ -219,12 +207,12 @@ export default function SchedulePage() {
             .fc-daygrid-day:hover { background-color: #dbeafe !important; }
             .fc-daygrid-day:active { background-color: #bfdbfe !important; }
             .fc-daygrid-day-number { pointer-events: none; font-size: 11px; padding: 1px 3px !important; line-height: 1.4; }
-            .fc-daygrid-day-frame { overflow: hidden !important; min-height: 0 !important; }
-            .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; }
+            .fc-daygrid-day-frame { overflow: hidden !important; min-height: 0 !important; height: 100%; }
+            .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; max-height: 34px !important; }
             .fc-daygrid-event-harness { margin: 1px 0 0 !important; }
             .fc-event { cursor: pointer; border-radius: 3px !important; padding: 0 !important; margin: 0 !important; }
             .fc-event-main { padding: 0 !important; line-height: 1 !important; }
-            .fc-daygrid-more-link { font-size: 9px !important; color: #9ca3af !important; line-height: 1.2 !important; margin: 0 2px !important; }
+            .fc-daygrid-more-link { display: none !important; }
             .fc-toolbar { display: none !important; }
             .fc-daygrid-body { width: 100% !important; }
             .fc-scrollgrid-sync-table { width: 100% !important; }
@@ -238,12 +226,22 @@ export default function SchedulePage() {
             .fc-scrollgrid-section-header td { border-bottom: 1px solid #e5e7eb !important; }
           `}</style>
           {/* Custom header */}
-          <div className="flex items-center px-2 mb-1">
+          <div className="flex items-center justify-between px-2 mb-1">
             <button onClick={() => setShowMonthPicker(true)}
               className="flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
               {displayYear}年{displayMonth}月
               <span className="text-gray-400 text-xs">▾</span>
             </button>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+              <button onClick={() => setView('calendar')}
+                className={`px-3 py-1.5 transition-colors ${view === 'calendar' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                📅 カレンダー
+              </button>
+              <button onClick={() => setView('list')}
+                className={`px-3 py-1.5 transition-colors ${view === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                📋 リスト
+              </button>
+            </div>
           </div>
           {/* Swipe wrapper */}
           <div className="overflow-hidden">
