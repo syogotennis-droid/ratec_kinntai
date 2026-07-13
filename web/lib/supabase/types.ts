@@ -74,6 +74,7 @@ export interface SalesRecord {
   user_id: string
   record_date: string
   amount: number
+  cost: number
   description: string | null
   notes: string | null
   created_at: string

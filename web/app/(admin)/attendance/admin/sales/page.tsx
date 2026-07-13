@@ -137,6 +137,7 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
   const [userId, setUserId] = useState(record?.user_id ?? profiles[0]?.id ?? '')
   const [date, setDate] = useState(record?.record_date ?? defaultDate ?? '')
   const [amount, setAmount] = useState(String(record?.amount ?? ''))
+  const [cost, setCost] = useState(String(record?.cost ?? ''))
   const [description, setDescription] = useState(record?.description ?? '')
   const [notes, setNotes] = useState(record?.notes ?? '')
   const [saving, setSaving] = useState(false)
@@ -151,6 +152,7 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
         user_id: userId,
         record_date: date,
         amount: Number(amount) || 0,
+        cost: Number(cost) || 0,
         description: description || null,
         notes: notes || null,
       }
@@ -201,10 +203,17 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">金額（円）</label>
-            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} min={0}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">売上（円）</label>
+              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} min={0}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">原価（円）</label>
+              <input type="number" value={cost} onChange={e => setCost(e.target.value)} min={0}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">内容</label>

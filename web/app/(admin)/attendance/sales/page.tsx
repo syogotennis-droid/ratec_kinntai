@@ -4,11 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { SalesRecord, SalesPhoto } from '@/lib/supabase/types'
 
-interface SalesModal {
-  record?: SalesRecord | null
-  date?: string
-}
-
 export default function MySalesPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [yearMonth, setYearMonth] = useState(() => {
@@ -16,8 +11,9 @@ export default function MySalesPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
   const [records, setRecords] = useState<SalesRecord[]>([])
+  const [thumbUrls, setThumbUrls] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState<SalesModal | null>(null)
+  const [modal, setModal] = useState<{ record?: SalesRecord | null; date?: string } | null>(null)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data }) => {
@@ -38,13 +34,34 @@ export default function MySalesPage() {
       .gte('record_date', `${yearMonth}-01`)
       .lte('record_date', `${yearMonth}-${String(lastDay).padStart(2, '0')}`)
       .order('record_date', { ascending: false })
-    setRecords(data ?? [])
+    const recs = data ?? []
+    setRecords(recs)
     setLoading(false)
+
+    if (recs.length === 0) return
+    const { data: photos } = await supabase
+      .from('sales_photos')
+      .select('*')
+      .in('sales_record_id', recs.map(r => r.id))
+    if (!photos || photos.length === 0) return
+
+    // 各レコードの最初の写真だけURL取得
+    const firstPhotos: Record<number, SalesPhoto> = {}
+    for (const p of photos) {
+      if (!firstPhotos[p.sales_record_id]) firstPhotos[p.sales_record_id] = p
+    }
+    const urls: Record<number, string> = {}
+    await Promise.all(Object.entries(firstPhotos).map(async ([rid, photo]) => {
+      const { data: urlData } = await supabase.storage.from('sales-photos').createSignedUrl(photo.storage_path, 3600)
+      if (urlData?.signedUrl) urls[Number(rid)] = urlData.signedUrl
+    }))
+    setThumbUrls(urls)
   }, [userId, yearMonth])
 
   useEffect(() => { fetchRecords() }, [fetchRecords])
 
   const totalAmount = records.reduce((s, r) => s + r.amount, 0)
+  const totalCost = records.reduce((s, r) => s + (r.cost ?? 0), 0)
 
   const prevMonth = () => {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -61,23 +78,24 @@ export default function MySalesPage() {
 
   return (
     <div className="p-4 max-w-2xl">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100">‹</button>
           <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
           <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100">›</button>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">
-            合計 ¥{totalAmount.toLocaleString()}
-          </span>
-          <button
-            onClick={() => setModal({ date: new Date().toISOString().slice(0, 10) })}
-            className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-          >
-            + 追加
-          </button>
-        </div>
+        <button
+          onClick={() => setModal({ date: new Date().toISOString().slice(0, 10) })}
+          className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+        >
+          + 追加
+        </button>
+      </div>
+
+      <div className="flex gap-4 mb-4 px-1">
+        <div className="text-xs text-gray-500">売上 <span className="text-gray-900 font-medium">¥{totalAmount.toLocaleString()}</span></div>
+        <div className="text-xs text-gray-500">原価 <span className="text-gray-900 font-medium">¥{totalCost.toLocaleString()}</span></div>
+        <div className="text-xs text-gray-500">粗利 <span className="font-medium text-green-700">¥{(totalAmount - totalCost).toLocaleString()}</span></div>
       </div>
 
       {loading ? (
@@ -92,15 +110,24 @@ export default function MySalesPage() {
               onClick={() => setModal({ record: r })}
               className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
             >
-              <div className="w-16 text-xs text-gray-500 shrink-0">
+              {/* サムネイル */}
+              <div className="w-10 h-10 rounded-md overflow-hidden bg-gray-100 shrink-0 flex items-center justify-center">
+                {thumbUrls[r.id] ? (
+                  <img src={thumbUrls[r.id]} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-gray-300 text-lg">📷</span>
+                )}
+              </div>
+              <div className="w-12 text-xs text-gray-500 shrink-0">
                 {r.record_date.slice(5).replace('-', '/')}
               </div>
-              <div className="flex-1 text-sm text-gray-900 truncate">
-                {r.description || '—'}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm text-gray-900 truncate">{r.description || '—'}</div>
+                {(r.cost ?? 0) > 0 && (
+                  <div className="text-xs text-gray-400">原価 ¥{(r.cost ?? 0).toLocaleString()}</div>
+                )}
               </div>
-              <div className="text-sm font-medium text-gray-900 shrink-0">
-                ¥{r.amount.toLocaleString()}
-              </div>
+              <div className="text-sm font-medium text-gray-900 shrink-0">¥{r.amount.toLocaleString()}</div>
             </div>
           ))}
         </div>
@@ -130,6 +157,7 @@ interface SalesModalProps {
 function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModalProps) {
   const [date, setDate] = useState(record?.record_date ?? defaultDate ?? '')
   const [amount, setAmount] = useState(String(record?.amount ?? ''))
+  const [cost, setCost] = useState(String(record?.cost ?? ''))
   const [description, setDescription] = useState(record?.description ?? '')
   const [notes, setNotes] = useState(record?.notes ?? '')
   const [saving, setSaving] = useState(false)
@@ -160,14 +188,13 @@ function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModa
     const files = Array.from(e.target.files ?? [])
     if (files.length === 0) return
     setNewFiles(prev => [...prev, ...files])
-    const previews = files.map(f => URL.createObjectURL(f))
-    setNewPreviews(prev => [...prev, ...previews])
+    setNewPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))])
   }
 
-  const removeNewFile = (index: number) => {
-    URL.revokeObjectURL(newPreviews[index])
-    setNewFiles(prev => prev.filter((_, i) => i !== index))
-    setNewPreviews(prev => prev.filter((_, i) => i !== index))
+  const removeNewFile = (i: number) => {
+    URL.revokeObjectURL(newPreviews[i])
+    setNewFiles(prev => prev.filter((_, j) => j !== i))
+    setNewPreviews(prev => prev.filter((_, j) => j !== i))
   }
 
   const deleteExistingPhoto = async (photo: SalesPhoto) => {
@@ -175,7 +202,7 @@ function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModa
     await supabase.storage.from('sales-photos').remove([photo.storage_path])
     await supabase.from('sales_photos').delete().eq('id', photo.id)
     setExistingPhotos(prev => prev.filter(p => p.id !== photo.id))
-    setPhotoUrls(prev => { const next = { ...prev }; delete next[photo.id]; return next })
+    setPhotoUrls(prev => { const n = { ...prev }; delete n[photo.id]; return n })
   }
 
   const handleSave = async () => {
@@ -187,6 +214,7 @@ function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModa
         user_id: userId,
         record_date: date,
         amount: Number(amount) || 0,
+        cost: Number(cost) || 0,
         description: description || null,
         notes: notes || null,
       }
@@ -206,11 +234,7 @@ function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModa
         const path = `${userId}/${recordId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
         const { error: uploadError } = await supabase.storage.from('sales-photos').upload(path, file)
         if (uploadError) continue
-        await supabase.from('sales_photos').insert({
-          sales_record_id: recordId,
-          storage_path: path,
-          original_name: file.name,
-        })
+        await supabase.from('sales_photos').insert({ sales_record_id: recordId, storage_path: path, original_name: file.name })
       }
 
       onSaved()
@@ -241,6 +265,9 @@ function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModa
     }
   }
 
+  const amountNum = Number(amount) || 0
+  const costNum = Number(cost) || 0
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6 my-auto" onClick={e => e.stopPropagation()}>
@@ -253,11 +280,23 @@ function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModa
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">金額（円）</label>
-            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} min={0}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">売上（円）</label>
+              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} min={0}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">原価（円）</label>
+              <input type="number" value={cost} onChange={e => setCost(e.target.value)} min={0}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
           </div>
+          {(amountNum > 0 || costNum > 0) && (
+            <div className="text-xs text-gray-500 px-1">
+              粗利 <span className="font-medium text-green-700">¥{(amountNum - costNum).toLocaleString()}</span>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">内容</label>
             <input type="text" value={description} onChange={e => setDescription(e.target.value)}
@@ -270,46 +309,32 @@ function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModa
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">写真</label>
-            <div className="flex flex-wrap gap-2 mb-2">
+            <label className="block text-xs font-medium text-gray-700 mb-2">写真</label>
+            <div className="flex flex-wrap gap-2">
               {existingPhotos.map(p => (
                 <div key={p.id} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                  {photoUrls[p.id] ? (
-                    <img src={photoUrls[p.id]} alt={p.original_name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">読込中</div>
-                  )}
-                  <button
-                    onClick={() => deleteExistingPhoto(p)}
-                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center leading-none"
-                  >×</button>
+                  {photoUrls[p.id]
+                    ? <img src={photoUrls[p.id]} alt={p.original_name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">読込中</div>
+                  }
+                  <button onClick={() => deleteExistingPhoto(p)}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center">×</button>
                 </div>
               ))}
               {newPreviews.map((url, i) => (
                 <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-blue-200 bg-gray-50">
                   <img src={url} alt="" className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => removeNewFile(i)}
-                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center leading-none"
-                  >×</button>
+                  <button onClick={() => removeNewFile(i)}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center">×</button>
                 </div>
               ))}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 transition-colors"
-              >
+              <button onClick={() => fileInputRef.current?.click()}
+                className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 transition-colors">
                 <span className="text-2xl leading-none">+</span>
                 <span className="text-xs mt-1">写真追加</span>
               </button>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={handleFileChange}
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
           </div>
         </div>
         {error && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
