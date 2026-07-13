@@ -1,11 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { login } from './actions'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [employeeId, setEmployeeId] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -16,18 +14,11 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const supabase = createClient()
-    const email = `${employeeId}@ratec.local`
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (error) {
-      setError('社員番号またはパスワードが正しくありません')
+    const result = await login(employeeId, password)
+    if (result?.error) {
+      setError(result.error)
       setLoading(false)
-      return
     }
-
-    window.location.href = '/'
   }
 
   return (
@@ -48,7 +39,7 @@ export default function LoginPage() {
                 type="text"
                 value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value)}
-                placeholder="A001"
+                placeholder="a001"
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
