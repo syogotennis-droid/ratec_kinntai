@@ -8,11 +8,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
+
+  console.warn('[DIAG] layout profile:', JSON.stringify(profile), 'err:', profileError?.message ?? 'none', 'code:', profileError?.code ?? '-')
 
   if (!profile) redirect('/login')
 
