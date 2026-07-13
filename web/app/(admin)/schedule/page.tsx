@@ -32,7 +32,7 @@ interface UserProfile {
   color: string | null
 }
 
-type WorkType = 'normal' | 'paid_leave'
+type WorkType = 'normal' | 'paid_leave' | 'hourly_leave'
 
 interface WorkRecord {
   id: number
@@ -48,10 +48,12 @@ interface WorkRecord {
 const WORK_TYPE_COLOR: Record<WorkType, string> = {
   normal: '#16a34a',
   paid_leave: '#9333ea',
+  hourly_leave: '#0891b2',
 }
 const WORK_TYPE_LABEL: Record<WorkType, string> = {
   normal: '通常',
   paid_leave: '有休',
+  hourly_leave: '時間休',
 }
 
 const USER_COLORS = [
@@ -863,7 +865,7 @@ function WorkRecordModal({ workRecord, defaultDate, userId, onClose, onSaved }: 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isPaidLeave = workType === 'paid_leave'
+  const isPaidLeave = workType === 'paid_leave'  // 時間入力不要
 
   const handleSave = async () => {
     if (!date || (!isPaidLeave && (!startTime || !endTime))) return
