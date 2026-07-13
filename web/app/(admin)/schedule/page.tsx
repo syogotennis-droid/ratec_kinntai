@@ -105,8 +105,8 @@ export default function SchedulePage() {
   }, {})
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-3">
+    <div className="px-2 pt-2 pb-0">
+      <div className="flex items-center justify-between mb-2 px-1">
         <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
           <button onClick={() => setView('calendar')}
             className={`px-3 py-1.5 transition-colors ${view === 'calendar' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
@@ -117,10 +117,6 @@ export default function SchedulePage() {
             📋 リスト
           </button>
         </div>
-        <button onClick={() => openAdd(new Date().toISOString().slice(0, 10))}
-          className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
-          + 追加
-        </button>
       </div>
 
       {view === 'calendar' ? (
@@ -129,10 +125,12 @@ export default function SchedulePage() {
             .fc-daygrid-day { cursor: pointer; transition: background-color 0.1s; }
             .fc-daygrid-day:hover { background-color: #dbeafe !important; }
             .fc-daygrid-day:active { background-color: #bfdbfe !important; }
-            .fc-daygrid-day-number { pointer-events: none; }
+            .fc-daygrid-day-number { pointer-events: none; font-size: 12px; padding: 2px 4px !important; }
             .fc-event { cursor: pointer; font-size: 11px; padding: 1px 4px; border-radius: 4px; }
             .fc-toolbar-title { font-size: 1rem !important; font-weight: 700; }
             .fc-button { font-size: 0.75rem !important; padding: 4px 10px !important; }
+            .fc-daygrid-body { width: 100% !important; }
+            .fc-scrollgrid-sync-table { width: 100% !important; }
           `}</style>
           <FullCalendar
             plugins={[dayGridPlugin, interactionPlugin]}
@@ -142,7 +140,9 @@ export default function SchedulePage() {
             dateClick={handleDateClick}
             eventClick={handleEventClick}
             datesSet={handleDatesSet}
-            height="auto"
+            height="calc(100vh - 100px)"
+            expandRows={true}
+            dayCellContent={(arg) => ({ html: `<span>${arg.date.getDate()}</span>` })}
             buttonText={{ today: '今日', month: '月', week: '週' }}
           />
         </>
