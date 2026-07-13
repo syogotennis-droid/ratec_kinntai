@@ -107,6 +107,7 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
   const [overtimeRate, setOvertimeRate] = useState(String(profile?.overtime_rate ?? '1.25'))
   const [holidayRate, setHolidayRate] = useState(String(profile?.holiday_rate ?? '1.35'))
   const [avatarChar, setAvatarChar] = useState(profile?.avatar_char ?? '')
+  const [color, setColor] = useState(profile?.color ?? '')
   const [isAdmin, setIsAdmin] = useState(profile?.is_admin ?? false)
   const [isActive, setIsActive] = useState(profile?.is_active ?? true)
   const [password, setPassword] = useState('')
@@ -135,6 +136,7 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
           is_admin: isAdmin,
           is_active: isActive,
           avatar_char: avatarChar || null,
+          color: color || null,
         }).eq('id', profile.id)
       } else {
         if (!password) { setError('パスワードを入力してください'); setSaving(false); return }
@@ -255,25 +257,42 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
             </div>
           )}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">カレンダー表示文字</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">カレンダー表示</label>
             <div className="flex items-center gap-3">
               <input
                 type="text"
                 value={avatarChar}
                 onChange={e => setAvatarChar(e.target.value.slice(0, 1))}
                 maxLength={1}
-                placeholder="山"
+                placeholder="文字"
                 className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                  style={{ backgroundColor: '#3b82f6' }}>
-                  {avatarChar || '山'}
+              {avatarChar && (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                  style={{ backgroundColor: color || '#3b82f6' }}>
+                  {avatarChar}
                 </div>
-                <span className="text-xs text-gray-400">←カレンダーでの見え方</span>
-              </div>
+              )}
             </div>
-            <p className="mt-1 text-xs text-gray-400">名前の頭文字など1文字を入力</p>
+            <p className="mt-1 text-xs text-gray-400">名前の頭文字など1文字</p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">カラー</label>
+            <div className="flex flex-wrap gap-2">
+              {['#3b82f6','#22c55e','#f97316','#a855f7','#ef4444','#06b6d4','#eab308','#ec4899','#64748b','#84cc16','#f43f5e','#8b5cf6'].map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className="w-8 h-8 rounded-full border-2 transition-all"
+                  style={{
+                    backgroundColor: c,
+                    borderColor: color === c ? '#1f2937' : 'transparent',
+                    transform: color === c ? 'scale(1.2)' : 'scale(1)',
+                  }}
+                />
+              ))}
+            </div>
           </div>
           <div className="flex gap-4">
             <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">

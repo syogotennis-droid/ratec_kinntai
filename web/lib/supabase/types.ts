@@ -22,6 +22,7 @@ export interface Profile {
   is_admin: boolean
   is_active: boolean
   avatar_char: string | null
+  color: string | null
   created_at: string
   updated_at: string
 }

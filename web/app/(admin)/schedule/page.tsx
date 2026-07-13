@@ -24,6 +24,7 @@ interface UserProfile {
   id: string
   name: string
   avatar_char: string | null
+  color: string | null
 }
 
 const USER_COLORS = [
@@ -85,7 +86,7 @@ export default function SchedulePage() {
   useEffect(() => { fetchSchedules() }, [fetchSchedules])
 
   useEffect(() => {
-    createClient().from('profiles').select('id, name, avatar_char').eq('is_active', true).then(({ data }) => {
+    createClient().from('profiles').select('id, name, avatar_char, color').eq('is_active', true).then(({ data }) => {
       setProfiles(data ?? [])
     })
   }, [])
@@ -165,7 +166,7 @@ export default function SchedulePage() {
 
   const events: EventInput[] = schedules.map(s => {
     const p = profiles.find(pr => pr.id === s.created_by)
-    const color = userColor(s.created_by)
+    const color = p?.color || userColor(s.created_by)
     const avatarChar = p?.avatar_char || p?.name?.charAt(0) || '?'
     return {
       id: String(s.id),
@@ -347,7 +348,7 @@ export default function SchedulePage() {
                           <span className="text-xs text-gray-400 shrink-0 pt-0.5 w-12 text-right">
                             {s.start_time ? formatTime(s.start_time) : '終日'}
                           </span>
-                          <div style={{ borderLeftColor: userColor(s.created_by) }} className="border-l-[3px] pl-2 flex-1 min-w-0">
+                          <div style={{ borderLeftColor: (() => { const pr = profiles.find(x => x.id === s.created_by); return pr?.color || userColor(s.created_by) })() }} className="border-l-[3px] pl-2 flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900">{s.title}</p>
                             {s.notes && <p className="text-xs text-gray-400 mt-0.5">{s.notes}</p>}
                           </div>
@@ -434,8 +435,8 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
           ) : (
             <div className="space-y-1">
               {sorted.map(s => {
-                const color = userColor(s.created_by)
                 const p = profiles.find(pr => pr.id === s.created_by)
+                const color = p?.color || userColor(s.created_by)
                 const initial = p?.avatar_char || p?.name?.charAt(0) || '?'
                 const isAllDay = !s.start_time
                 return (
