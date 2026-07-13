@@ -34,6 +34,7 @@ export default function QuotationDetailPage() {
   const [docNo, setDocNo] = useState('')
   const [issueDate, setIssueDate] = useState('')
   const [status, setStatus] = useState<QuotationStatus>('作成中')
+  const [contactPerson, setContactPerson] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([])
 
@@ -57,6 +58,7 @@ export default function QuotationDetailPage() {
       setDocNo(q.doc_no)
       setIssueDate(q.issue_date)
       setStatus(q.status)
+      setContactPerson(q.contact_person ?? '')
       setNotes(q.notes ?? '')
       const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
       setItems(sorted.map(({ id: _id, ...rest }) => rest))
@@ -82,6 +84,7 @@ export default function QuotationDetailPage() {
         issueDate,
         customerName: (proj as { companies?: { name: string } | null } | undefined)?.companies?.name ?? customerName,
         projectName: proj?.name ?? '',
+        contactPerson: contactPerson || null,
         notes,
         items,
         subtotal,
@@ -123,6 +126,7 @@ export default function QuotationDetailPage() {
         doc_no: docNo,
         issue_date: issueDate,
         status,
+        contact_person: contactPerson || null,
         notes: notes || null,
         subtotal,
         tax_amount: taxAmount,
@@ -202,6 +206,12 @@ export default function QuotationDetailPage() {
             <option value={0}>なし</option>
             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">担当者（任意）</label>
+          <input type="text" value={contactPerson} onChange={e => setContactPerson(e.target.value)}
+            placeholder="例：山田 太郎"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">備考</label>

@@ -174,6 +174,7 @@ export interface Quotation {
   doc_no: string
   issue_date: string
   status: QuotationStatus
+  contact_person: string | null
   subtotal: number
   tax_amount: number
   total_amount: number

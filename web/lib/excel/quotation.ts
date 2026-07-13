@@ -5,6 +5,7 @@ interface QuotationExcelData {
   issueDate: string
   customerName: string
   projectName: string
+  contactPerson: string | null
   notes: string
   items: Omit<DocumentItem, 'id'>[]
   subtotal: number
@@ -34,8 +35,8 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
   const [y, m, d] = data.issueDate.split('-')
   ws.getCell('G3').value = data.issueDate ? `${y}年${m}月${d}日` : ''
 
-  // 担当者行 (A4) は空欄のまま
-  ws.getCell('A4').value = ''
+  // 担当者行 (A4) - データがあれば表示、なければ空欄
+  ws.getCell('A4').value = data.contactPerson ? `ご担当：${data.contactPerson} 様` : ''
 
   // 件名 (B7)
   ws.getCell('B7').value = data.projectName ?? ''
