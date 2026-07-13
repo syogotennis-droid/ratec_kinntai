@@ -7,6 +7,7 @@ import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction'
 import { EventClickArg, EventInput } from '@fullcalendar/core'
 import { createClient } from '@/lib/supabase/client'
 import { useProfile } from '@/lib/profile-context'
+import holidayJp from '@holiday-jp/holiday_jp'
 
 interface Schedule {
   id: number
@@ -141,6 +142,22 @@ export default function SchedulePage() {
     setDaySheet(s.date)
   }
 
+  const holidayEvents: EventInput[] = (() => {
+    const start = new Date(Number(yearMonth.split('-')[0]) - 1, 0, 1)
+    const end = new Date(Number(yearMonth.split('-')[0]) + 1, 11, 31)
+    return holidayJp.between(start, end).map((h: { date: Date; name: string }) => ({
+      id: `holiday-${h.date.toISOString()}`,
+      title: h.name,
+      date: h.date.toISOString().slice(0, 10),
+      display: 'background',
+      backgroundColor: '#fee2e2',
+      classNames: ['fc-holiday'],
+      extendedProps: { isHoliday: true, holidayName: h.name },
+    }))
+  })()
+
+  const holidayDates = new Set(holidayEvents.map(e => e.date as string))
+
   const events: EventInput[] = schedules.map(s => ({
     id: String(s.id),
     title: s.title,
@@ -197,6 +214,11 @@ export default function SchedulePage() {
             .fc-scrollgrid-sync-table { width: 100% !important; }
             .drum-col { scrollbar-width: none; -ms-overflow-style: none; }
             .drum-col::-webkit-scrollbar { display: none; }
+            .fc-day-sun .fc-daygrid-day-number { color: #ef4444 !important; }
+            .fc-day-sat .fc-daygrid-day-number { color: #3b82f6 !important; }
+            .fc-day-holiday .fc-daygrid-day-number { color: #ef4444 !important; }
+            .fc-holiday-name { font-size: 9px; color: #ef4444; line-height: 1; padding: 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+            .fc-bg-event.fc-holiday { background-color: #fee2e2 !important; opacity: 0.4 !important; }
           `}</style>
           {/* Custom header */}
           <div className="flex items-center justify-between px-1 mb-1">
@@ -225,13 +247,23 @@ export default function SchedulePage() {
               plugins={[dayGridPlugin, interactionPlugin]}
               initialView="dayGridMonth"
               locale="ja"
-              events={events}
+              events={[...events, ...holidayEvents]}
               dateClick={handleDateClick}
               eventClick={handleEventClick}
               datesSet={handleDatesSet}
               height="calc(100vh - 110px)"
               expandRows={true}
-              dayCellContent={(arg) => ({ html: `<span>${arg.date.getDate()}</span>` })}
+              dayCellContent={(arg) => {
+                const dateStr = arg.date.toISOString().slice(0, 10)
+                const holiday = holidayJp.isHoliday(arg.date)
+                  ? holidayJp.between(arg.date, arg.date)[0]
+                  : null
+                const isHoliday = holidayDates.has(dateStr)
+                const day = arg.date.getDay()
+                const color = isHoliday || day === 0 ? '#ef4444' : day === 6 ? '#3b82f6' : ''
+                const nameHtml = holiday ? `<div class="fc-holiday-name">${holiday.name}</div>` : ''
+                return { html: `<span style="${color ? `color:${color}` : ''}">${arg.date.getDate()}</span>${nameHtml}` }
+              }}
               dayMaxEvents={4}
               headerToolbar={{ left: '', center: '', right: '' }}
             />
