@@ -196,19 +196,7 @@ export default function SchedulePage() {
     }
   })
 
-  // Limit to 2 events per day (more causes row height inequality with expandRows)
-  const perDayCount: Record<string, number> = {}
-  const limitedEvents = [...holidayEvents, ...events].filter(e => {
-    const date = (e.date as string).slice(0, 10)
-    perDayCount[date] = (perDayCount[date] || 0) + 1
-    return perDayCount[date] <= 2
-  })
-
-  // Total schedule count per date for count badge
-  const scheduleCountByDate = schedules.reduce<Record<string, number>>((acc, s) => {
-    acc[s.date] = (acc[s.date] || 0) + 1
-    return acc
-  }, {})
+  const allEvents = [...holidayEvents, ...events]
 
   const prevMonth = () => {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -253,15 +241,13 @@ export default function SchedulePage() {
             .fc-daygrid-day:hover { background-color: #dbeafe !important; }
             .fc-daygrid-day:active { background-color: #bfdbfe !important; }
             .fc-daygrid-day-number { pointer-events: none; font-size: 11px; padding: 1px 3px !important; line-height: 1.4; }
-            .fc-daygrid-day-frame { overflow: hidden !important; min-height: 0 !important; height: 100%; }
-            .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; max-height: 76px !important; }
+            .fc-daygrid-day-frame { overflow: hidden !important; min-height: 0 !important; }
+            .fc-daygrid-day-events { margin: 0 !important; padding: 0 1px 1px !important; }
             .fc-daygrid-event-harness { margin: 1px 0 0 !important; }
             .fc-event { cursor: pointer; border-radius: 3px !important; padding: 0 !important; margin: 0 !important; }
             .fc-event-main { padding: 0 !important; line-height: 1 !important; }
             .fc-daygrid-more-link { display: none !important; }
             .fc-day-other { opacity: 0.35; }
-            .fc-day-top-inner { display: flex; align-items: center; justify-content: space-between; padding: 1px 3px; }
-            .fc-day-badge { font-size: 9px; font-weight: 700; color: #6b7280; line-height: 1; }
             .fc-toolbar { display: none !important; }
             .fc-daygrid-body { width: 100% !important; }
             .fc-scrollgrid-sync-table { width: 100% !important; }
@@ -300,21 +286,20 @@ export default function SchedulePage() {
               plugins={[dayGridPlugin, interactionPlugin]}
               initialView="dayGridMonth"
               locale="ja"
-              events={limitedEvents}
+              events={allEvents}
               dateClick={handleDateClick}
               eventClick={handleEventClick}
               datesSet={handleDatesSet}
               height="calc(100vh - 108px)"
               expandRows={true}
+              dayMaxEvents={true}
               dayCellContent={(arg) => {
                 const d = arg.date
                 const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
                 const isHoliday = holidayDates.has(dateStr)
                 const day = d.getDay()
                 const color = isHoliday || day === 0 ? '#ef4444' : day === 6 ? '#3b82f6' : ''
-                const count = scheduleCountByDate[dateStr] || 0
-                const badge = count > 0 ? `<span class="fc-day-badge">${count}</span>` : ''
-                return { html: `<div class="fc-day-top-inner"><span style="${color ? `color:${color}` : ''}">${d.getDate()}</span>${badge}</div>` }
+                return { html: `<span style="${color ? `color:${color}` : ''}">${d.getDate()}</span>` }
               }}
               eventContent={(arg) => (
                 <div style={{ fontSize: 10, padding: '1px 4px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', lineHeight: '16px', fontWeight: 500 }}>
