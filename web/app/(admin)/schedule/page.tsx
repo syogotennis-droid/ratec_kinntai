@@ -463,11 +463,11 @@ function MonthPicker({ year, month, onSelect, onClose }: { year: number; month: 
         onClick={e => e.stopPropagation()}>
         <div className="relative flex" style={{ height: ITEM_H * 5 }}>
           {/* 選択ハイライト */}
-          <div className="absolute inset-x-3 rounded-xl bg-gray-100 pointer-events-none z-10"
-            style={{ top: ITEM_H * 2, height: ITEM_H }} />
+          <div className="absolute inset-x-3 rounded-xl bg-gray-100 pointer-events-none"
+            style={{ top: ITEM_H * 2, height: ITEM_H, zIndex: 0 }} />
           {/* 年列 */}
           <div ref={yearRef} onScroll={onYearScroll} className="drum-col flex-1 overflow-y-scroll"
-            style={{ scrollSnapType: 'y mandatory' }}>
+            style={{ scrollSnapType: 'y mandatory', position: 'relative', zIndex: 1 }}>
             <div style={{ height: PAD }} />
             {years.map(y => (
               <div key={y} className={`flex items-center justify-center text-sm transition-all ${y === selYear ? 'font-bold text-gray-900' : 'text-gray-400'}`}
@@ -479,7 +479,7 @@ function MonthPicker({ year, month, onSelect, onClose }: { year: number; month: 
           </div>
           {/* 月列 */}
           <div ref={monthRef} onScroll={onMonthScroll} className="drum-col flex-1 overflow-y-scroll"
-            style={{ scrollSnapType: 'y mandatory' }}>
+            style={{ scrollSnapType: 'y mandatory', position: 'relative', zIndex: 1 }}>
             <div style={{ height: PAD }} />
             {months.map(m => (
               <div key={m} className={`flex items-center justify-center text-sm transition-all ${m === selMonth ? 'font-bold text-gray-900' : 'text-gray-400'}`}
