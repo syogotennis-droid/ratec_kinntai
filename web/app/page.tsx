@@ -13,9 +13,5 @@ export default async function Home() {
     .eq('id', session.user.id)
     .single()
 
-  if (profile?.is_admin) {
-    redirect('/attendance/admin/work-list')
-  } else {
-    redirect('/attendance/calendar')
-  }
+  redirect('/schedule')
 }
