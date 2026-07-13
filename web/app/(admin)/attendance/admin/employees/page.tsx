@@ -106,6 +106,7 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
   const [fixedAllowance, setFixedAllowance] = useState(String(profile?.fixed_allowance ?? ''))
   const [overtimeRate, setOvertimeRate] = useState(String(profile?.overtime_rate ?? '1.25'))
   const [holidayRate, setHolidayRate] = useState(String(profile?.holiday_rate ?? '1.35'))
+  const [avatarChar, setAvatarChar] = useState(profile?.avatar_char ?? '')
   const [isAdmin, setIsAdmin] = useState(profile?.is_admin ?? false)
   const [isActive, setIsActive] = useState(profile?.is_active ?? true)
   const [password, setPassword] = useState('')
@@ -133,6 +134,7 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
           holiday_rate: Number(holidayRate) || 1.35,
           is_admin: isAdmin,
           is_active: isActive,
+          avatar_char: avatarChar || null,
         }).eq('id', profile.id)
       } else {
         if (!password) { setError('パスワードを入力してください'); setSaving(false); return }
@@ -252,6 +254,25 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           )}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">アバター文字（1文字）</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={avatarChar}
+                onChange={e => setAvatarChar(e.target.value.slice(0, 1))}
+                maxLength={1}
+                placeholder="例：山"
+                className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {avatarChar && (
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                  style={{ backgroundColor: '#3b82f6' }}>
+                  {avatarChar}
+                </div>
+              )}
+            </div>
+          </div>
           <div className="flex gap-4">
             <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
               <input type="checkbox" checked={isAdmin} onChange={e => setIsAdmin(e.target.checked)} />

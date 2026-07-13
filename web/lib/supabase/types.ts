@@ -21,6 +21,7 @@ export interface Profile {
   holiday_rate: number
   is_admin: boolean
   is_active: boolean
+  avatar_char: string | null
   created_at: string
   updated_at: string
 }

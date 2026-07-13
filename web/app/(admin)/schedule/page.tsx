@@ -23,6 +23,7 @@ interface Schedule {
 interface UserProfile {
   id: string
   name: string
+  avatar_char: string | null
 }
 
 const USER_COLORS = [
@@ -84,7 +85,7 @@ export default function SchedulePage() {
   useEffect(() => { fetchSchedules() }, [fetchSchedules])
 
   useEffect(() => {
-    createClient().from('profiles').select('id, name').eq('is_active', true).then(({ data }) => {
+    createClient().from('profiles').select('id, name, avatar_char').eq('is_active', true).then(({ data }) => {
       setProfiles(data ?? [])
     })
   }, [])
@@ -162,14 +163,19 @@ export default function SchedulePage() {
 
   const holidayDates = new Set(holidayEvents.map(e => e.date as string))
 
-  const events: EventInput[] = schedules.map(s => ({
-    id: String(s.id),
-    title: s.title,
-    date: s.date,
-    backgroundColor: userColor(s.created_by),
-    borderColor: 'transparent',
-    extendedProps: { schedule: s },
-  }))
+  const events: EventInput[] = schedules.map(s => {
+    const p = profiles.find(pr => pr.id === s.created_by)
+    const color = userColor(s.created_by)
+    const avatarChar = p?.avatar_char || p?.name?.charAt(0) || '?'
+    return {
+      id: String(s.id),
+      title: s.title,
+      date: s.date,
+      backgroundColor: color,
+      borderColor: 'transparent',
+      extendedProps: { schedule: s, avatarChar, color },
+    }
+  })
 
   const prevMonth = () => {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -211,8 +217,13 @@ export default function SchedulePage() {
             .fc-daygrid-day { cursor: pointer; transition: background-color 0.1s; }
             .fc-daygrid-day:hover { background-color: #dbeafe !important; }
             .fc-daygrid-day:active { background-color: #bfdbfe !important; }
-            .fc-daygrid-day-number { pointer-events: none; font-size: 12px; padding: 2px 4px !important; }
-            .fc-event { cursor: pointer; font-size: 11px; padding: 1px 4px; border-radius: 4px; }
+            .fc-daygrid-day-number { pointer-events: none; font-size: 11px; padding: 1px 3px !important; line-height: 1.4; }
+            .fc-daygrid-day-frame { overflow: hidden !important; min-height: 0 !important; }
+            .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; }
+            .fc-daygrid-event-harness { margin: 1px 0 0 !important; }
+            .fc-event { cursor: pointer; border-radius: 3px !important; padding: 0 !important; margin: 0 !important; }
+            .fc-event-main { padding: 0 !important; line-height: 1 !important; }
+            .fc-daygrid-more-link { font-size: 9px !important; color: #9ca3af !important; line-height: 1.2 !important; margin: 0 2px !important; }
             .fc-toolbar { display: none !important; }
             .fc-daygrid-body { width: 100% !important; }
             .fc-scrollgrid-sync-table { width: 100% !important; }
@@ -220,8 +231,10 @@ export default function SchedulePage() {
             .drum-col::-webkit-scrollbar { display: none; }
             .fc-day-sun .fc-daygrid-day-number { color: #ef4444 !important; }
             .fc-day-sat .fc-daygrid-day-number { color: #3b82f6 !important; }
-            .fc-day-holiday .fc-daygrid-day-number { color: #ef4444 !important; }
-            .fc-holiday-name { font-size: 9px; color: #ef4444; line-height: 1; padding: 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+            .fc-holiday-name { font-size: 8px; color: #ef4444; line-height: 1; padding: 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+            .fc-col-header-cell { padding: 2px 0 !important; }
+            .fc-col-header-cell-cushion { font-size: 10px !important; padding: 2px 4px !important; }
+            .fc-scrollgrid-section-header td { border-bottom: 1px solid #e5e7eb !important; }
           `}</style>
           {/* Custom header */}
           <div className="flex items-center justify-between px-1 mb-1">
@@ -254,7 +267,7 @@ export default function SchedulePage() {
               dateClick={handleDateClick}
               eventClick={handleEventClick}
               datesSet={handleDatesSet}
-              height="calc(100vh - 110px)"
+              height="calc(100vh - 108px)"
               expandRows={true}
               dayCellContent={(arg) => {
                 const dateStr = arg.date.toISOString().slice(0, 10)
@@ -266,6 +279,30 @@ export default function SchedulePage() {
                 const color = isHoliday || day === 0 ? '#ef4444' : day === 6 ? '#3b82f6' : ''
                 const nameHtml = holiday ? `<div class="fc-holiday-name">${holiday.name}</div>` : ''
                 return { html: `<span style="${color ? `color:${color}` : ''}">${arg.date.getDate()}</span>${nameHtml}` }
+              }}
+              eventContent={(arg) => {
+                if (arg.event.extendedProps.isHoliday) {
+                  return (
+                    <div style={{ fontSize: 9, padding: '1px 3px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', lineHeight: '14px' }}>
+                      {arg.event.title}
+                    </div>
+                  )
+                }
+                const avatarChar = arg.event.extendedProps.avatarChar as string
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '1px 3px', overflow: 'hidden', height: '15px' }}>
+                    <span style={{
+                      width: 12, height: 12, borderRadius: '50%',
+                      backgroundColor: 'rgba(255,255,255,0.35)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 8, fontWeight: 'bold', flexShrink: 0, color: '#fff',
+                      lineHeight: 1,
+                    }}>{avatarChar}</span>
+                    <span style={{ fontSize: 9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, lineHeight: '14px' }}>
+                      {arg.event.title}
+                    </span>
+                  </div>
+                )
               }}
               dayMaxEvents={2}
               headerToolbar={{ left: '', center: '', right: '' }}
@@ -399,7 +436,7 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
               {sorted.map(s => {
                 const color = userColor(s.created_by)
                 const p = profiles.find(pr => pr.id === s.created_by)
-                const initial = p?.name?.charAt(0) ?? '?'
+                const initial = p?.avatar_char || p?.name?.charAt(0) || '?'
                 const isAllDay = !s.start_time
                 return (
                   <div key={s.id} onClick={() => onEdit(s)}
