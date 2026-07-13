@@ -108,6 +108,24 @@ export default function SchedulePage() {
     })
   }, [])
 
+  const applyRowHeights = useCallback(() => {
+    requestAnimationFrame(() => {
+      const rows = Array.from(document.querySelectorAll('.fc-daygrid-body tr')) as HTMLElement[]
+      if (!rows.length) return
+      const harness = document.querySelector('.fc-view-harness') as HTMLElement
+      const colHeader = document.querySelector('.fc-col-header') as HTMLElement
+      const availH = (harness?.offsetHeight ?? 500) - (colHeader?.offsetHeight ?? 24)
+      const rowH = Math.min(Math.floor(availH / rows.length), 95)
+      rows.forEach(row => { row.style.height = rowH + 'px' })
+      const frames = document.querySelectorAll('.fc-daygrid-day-frame') as NodeListOf<HTMLElement>
+      frames.forEach(frame => {
+        frame.style.height = rowH + 'px'
+        frame.style.overflow = 'hidden'
+        frame.style.minHeight = '0'
+      })
+    })
+  }, [])
+
   const handleDatesSet = (info: { startStr: string }) => {
     const d = new Date(info.startStr)
     d.setDate(d.getDate() + 14)
@@ -116,6 +134,7 @@ export default function SchedulePage() {
     setDisplayYear(y)
     setDisplayMonth(m)
     setYearMonth(`${y}-${String(m).padStart(2, '0')}`)
+    applyRowHeights()
   }
 
   const goNext = () => calendarRef.current?.getApi().next()
@@ -248,7 +267,7 @@ export default function SchedulePage() {
             .fc-daygrid-day:hover { background-color: #dbeafe !important; }
             .fc-daygrid-day:active { background-color: #bfdbfe !important; }
             .fc-daygrid-day-number { pointer-events: none; font-size: 11px; padding: 1px 3px !important; line-height: 1.4; }
-            .fc-daygrid-day-frame { height: min(calc((100vh - 128px) / ${numWeeks}), 88px) !important; overflow: hidden !important; min-height: 0 !important; }
+            .fc-daygrid-day-frame { min-height: 0 !important; }
             .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; }
             .fc-daygrid-event-harness { margin: 1px 0 0 !important; }
             .fc-event { cursor: pointer; border-radius: 3px !important; padding: 0 !important; margin: 0 !important; }
