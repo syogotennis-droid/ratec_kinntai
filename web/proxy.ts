@@ -21,18 +21,8 @@ export default async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
-  const { pathname } = request.nextUrl
-
-  // 未ログイン → /login へ
-  if (!user && pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  // ログイン済みで /login → / へ
-  if (user && pathname === '/login') {
-    return NextResponse.redirect(new URL('/', request.url))
-  }
+  // セッションリフレッシュのみ実行（リダイレクトはサーバーコンポーネントで処理）
+  await supabase.auth.getUser()
 
   return supabaseResponse
 }
