@@ -80,7 +80,7 @@ export default function SchedulePage() {
 
   const events: EventInput[] = schedules.map(s => ({
     id: String(s.id),
-    title: s.start_time ? `${formatTime(s.start_time)} ${s.title}` : s.title,
+    title: s.title,
     date: s.date,
     backgroundColor: '#3b82f6',
     borderColor: 'transparent',
