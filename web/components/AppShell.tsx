@@ -12,6 +12,7 @@ const adminNavItems = [
   { to: '/attendance/admin/bonuses', label: 'ボーナス管理', icon: '🎁' },
   { to: '/attendance/admin/payroll', label: '給与計算', icon: '💴' },
   { to: '/attendance/admin/employees', label: '従業員管理', icon: '👥' },
+  { to: '/orders/products', label: '商品マスター', icon: '📦' },
 ]
 
 const employeeNavItems = [
@@ -24,7 +25,6 @@ const employeeNavItems = [
   { to: '/orders/invoices', label: '請求書', icon: '📄' },
   { to: '/orders/purchase-orders', label: '発注書', icon: '🛒' },
   { to: '/orders/suppliers', label: '仕入先', icon: '🏭' },
-  { to: '/orders/products', label: '商品マスター', icon: '📦' },
   { to: '/orders/settings', label: '自社設定', icon: '⚙️' },
 ]
 
