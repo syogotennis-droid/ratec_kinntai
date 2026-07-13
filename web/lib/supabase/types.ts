@@ -145,6 +145,17 @@ export interface Supplier {
   is_active: boolean
 }
 
+export interface Product {
+  id: number
+  code: string
+  name: string
+  spec: string
+  unit: string
+  unit_price: number
+  maker: string
+  created_at: string
+}
+
 export interface DocumentItem {
   id: number
   sort_order: number
