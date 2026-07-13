@@ -11,7 +11,7 @@ export default function MySalesPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
   const [records, setRecords] = useState<SalesRecord[]>([])
-  const [thumbUrls, setThumbUrls] = useState<Record<number, string>>({})
+  const [photoCounts, setPhotoCounts] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<{ record?: SalesRecord | null; date?: string } | null>(null)
 
@@ -41,21 +41,12 @@ export default function MySalesPage() {
     if (recs.length === 0) return
     const { data: photos } = await supabase
       .from('sales_photos')
-      .select('*')
+      .select('id, sales_record_id')
       .in('sales_record_id', recs.map(r => r.id))
-    if (!photos || photos.length === 0) return
-
-    // 各レコードの最初の写真だけURL取得
-    const firstPhotos: Record<number, SalesPhoto> = {}
-    for (const p of photos) {
-      if (!firstPhotos[p.sales_record_id]) firstPhotos[p.sales_record_id] = p
-    }
-    const urls: Record<number, string> = {}
-    await Promise.all(Object.entries(firstPhotos).map(async ([rid, photo]) => {
-      const { data: urlData } = await supabase.storage.from('sales-photos').createSignedUrl(photo.storage_path, 3600)
-      if (urlData?.signedUrl) urls[Number(rid)] = urlData.signedUrl
-    }))
-    setThumbUrls(urls)
+    if (!photos) return
+    const counts: Record<number, number> = {}
+    for (const p of photos) counts[p.sales_record_id] = (counts[p.sales_record_id] ?? 0) + 1
+    setPhotoCounts(counts)
   }, [userId, yearMonth])
 
   useEffect(() => { fetchRecords() }, [fetchRecords])
@@ -110,14 +101,14 @@ export default function MySalesPage() {
               onClick={() => setModal({ record: r })}
               className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
             >
-              {/* サムネイル */}
-              <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 flex items-center justify-center">
-                {thumbUrls[r.id] ? (
-                  <img src={thumbUrls[r.id]} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-gray-300 text-2xl">📷</span>
-                )}
-              </div>
+              {photoCounts[r.id] ? (
+                <div className="flex flex-col items-center shrink-0 text-blue-500">
+                  <span className="text-lg">📷</span>
+                  <span className="text-xs font-medium">{photoCounts[r.id]}</span>
+                </div>
+              ) : (
+                <div className="w-6 shrink-0" />
+              )}
               <div className="w-12 text-xs text-gray-500 shrink-0">
                 {r.record_date.slice(5).replace('-', '/')}
               </div>
