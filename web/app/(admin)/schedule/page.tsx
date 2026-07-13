@@ -32,7 +32,7 @@ interface UserProfile {
   color: string | null
 }
 
-type WorkType = 'normal' | 'overtime' | 'holiday' | 'training' | 'paid_leave'
+type WorkType = 'normal' | 'paid_leave'
 
 interface WorkRecord {
   id: number
@@ -47,16 +47,10 @@ interface WorkRecord {
 
 const WORK_TYPE_COLOR: Record<WorkType, string> = {
   normal: '#16a34a',
-  overtime: '#ea580c',
-  holiday: '#dc2626',
-  training: '#2563eb',
   paid_leave: '#9333ea',
 }
 const WORK_TYPE_LABEL: Record<WorkType, string> = {
   normal: '通常',
-  overtime: '残業',
-  holiday: '休日',
-  training: '研修',
   paid_leave: '有休',
 }
 
@@ -90,7 +84,7 @@ export default function SchedulePage() {
   const [workRecords, setWorkRecords] = useState<WorkRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [daySheet, setDaySheet] = useState<string | null>(null)
-  const [workSheet, setWorkSheet] = useState<string | null>(null)
+  const [selectedWorkDate, setSelectedWorkDate] = useState<string | null>(null)
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null)
   const [editWorkRecord, setEditWorkRecord] = useState<WorkRecord | null>(null)
   const [addDate, setAddDate] = useState<string | null>(null)
@@ -284,20 +278,20 @@ export default function SchedulePage() {
             .drum-col::-webkit-scrollbar { display: none; }
           `}</style>
           {/* Header */}
-          <div className="flex items-center px-1 mb-1 gap-1">
+          <div className="relative flex items-center px-1 mb-1" style={{ height: 44 }}>
             <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="flex-1 flex justify-center">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <button onClick={() => setShowMonthPicker(true)}
-                className="flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
+                className="pointer-events-auto flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
                 {displayYear}年{displayMonth}月
                 <span className="text-gray-400 text-xs">▾</span>
               </button>
             </div>
-            {viewToggle}
+            <div className="ml-auto">{viewToggle}</div>
           </div>
           {/* Swipe wrapper */}
           <div style={{ overflow: 'hidden' }}>
@@ -371,20 +365,20 @@ export default function SchedulePage() {
       ) : (
         <>
           {/* Attendance calendar header */}
-          <div className="flex items-center px-1 mb-1 gap-1">
+          <div className="relative flex items-center px-1 mb-1" style={{ height: 44 }}>
             <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="flex-1 flex justify-center">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <button onClick={() => setShowMonthPicker(true)}
-                className="flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
+                className="pointer-events-auto flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
                 {displayYear}年{displayMonth}月
                 <span className="text-gray-400 text-xs">▾</span>
               </button>
             </div>
-            {viewToggle}
+            <div className="ml-auto">{viewToggle}</div>
           </div>
           {/* Attendance calendar grid */}
           <div style={{ overflow: 'hidden' }}>
@@ -407,16 +401,28 @@ export default function SchedulePage() {
                     const isHoliday = holidayDates.has(date)
                     const dow = new Date(`${date}T00:00:00`).getDay()
                     const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
+                    const isSelected = selectedWorkDate === date
+                    const handleWorkDateClick = () => {
+                      if (!isCurrentMonth) return
+                      if (isSelected) {
+                        const existing = workRecordsByDate[date] ?? null
+                        if (existing) { setEditWorkRecord(existing); setAddWorkDate(null) }
+                        else { setAddWorkDate(date); setEditWorkRecord(null) }
+                        setSelectedWorkDate(null)
+                      } else {
+                        setSelectedWorkDate(date)
+                      }
+                    }
                     return (
                       <div
                         key={date}
-                        onClick={() => isCurrentMonth && setWorkSheet(date)}
+                        onClick={handleWorkDateClick}
                         style={{
                           borderRight: '1px solid #f3f4f6',
                           borderBottom: '1px solid #f3f4f6',
                           overflow: 'hidden',
                           cursor: isCurrentMonth ? 'pointer' : 'default',
-                          backgroundColor: isToday ? '#eff6ff' : undefined,
+                          backgroundColor: isSelected ? '#dbeafe' : isToday ? '#eff6ff' : undefined,
                           opacity: isCurrentMonth ? 1 : 0.35,
                         }}
                       >
@@ -443,21 +449,12 @@ export default function SchedulePage() {
               onClose={() => setShowMonthPicker(false)}
             />
           )}
-          {workSheet && (
-            <WorkDaySheet
-              date={workSheet}
-              workRecord={workRecordsByDate[workSheet] ?? null}
-              onClose={() => setWorkSheet(null)}
-              onEdit={(wr) => { setEditWorkRecord(wr); setAddWorkDate(null); setWorkSheet(null) }}
-              onAdd={() => { setAddWorkDate(workSheet); setEditWorkRecord(null); setWorkSheet(null) }}
-            />
-          )}
           {(addWorkDate !== null || editWorkRecord !== null) && (
             <WorkRecordModal
               workRecord={editWorkRecord}
               defaultDate={addWorkDate ?? undefined}
               userId={profile.id}
-              onClose={() => { setAddWorkDate(null); setEditWorkRecord(null) }}
+              onClose={() => { setAddWorkDate(null); setEditWorkRecord(null); setSelectedWorkDate(null) }}
               onSaved={fetchWorkRecords}
             />
           )}
