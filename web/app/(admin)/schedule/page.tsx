@@ -321,7 +321,7 @@ export default function SchedulePage() {
                             </div>
                           ))}
                           {extra > 0 && (
-                            <div style={{ fontSize: 9, color: '#9ca3af', lineHeight: '13px', paddingLeft: 2, flexShrink: 0 }}>+{extra}</div>
+                            <div style={{ fontSize: 10, color: '#6b7280', lineHeight: '14px', paddingLeft: 3, fontWeight: 600, flexShrink: 0 }}>+{extra}</div>
                           )}
                         </div>
                       </div>
