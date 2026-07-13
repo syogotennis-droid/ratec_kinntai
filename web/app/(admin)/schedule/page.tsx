@@ -60,6 +60,11 @@ function colorDark(hex: string) {
   return `rgb(${Math.floor(r * 0.55)},${Math.floor(g * 0.55)},${Math.floor(b * 0.55)})`
 }
 
+function bestTextColor(hex: string): string {
+  const { r, g, b } = hexToRgb(hex)
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 130 ? '#1f2937' : '#ffffff'
+}
+
 function formatTime(t: string | null) {
   if (!t) return ''
   const [h, m] = t.slice(0, 5).split(':').map(Number)
@@ -172,7 +177,7 @@ export default function SchedulePage() {
   const calEvents: CalEvent[] = schedules.map(s => {
     const p = profiles.find(pr => pr.id === s.created_by)
     const vividColor = p?.color || userColor(s.created_by)
-    return { title: s.title, date: s.date, backgroundColor: vividColor, textColor: '#ffffff' }
+    return { title: s.title, date: s.date, backgroundColor: vividColor, textColor: bestTextColor(vividColor) }
   })
 
   const allEvents = [...holidayEvents, ...calEvents]
@@ -316,7 +321,7 @@ export default function SchedulePage() {
                         </div>
                         <div style={{ padding: '0 1px', display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden' }}>
                           {shown.map((e, i) => (
-                            <div key={i} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 10, lineHeight: '15px', padding: '0 3px', borderRadius: 3, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                            <div key={i} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 10, fontWeight: 700, lineHeight: '15px', padding: '0 3px', borderRadius: 3, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0 }}>
                               {e.title}
                             </div>
                           ))}
