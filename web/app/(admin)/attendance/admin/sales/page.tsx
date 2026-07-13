@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Profile, SalesRecord } from '@/lib/supabase/types'
+import { Profile, SalesRecord, SalesPhoto } from '@/lib/supabase/types'
 
 interface SalesWithProfile extends SalesRecord {
   profile?: Profile
@@ -14,6 +14,7 @@ export default function AdminSalesPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
   const [records, setRecords] = useState<SalesWithProfile[]>([])
+  const [thumbUrls, setThumbUrls] = useState<Record<number, string>>({})
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [filterUserId, setFilterUserId] = useState<string>('all')
@@ -34,14 +35,34 @@ export default function AdminSalesPage() {
     const profileList = profilesRes.data ?? []
     setProfiles(profileList)
     const profileMap = Object.fromEntries(profileList.map(p => [p.id, p]))
-    setRecords((recordsRes.data ?? []).map(r => ({ ...r, profile: profileMap[r.user_id] })))
+    const recs = (recordsRes.data ?? []).map(r => ({ ...r, profile: profileMap[r.user_id] }))
+    setRecords(recs)
     setLoading(false)
+
+    if (recs.length === 0) return
+    const { data: photos } = await supabase
+      .from('sales_photos')
+      .select('*')
+      .in('sales_record_id', recs.map(r => r.id))
+    if (!photos || photos.length === 0) return
+
+    const firstPhotos: Record<number, SalesPhoto> = {}
+    for (const p of photos) {
+      if (!firstPhotos[p.sales_record_id]) firstPhotos[p.sales_record_id] = p
+    }
+    const urls: Record<number, string> = {}
+    await Promise.all(Object.entries(firstPhotos).map(async ([rid, photo]) => {
+      const { data: urlData } = await supabase.storage.from('sales-photos').createSignedUrl(photo.storage_path, 3600)
+      if (urlData?.signedUrl) urls[Number(rid)] = urlData.signedUrl
+    }))
+    setThumbUrls(urls)
   }, [yearMonth])
 
   useEffect(() => { fetchData() }, [fetchData])
 
   const filtered = filterUserId === 'all' ? records : records.filter(r => r.user_id === filterUserId)
   const totalAmount = filtered.reduce((s, r) => s + r.amount, 0)
+  const totalCost = filtered.reduce((s, r) => s + (r.cost ?? 0), 0)
 
   const prevMonth = () => {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -56,7 +77,7 @@ export default function AdminSalesPage() {
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100 text-lg">‹</button>
           <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
@@ -82,9 +103,11 @@ export default function AdminSalesPage() {
         </div>
       </div>
 
-      <div className="mb-3 text-sm font-medium text-gray-900">
-        合計: ¥{totalAmount.toLocaleString()}
-        <span className="text-xs text-gray-500 ml-2">（{filtered.length}件）</span>
+      <div className="flex gap-4 mb-4 px-1">
+        <div className="text-xs text-gray-500">売上 <span className="text-gray-900 font-medium">¥{totalAmount.toLocaleString()}</span></div>
+        <div className="text-xs text-gray-500">原価 <span className="text-gray-900 font-medium">¥{totalCost.toLocaleString()}</span></div>
+        <div className="text-xs text-gray-500">粗利 <span className="font-medium text-green-700">¥{(totalAmount - totalCost).toLocaleString()}</span></div>
+        <div className="text-xs text-gray-400 ml-auto">{filtered.length}件</div>
       </div>
 
       {loading ? (
@@ -99,13 +122,23 @@ export default function AdminSalesPage() {
               onClick={() => setModal({ record: r })}
               className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
             >
-              <div className="w-16 text-xs text-gray-500 shrink-0">
-                {r.record_date.slice(5).replace('-', '/')}
+              <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 flex items-center justify-center">
+                {thumbUrls[r.id] ? (
+                  <img src={thumbUrls[r.id]} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-gray-300 text-2xl">📷</span>
+                )}
               </div>
-              <div className="text-xs text-gray-500 w-20 shrink-0 truncate">
-                {r.profile?.name ?? '—'}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-xs text-gray-500 shrink-0">{r.record_date.slice(5).replace('-', '/')}</span>
+                  <span className="text-xs font-medium text-gray-700 shrink-0">{r.profile?.name ?? '—'}</span>
+                </div>
+                <div className="text-sm text-gray-900 truncate">{r.description || '—'}</div>
+                {(r.cost ?? 0) > 0 && (
+                  <div className="text-xs text-gray-400">原価 ¥{(r.cost ?? 0).toLocaleString()}</div>
+                )}
               </div>
-              <div className="flex-1 text-sm text-gray-900 truncate">{r.description || '—'}</div>
               <div className="text-sm font-medium text-gray-900 shrink-0">¥{r.amount.toLocaleString()}</div>
             </div>
           ))}
@@ -143,6 +176,48 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [existingPhotos, setExistingPhotos] = useState<SalesPhoto[]>([])
+  const [photoUrls, setPhotoUrls] = useState<Record<number, string>>({})
+  const [newFiles, setNewFiles] = useState<File[]>([])
+  const [newPreviews, setNewPreviews] = useState<string[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!record) return
+    const supabase = createClient()
+    supabase.from('sales_photos').select('*').eq('sales_record_id', record.id).then(async ({ data }) => {
+      const photos = data ?? []
+      setExistingPhotos(photos)
+      const urls: Record<number, string> = {}
+      await Promise.all(photos.map(async (p) => {
+        const { data: urlData } = await supabase.storage.from('sales-photos').createSignedUrl(p.storage_path, 3600)
+        if (urlData?.signedUrl) urls[p.id] = urlData.signedUrl
+      }))
+      setPhotoUrls(urls)
+    })
+  }, [record])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
+    setNewFiles(prev => [...prev, ...files])
+    setNewPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))])
+  }
+
+  const removeNewFile = (i: number) => {
+    URL.revokeObjectURL(newPreviews[i])
+    setNewFiles(prev => prev.filter((_, j) => j !== i))
+    setNewPreviews(prev => prev.filter((_, j) => j !== i))
+  }
+
+  const deleteExistingPhoto = async (photo: SalesPhoto) => {
+    const supabase = createClient()
+    await supabase.storage.from('sales-photos').remove([photo.storage_path])
+    await supabase.from('sales_photos').delete().eq('id', photo.id)
+    setExistingPhotos(prev => prev.filter(p => p.id !== photo.id))
+    setPhotoUrls(prev => { const n = { ...prev }; delete n[photo.id]; return n })
+  }
+
   const handleSave = async () => {
     setError(null)
     setSaving(true)
@@ -156,11 +231,25 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
         description: description || null,
         notes: notes || null,
       }
+
+      let recordId: number
       if (record) {
         await supabase.from('sales_records').update(payload).eq('id', record.id)
+        recordId = record.id
       } else {
-        await supabase.from('sales_records').insert(payload)
+        const { data, error: insertError } = await supabase.from('sales_records').insert(payload).select('id').single()
+        if (insertError || !data) throw new Error(insertError?.message ?? '保存失敗')
+        recordId = data.id
       }
+
+      for (const file of newFiles) {
+        const ext = file.name.split('.').pop() ?? 'jpg'
+        const path = `${userId}/${recordId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const { error: uploadError } = await supabase.storage.from('sales-photos').upload(path, file)
+        if (uploadError) continue
+        await supabase.from('sales_photos').insert({ sales_record_id: recordId, storage_path: path, original_name: file.name })
+      }
+
       onSaved()
       onClose()
     } catch (e: unknown) {
@@ -174,7 +263,12 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
     if (!record || !confirm('削除しますか？')) return
     setSaving(true)
     try {
-      await createClient().from('sales_records').delete().eq('id', record.id)
+      const supabase = createClient()
+      if (existingPhotos.length > 0) {
+        await supabase.storage.from('sales-photos').remove(existingPhotos.map(p => p.storage_path))
+        await supabase.from('sales_photos').delete().eq('sales_record_id', record.id)
+      }
+      await supabase.from('sales_records').delete().eq('id', record.id)
       onSaved()
       onClose()
     } catch {
@@ -185,8 +279,8 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6 my-auto" onClick={e => e.stopPropagation()}>
         <h2 className="text-base font-bold text-gray-900 mb-4">
           {record ? '売上記録を編集' : '売上記録を追加'}
         </h2>
@@ -224,6 +318,35 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
             <label className="block text-xs font-medium text-gray-700 mb-1">メモ</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">写真</label>
+            <div className="flex flex-wrap gap-2">
+              {existingPhotos.map(p => (
+                <div key={p.id} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                  {photoUrls[p.id]
+                    ? <img src={photoUrls[p.id]} alt={p.original_name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">読込中</div>
+                  }
+                  <button onClick={() => deleteExistingPhoto(p)}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center">×</button>
+                </div>
+              ))}
+              {newPreviews.map((url, i) => (
+                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-blue-200 bg-gray-50">
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <button onClick={() => removeNewFile(i)}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center">×</button>
+                </div>
+              ))}
+              <button onClick={() => fileInputRef.current?.click()}
+                className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 transition-colors">
+                <span className="text-2xl leading-none">+</span>
+                <span className="text-xs mt-1">写真追加</span>
+              </button>
+            </div>
+            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
           </div>
         </div>
         {error && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}

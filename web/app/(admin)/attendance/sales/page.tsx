@@ -111,11 +111,11 @@ export default function MySalesPage() {
               className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
             >
               {/* サムネイル */}
-              <div className="w-10 h-10 rounded-md overflow-hidden bg-gray-100 shrink-0 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 flex items-center justify-center">
                 {thumbUrls[r.id] ? (
                   <img src={thumbUrls[r.id]} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-gray-300 text-lg">📷</span>
+                  <span className="text-gray-300 text-2xl">📷</span>
                 )}
               </div>
               <div className="w-12 text-xs text-gray-500 shrink-0">
