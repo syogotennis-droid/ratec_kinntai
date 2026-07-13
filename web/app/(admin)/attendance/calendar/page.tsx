@@ -81,7 +81,7 @@ export default function CalendarPage() {
 
   const handleDatesSet = (info: { startStr: string }) => {
     const d = new Date(info.startStr)
-    d.setDate(15)
+    d.setDate(d.getDate() + 14)
     const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     setCurrentYearMonth(ym)
   }
