@@ -271,15 +271,12 @@ export default function SchedulePage() {
               height="calc(100vh - 108px)"
               expandRows={true}
               dayCellContent={(arg) => {
-                const dateStr = arg.date.toISOString().slice(0, 10)
-                const holiday = holidayJp.isHoliday(arg.date)
-                  ? holidayJp.between(arg.date, arg.date)[0]
-                  : null
+                const d = arg.date
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
                 const isHoliday = holidayDates.has(dateStr)
-                const day = arg.date.getDay()
+                const day = d.getDay()
                 const color = isHoliday || day === 0 ? '#ef4444' : day === 6 ? '#3b82f6' : ''
-                const nameHtml = holiday ? `<div class="fc-holiday-name">${holiday.name}</div>` : ''
-                return { html: `<span style="${color ? `color:${color}` : ''}">${arg.date.getDate()}</span>${nameHtml}` }
+                return { html: `<span style="${color ? `color:${color}` : ''}">${d.getDate()}</span>` }
               }}
               eventContent={(arg) => {
                 if (arg.event.extendedProps.isHoliday) {
