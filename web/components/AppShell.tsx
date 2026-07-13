@@ -12,6 +12,12 @@ const adminNavItems = [
   { to: '/attendance/admin/bonuses', label: 'ボーナス管理', icon: '🎁' },
   { to: '/attendance/admin/payroll', label: '給与計算', icon: '💴' },
   { to: '/attendance/admin/employees', label: '従業員管理', icon: '👥' },
+]
+
+const employeeNavItems = [
+  { to: '/attendance/calendar', label: 'カレンダー', icon: '📅' },
+  { to: '/attendance/my-records', label: '勤務一覧', icon: '📋' },
+  { to: '/attendance/sales', label: '売上管理', icon: '💰' },
   { to: '/orders/companies', label: '会社管理', icon: '🏢' },
   { to: '/orders/projects', label: '案件管理', icon: '📁' },
   { to: '/orders/quotations', label: '見積書', icon: '📋' },
@@ -19,12 +25,6 @@ const adminNavItems = [
   { to: '/orders/purchase-orders', label: '発注書', icon: '🛒' },
   { to: '/orders/suppliers', label: '仕入先', icon: '🏭' },
   { to: '/orders/settings', label: '自社設定', icon: '⚙️' },
-]
-
-const employeeNavItems = [
-  { to: '/attendance/calendar', label: 'カレンダー', icon: '📅' },
-  { to: '/attendance/my-records', label: '勤務一覧', icon: '📋' },
-  { to: '/attendance/sales', label: '売上管理', icon: '💰' },
 ]
 
 interface Props {
