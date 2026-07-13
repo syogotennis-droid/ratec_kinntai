@@ -13,7 +13,10 @@ const adminNavItems = [
   { to: '/attendance/admin/payroll', label: '給与計算', icon: '💴' },
   { to: '/attendance/admin/employees', label: '従業員管理', icon: '👥' },
   { to: '/orders/companies', label: '会社管理', icon: '🏢' },
+  { to: '/orders/projects', label: '案件管理', icon: '📁' },
+  { to: '/orders/quotations', label: '見積書', icon: '📋' },
   { to: '/orders/invoices', label: '請求書', icon: '📄' },
+  { to: '/orders/purchase-orders', label: '発注書', icon: '🛒' },
   { to: '/orders/suppliers', label: '仕入先', icon: '🏭' },
   { to: '/orders/settings', label: '自社設定', icon: '⚙️' },
 ]
