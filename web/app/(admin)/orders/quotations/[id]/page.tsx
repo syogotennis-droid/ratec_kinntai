@@ -42,7 +42,7 @@ export default function QuotationDetailPage() {
     setLoading(true)
     const supabase = createClient()
     const [qRes, projectsRes, suppliersRes, settingsRes] = await Promise.all([
-      supabase.from('quotations').select('*, quotation_items(*)').eq('id', id).single(),
+      supabase.from('quotations').select('*, items:quotation_items(*)').eq('id', id).single(),
       supabase.from('projects').select('*, companies(name)').order('name'),
       supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
       supabase.from('settings').select('*').single(),
