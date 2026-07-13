@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useProfile } from '@/lib/profile-context'
+import { useSidebar } from '@/lib/sidebar-context'
 import holidayJp from '@holiday-jp/holiday_jp'
 
 interface CalEvent {
@@ -75,6 +76,7 @@ function formatTime(t: string | null) {
 
 export default function SchedulePage() {
   const profile = useProfile()
+  const openSidebar = useSidebar()
   const [view, setView] = useState<'calendar' | 'list'>('calendar')
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [profiles, setProfiles] = useState<UserProfile[]>([])
@@ -249,17 +251,17 @@ export default function SchedulePage() {
     <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
       <button onClick={() => setView('calendar')}
         className={`px-3 py-1.5 transition-colors ${currentView === 'calendar' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-        📅 カレンダー
+        カレンダー
       </button>
       <button onClick={() => setView('list')}
         className={`px-3 py-1.5 transition-colors ${currentView === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-        📋 リスト
+        リスト
       </button>
     </div>
   )
 
   return (
-    <div className="px-2 pt-2 pb-0">
+    <div className="pt-1 pb-0">
 
       {view === 'calendar' ? (
         <>
@@ -268,12 +270,19 @@ export default function SchedulePage() {
             .drum-col::-webkit-scrollbar { display: none; }
           `}</style>
           {/* Header */}
-          <div className="flex items-center justify-between px-2 mb-1">
-            <button onClick={() => setShowMonthPicker(true)}
-              className="flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
-              {displayYear}年{displayMonth}月
-              <span className="text-gray-400 text-xs">▾</span>
+          <div className="flex items-center px-1 mb-1 gap-1">
+            <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
             </button>
+            <div className="flex-1 flex justify-center">
+              <button onClick={() => setShowMonthPicker(true)}
+                className="flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
+                {displayYear}年{displayMonth}月
+                <span className="text-gray-400 text-xs">▾</span>
+              </button>
+            </div>
             {viewToggle}
           </div>
           {/* Swipe wrapper */}
@@ -285,7 +294,7 @@ export default function SchedulePage() {
               style={{ transform: `translateX(${dragX}px)`, transition: sliding ? 'transform 220ms ease-out' : 'none', willChange: 'transform' }}
             >
               {/* Calendar grid */}
-              <div style={{ height: 'calc(100vh - 108px)', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column' }}>
                 {/* Day-of-week header */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #e5e7eb' }}>
                   {['日','月','火','水','木','金','土'].map((d, i) => (
