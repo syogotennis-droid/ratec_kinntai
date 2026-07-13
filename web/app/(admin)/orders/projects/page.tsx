@@ -112,10 +112,18 @@ interface ProjectModalProps {
 function ProjectModal({ project, companies, onClose, onSaved }: ProjectModalProps) {
   const [name, setName] = useState(project?.name ?? '')
   const [companyId, setCompanyId] = useState(project?.company_id ?? (companies[0]?.id ?? 0))
+  const [companySearch, setCompanySearch] = useState(
+    project ? (companies.find(c => c.id === project.company_id)?.name ?? '') : ''
+  )
+  const [companyOpen, setCompanyOpen] = useState(false)
   const [status, setStatus] = useState<ProjectStatus>(project?.status as ProjectStatus ?? 'active')
   const [notes, setNotes] = useState(project?.notes ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const filteredCompanies = companies.filter(c =>
+    !companySearch || c.name.includes(companySearch)
+  )
 
   const handleSave = async () => {
     if (!name || !companyId) return
@@ -143,12 +151,32 @@ function ProjectModal({ project, companies, onClose, onSaved }: ProjectModalProp
       <div className="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
         <h2 className="text-base font-bold text-gray-900 mb-4">{project ? '案件を編集' : '案件を追加'}</h2>
         <div className="space-y-3">
-          <div>
+          <div className="relative">
             <label className="block text-xs font-medium text-gray-700 mb-1">取引先 *</label>
-            <select value={companyId} onChange={e => setCompanyId(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <input
+              type="text"
+              value={companySearch}
+              onChange={e => { setCompanySearch(e.target.value); setCompanyOpen(true) }}
+              onFocus={() => setCompanyOpen(true)}
+              placeholder="会社名で検索..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {companyId > 0 && !companyOpen && (
+              <p className="text-xs text-blue-600 mt-0.5">
+                選択中: {companies.find(c => c.id === companyId)?.name}
+              </p>
+            )}
+            {companyOpen && filteredCompanies.length > 0 && (
+              <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {filteredCompanies.map(c => (
+                  <button key={c.id} type="button"
+                    onClick={() => { setCompanyId(c.id); setCompanySearch(c.name); setCompanyOpen(false) }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-gray-50 last:border-0 ${companyId === c.id ? 'bg-blue-50 text-blue-700' : 'text-gray-900'}`}>
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">案件名 *</label>
