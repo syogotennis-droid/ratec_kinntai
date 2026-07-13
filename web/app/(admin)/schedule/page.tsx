@@ -32,6 +32,34 @@ interface UserProfile {
   color: string | null
 }
 
+type WorkType = 'normal' | 'overtime' | 'holiday' | 'training' | 'paid_leave'
+
+interface WorkRecord {
+  id: number
+  user_id: string
+  work_date: string
+  start_time: string
+  end_time: string
+  break_minutes: number
+  work_type: WorkType
+  notes: string | null
+}
+
+const WORK_TYPE_COLOR: Record<WorkType, string> = {
+  normal: '#16a34a',
+  overtime: '#ea580c',
+  holiday: '#dc2626',
+  training: '#2563eb',
+  paid_leave: '#9333ea',
+}
+const WORK_TYPE_LABEL: Record<WorkType, string> = {
+  normal: '通常',
+  overtime: '残業',
+  holiday: '休日',
+  training: '研修',
+  paid_leave: '有休',
+}
+
 const USER_COLORS = [
   '#2563eb', '#16a34a', '#ea580c', '#9333ea',
   '#dc2626', '#0891b2', '#b45309', '#db2777',
@@ -44,27 +72,6 @@ function userColor(userId: string | null) {
   return USER_COLORS[hash % USER_COLORS.length]
 }
 
-function hexToRgb(hex: string) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return { r, g, b }
-}
-
-function colorBg(hex: string) {
-  const { r, g, b } = hexToRgb(hex)
-  return `rgba(${r},${g},${b},0.15)`
-}
-
-function colorDark(hex: string) {
-  const { r, g, b } = hexToRgb(hex)
-  return `rgb(${Math.floor(r * 0.55)},${Math.floor(g * 0.55)},${Math.floor(b * 0.55)})`
-}
-
-function bestTextColor(hex: string): string {
-  const { r, g, b } = hexToRgb(hex)
-  return (0.299 * r + 0.587 * g + 0.114 * b) > 130 ? '#1f2937' : '#ffffff'
-}
 
 function formatTime(t: string | null) {
   if (!t) return ''
@@ -77,13 +84,17 @@ function formatTime(t: string | null) {
 export default function SchedulePage() {
   const profile = useProfile()
   const openSidebar = useSidebar()
-  const [view, setView] = useState<'calendar' | 'list'>('calendar')
+  const [view, setView] = useState<'schedule' | 'attendance'>('schedule')
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [profiles, setProfiles] = useState<UserProfile[]>([])
+  const [workRecords, setWorkRecords] = useState<WorkRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [daySheet, setDaySheet] = useState<string | null>(null)
+  const [workSheet, setWorkSheet] = useState<string | null>(null)
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null)
+  const [editWorkRecord, setEditWorkRecord] = useState<WorkRecord | null>(null)
   const [addDate, setAddDate] = useState<string | null>(null)
+  const [addWorkDate, setAddWorkDate] = useState<string | null>(null)
   const [showMonthPicker, setShowMonthPicker] = useState(false)
   const touchStartX = useRef(0)
   const [dragX, setDragX] = useState(0)
@@ -109,6 +120,20 @@ export default function SchedulePage() {
   }, [yearMonth])
 
   useEffect(() => { fetchSchedules() }, [fetchSchedules])
+
+  const fetchWorkRecords = useCallback(async () => {
+    const [year, month] = yearMonth.split('-').map(Number)
+    const lastDay = new Date(year, month, 0).getDate()
+    const { data } = await createClient()
+      .from('work_records')
+      .select('*')
+      .eq('user_id', profile.id)
+      .gte('work_date', `${yearMonth}-01`)
+      .lte('work_date', `${yearMonth}-${String(lastDay).padStart(2, '0')}`)
+    setWorkRecords(data ?? [])
+  }, [yearMonth, profile.id])
+
+  useEffect(() => { fetchWorkRecords() }, [fetchWorkRecords])
 
   useEffect(() => {
     createClient().from('profiles').select('id, name, avatar_char, color').eq('is_active', true).then(({ data }) => {
@@ -227,35 +252,24 @@ export default function SchedulePage() {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
   }, [])
 
-  const prevMonth = () => {
-    const [y, m] = yearMonth.split('-').map(Number)
-    const d = new Date(y, m - 2, 1)
-    setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
-  }
-  const nextMonth = () => {
-    const [y, m] = yearMonth.split('-').map(Number)
-    const d = new Date(y, m, 1)
-    setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
-  }
-
-  const grouped = schedules.reduce<Record<string, Schedule[]>>((acc, s) => {
-    if (!acc[s.date]) acc[s.date] = []
-    acc[s.date].push(s)
-    return acc
-  }, {})
+  const workRecordsByDate = useMemo(() => {
+    return workRecords.reduce<Record<string, WorkRecord>>((acc, r) => {
+      acc[r.work_date] = r
+      return acc
+    }, {})
+  }, [workRecords])
 
   const daySchedules = daySheet ? (schedules.filter(s => s.date === daySheet)) : []
 
-  const currentView = view
   const viewToggle = (
     <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-      <button onClick={() => setView('calendar')}
-        className={`px-3 py-1.5 transition-colors ${currentView === 'calendar' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-        カレンダー
+      <button onClick={() => setView('schedule')}
+        className={`px-3 py-1.5 transition-colors ${view === 'schedule' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+        予定
       </button>
-      <button onClick={() => setView('list')}
-        className={`px-3 py-1.5 transition-colors ${currentView === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-        リスト
+      <button onClick={() => setView('attendance')}
+        className={`px-3 py-1.5 transition-colors ${view === 'attendance' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+        勤怠
       </button>
     </div>
   )
@@ -263,7 +277,7 @@ export default function SchedulePage() {
   return (
     <div className="pt-1 pb-0">
 
-      {view === 'calendar' ? (
+      {view === 'schedule' ? (
         <>
           <style>{`
             .drum-col { scrollbar-width: none; -ms-overflow-style: none; }
@@ -355,47 +369,99 @@ export default function SchedulePage() {
           )}
         </>
       ) : (
-        <div className="max-w-xl px-2">
-          <div className="flex items-center gap-2 mb-3">
-            <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100">‹</button>
-            <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
-            <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100">›</button>
-          </div>
-          {loading ? (
-            <div className="text-sm text-gray-500 py-8 text-center">読み込み中...</div>
-          ) : Object.keys(grouped).length === 0 ? (
-            <div className="text-sm text-gray-500 py-8 text-center">予定がありません</div>
-          ) : (
-            <div className="space-y-4">
-              {Object.entries(grouped).map(([date, items]) => {
-                const [, m, d] = date.split('-')
-                const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][new Date(date).getDay()]
-                const isWeekend = new Date(date).getDay() === 0 || new Date(date).getDay() === 6
-                return (
-                  <div key={date}>
-                    <p className={`text-xs font-bold mb-1.5 ${isWeekend ? 'text-red-500' : 'text-gray-500'}`}>
-                      {m}/{d}（{dayOfWeek}）
-                    </p>
-                    <div className="space-y-1.5">
-                      {items.map(s => (
-                        <div key={s.id} onClick={() => { setDaySheet(date) }}
-                          className="flex items-start gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors">
-                          <span className="text-xs text-gray-400 shrink-0 pt-0.5 w-12 text-right">
-                            {s.start_time ? formatTime(s.start_time) : '終日'}
-                          </span>
-                          <div style={{ borderLeftColor: (() => { const pr = profiles.find(x => x.id === s.created_by); return colorDark(pr?.color || userColor(s.created_by)) })() }} className="border-l-[3px] pl-2 flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900">{s.title}</p>
-                            {s.notes && <p className="text-xs text-gray-400 mt-0.5">{s.notes}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
+        <>
+          {/* Attendance calendar header */}
+          <div className="flex items-center px-1 mb-1 gap-1">
+            <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <div className="flex-1 flex justify-center">
+              <button onClick={() => setShowMonthPicker(true)}
+                className="flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
+                {displayYear}年{displayMonth}月
+                <span className="text-gray-400 text-xs">▾</span>
+              </button>
             </div>
+            {viewToggle}
+          </div>
+          {/* Attendance calendar grid */}
+          <div style={{ overflow: 'hidden' }}>
+            <div
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              style={{ transform: `translateX(${dragX}px)`, transition: sliding ? 'transform 220ms ease-out' : 'none', willChange: 'transform' }}
+            >
+              <div style={{ height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #e5e7eb' }}>
+                  {['日','月','火','水','木','金','土'].map((d, i) => (
+                    <div key={d} style={{ textAlign: 'center', padding: '3px 0', fontSize: 10, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                  ))}
+                </div>
+                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, 1fr)` }}>
+                  {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
+                    const wr = workRecordsByDate[date]
+                    const isToday = date === todayStr
+                    const isHoliday = holidayDates.has(date)
+                    const dow = new Date(`${date}T00:00:00`).getDay()
+                    const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
+                    return (
+                      <div
+                        key={date}
+                        onClick={() => isCurrentMonth && setWorkSheet(date)}
+                        style={{
+                          borderRight: '1px solid #f3f4f6',
+                          borderBottom: '1px solid #f3f4f6',
+                          overflow: 'hidden',
+                          cursor: isCurrentMonth ? 'pointer' : 'default',
+                          backgroundColor: isToday ? '#eff6ff' : undefined,
+                          opacity: isCurrentMonth ? 1 : 0.35,
+                        }}
+                      >
+                        <div style={{ fontSize: 10, padding: '1px 2px', lineHeight: '14px', color: numColor || '#374151', fontWeight: isToday ? 700 : 400 }}>
+                          {dayNum}
+                        </div>
+                        {wr && (
+                          <div style={{ backgroundColor: WORK_TYPE_COLOR[wr.work_type], color: '#ffffff', fontSize: 11, fontWeight: 600, lineHeight: '17px', padding: '0 3px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', marginBottom: 1 }}>
+                            {WORK_TYPE_LABEL[wr.work_type]}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+          {showMonthPicker && (
+            <MonthPicker
+              year={displayYear}
+              month={displayMonth}
+              onSelect={goToMonth}
+              onClose={() => setShowMonthPicker(false)}
+            />
           )}
-        </div>
+          {workSheet && (
+            <WorkDaySheet
+              date={workSheet}
+              workRecord={workRecordsByDate[workSheet] ?? null}
+              onClose={() => setWorkSheet(null)}
+              onEdit={(wr) => { setEditWorkRecord(wr); setAddWorkDate(null); setWorkSheet(null) }}
+              onAdd={() => { setAddWorkDate(workSheet); setEditWorkRecord(null); setWorkSheet(null) }}
+            />
+          )}
+          {(addWorkDate !== null || editWorkRecord !== null) && (
+            <WorkRecordModal
+              workRecord={editWorkRecord}
+              defaultDate={addWorkDate ?? undefined}
+              userId={profile.id}
+              onClose={() => { setAddWorkDate(null); setEditWorkRecord(null) }}
+              onSaved={fetchWorkRecords}
+            />
+          )}
+        </>
       )}
 
       {/* Day sheet */}
@@ -711,6 +777,190 @@ function ScheduleModal({ schedule, defaultDate, userId, onClose, onSaved }: Sche
           <div className="flex-1" />
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">キャンセル</button>
           <button onClick={handleSave} disabled={saving || !title || !date}
+            className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
+            {saving ? '保存中...' : '保存'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface WorkDaySheetProps {
+  date: string
+  workRecord: WorkRecord | null
+  onClose: () => void
+  onEdit: (wr: WorkRecord) => void
+  onAdd: () => void
+}
+
+function WorkDaySheet({ date, workRecord, onClose, onEdit, onAdd }: WorkDaySheetProps) {
+  const [, m, d] = date.split('-').map(Number)
+  const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][new Date(date).getDay()]
+  const isWeekend = new Date(date).getDay() === 0 || new Date(date).getDay() === 6
+
+  function fmtTime(t: string) {
+    const [h, min] = t.slice(0, 5).split(':')
+    return `${h}:${min}`
+  }
+
+  return (
+    <div className="fixed inset-0 z-50" onClick={onClose}>
+      <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[60vh] flex flex-col"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        </div>
+        <div className="flex items-center justify-between px-5 pt-2 pb-3">
+          <h2 className={`text-lg font-bold ${isWeekend ? 'text-red-500' : 'text-gray-900'}`}>
+            {m}月{d}日 {dayOfWeek}曜日
+          </h2>
+          {!workRecord && (
+            <button onClick={onAdd}
+              className="w-9 h-9 bg-gray-900 rounded-full flex items-center justify-center text-white text-xl font-light">
+              +
+            </button>
+          )}
+        </div>
+        <div className="overflow-y-auto flex-1 px-5 pb-8">
+          {workRecord ? (
+            <div onClick={() => onEdit(workRecord)}
+              className="flex items-center gap-3 py-3 px-2 rounded-xl hover:bg-gray-50 cursor-pointer">
+              <div style={{ backgroundColor: WORK_TYPE_COLOR[workRecord.work_type] }}
+                className="px-2 py-1 rounded text-white text-xs font-bold shrink-0">
+                {WORK_TYPE_LABEL[workRecord.work_type]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900">
+                  {fmtTime(workRecord.start_time)} 〜 {fmtTime(workRecord.end_time)}
+                  <span className="text-xs text-gray-400 ml-2">休憩{workRecord.break_minutes}分</span>
+                </p>
+                {workRecord.notes && <p className="text-xs text-gray-400 mt-0.5">{workRecord.notes}</p>}
+              </div>
+              <span className="text-xs text-gray-400">編集 ›</span>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 py-6 text-center">勤怠記録なし</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface WorkRecordModalProps {
+  workRecord: WorkRecord | null
+  defaultDate?: string
+  userId: string
+  onClose: () => void
+  onSaved: () => void
+}
+
+function WorkRecordModal({ workRecord, defaultDate, userId, onClose, onSaved }: WorkRecordModalProps) {
+  const [workType, setWorkType] = useState<WorkType>(workRecord?.work_type ?? 'normal')
+  const [date, setDate] = useState(workRecord?.work_date ?? defaultDate ?? '')
+  const [startTime, setStartTime] = useState(workRecord?.start_time?.slice(0, 5) ?? '09:00')
+  const [endTime, setEndTime] = useState(workRecord?.end_time?.slice(0, 5) ?? '18:00')
+  const [breakMinutes, setBreakMinutes] = useState(String(workRecord?.break_minutes ?? 60))
+  const [notes, setNotes] = useState(workRecord?.notes ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSave = async () => {
+    if (!date || !startTime || !endTime) return
+    setError(null)
+    setSaving(true)
+    try {
+      const payload = {
+        user_id: userId,
+        work_date: date,
+        start_time: startTime,
+        end_time: endTime,
+        break_minutes: Number(breakMinutes) || 0,
+        work_type: workType,
+        notes: notes || null,
+      }
+      if (workRecord) {
+        await createClient().from('work_records').update(payload).eq('id', workRecord.id)
+      } else {
+        await createClient().from('work_records').insert(payload)
+      }
+      onSaved(); onClose()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '保存に失敗しました')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!workRecord || !confirm('削除しますか？')) return
+    setSaving(true)
+    await createClient().from('work_records').delete().eq('id', workRecord.id)
+    onSaved(); onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+        <h2 className="text-base font-bold text-gray-900 mb-4">{workRecord ? '勤怠を編集' : '勤怠を追加'}</h2>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">日付 *</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">勤務区分</label>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(WORK_TYPE_LABEL) as WorkType[]).map(t => (
+                <button key={t} type="button" onClick={() => setWorkType(t)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
+                  style={{
+                    backgroundColor: workType === t ? WORK_TYPE_COLOR[t] : 'white',
+                    color: workType === t ? 'white' : '#374151',
+                    borderColor: workType === t ? WORK_TYPE_COLOR[t] : '#d1d5db',
+                  }}>
+                  {WORK_TYPE_LABEL[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">開始時刻 *</label>
+              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">終了時刻 *</label>
+              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">休憩時間（分）</label>
+            <select value={breakMinutes} onChange={e => setBreakMinutes(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {[0, 15, 30, 45, 60, 75, 90, 120].map(m => (
+                <option key={m} value={String(m)}>{m}分</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">メモ</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          </div>
+        </div>
+        {error && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+        <div className="mt-5 flex gap-2">
+          {workRecord && (
+            <button onClick={handleDelete} disabled={saving} className="px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg">削除</button>
+          )}
+          <div className="flex-1" />
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">キャンセル</button>
+          <button onClick={handleSave} disabled={saving || !date || !startTime || !endTime}
             className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
             {saving ? '保存中...' : '保存'}
           </button>
