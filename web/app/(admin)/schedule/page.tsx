@@ -16,8 +16,15 @@ interface Schedule {
   end_time: string | null
   notes: string | null
   created_by: string | null
-  creator_name: string | null
   created_at: string
+}
+
+function formatTime(t: string | null) {
+  if (!t) return ''
+  const [h, m] = t.slice(0, 5).split(':').map(Number)
+  const ampm = h < 12 ? '午前' : '午後'
+  const hour = h % 12 === 0 ? 12 : h % 12
+  return `${ampm}${hour}:${String(m).padStart(2, '0')}`
 }
 
 export default function SchedulePage() {
@@ -39,17 +46,12 @@ export default function SchedulePage() {
     const lastDay = new Date(year, month, 0).getDate()
     const { data } = await createClient()
       .from('schedules')
-      .select('*, profiles(name)')
+      .select('*')
       .gte('date', `${yearMonth}-01`)
       .lte('date', `${yearMonth}-${String(lastDay).padStart(2, '0')}`)
       .order('date')
       .order('start_time')
-    setSchedules(
-      (data ?? []).map((s: { profiles?: { name: string } | null; [key: string]: unknown }) => ({
-        ...s,
-        creator_name: (s.profiles as { name: string } | null)?.name ?? null,
-      })) as Schedule[]
-    )
+    setSchedules(data ?? [])
     setLoading(false)
   }, [yearMonth])
 
@@ -78,7 +80,7 @@ export default function SchedulePage() {
 
   const events: EventInput[] = schedules.map(s => ({
     id: String(s.id),
-    title: s.start_time ? `${s.start_time.slice(0, 5)} ${s.title}` : s.title,
+    title: s.start_time ? `${formatTime(s.start_time)} ${s.title}` : s.title,
     date: s.date,
     backgroundColor: '#3b82f6',
     borderColor: 'transparent',
@@ -106,23 +108,17 @@ export default function SchedulePage() {
     <div className="p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-          <button
-            onClick={() => setView('calendar')}
-            className={`px-3 py-1.5 transition-colors ${view === 'calendar' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-          >
+          <button onClick={() => setView('calendar')}
+            className={`px-3 py-1.5 transition-colors ${view === 'calendar' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
             📅 カレンダー
           </button>
-          <button
-            onClick={() => setView('list')}
-            className={`px-3 py-1.5 transition-colors ${view === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-          >
+          <button onClick={() => setView('list')}
+            className={`px-3 py-1.5 transition-colors ${view === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
             📋 リスト
           </button>
         </div>
-        <button
-          onClick={() => openAdd(new Date().toISOString().slice(0, 10))}
-          className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-        >
+        <button onClick={() => openAdd(new Date().toISOString().slice(0, 10))}
+          className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
           + 追加
         </button>
       </div>
@@ -152,12 +148,10 @@ export default function SchedulePage() {
         </>
       ) : (
         <div className="max-w-xl">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100">‹</button>
-              <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
-              <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100">›</button>
-            </div>
+          <div className="flex items-center gap-2 mb-3">
+            <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100">‹</button>
+            <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
+            <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100">›</button>
           </div>
           {loading ? (
             <div className="text-sm text-gray-500 py-8 text-center">読み込み中...</div>
@@ -176,23 +170,17 @@ export default function SchedulePage() {
                     </p>
                     <div className="space-y-1.5">
                       {items.map(s => (
-                        <div
-                          key={s.id}
-                          onClick={() => openEdit(s)}
-                          className="flex items-start gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
-                        >
+                        <div key={s.id} onClick={() => openEdit(s)}
+                          className="flex items-start gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors">
                           {s.start_time && (
                             <span className="text-xs text-gray-400 shrink-0 pt-0.5">
-                              {s.start_time.slice(0, 5)}{s.end_time ? `〜${s.end_time.slice(0, 5)}` : ''}
+                              {formatTime(s.start_time)}{s.end_time ? `〜${formatTime(s.end_time)}` : ''}
                             </span>
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900">{s.title}</p>
                             {s.notes && <p className="text-xs text-gray-400 mt-0.5">{s.notes}</p>}
                           </div>
-                          {s.creator_name && (
-                            <span className="text-xs text-gray-400 shrink-0">{s.creator_name}</span>
-                          )}
                         </div>
                       ))}
                     </div>
@@ -213,6 +201,62 @@ export default function SchedulePage() {
           onSaved={fetchSchedules}
         />
       )}
+    </div>
+  )
+}
+
+// 24h string "HH:MM" を {ampm, hour, minute} に変換
+function parseTo12h(val: string) {
+  if (!val) return { ampm: 'AM', hour: '', minute: '00' }
+  const [h, m] = val.split(':').map(Number)
+  return {
+    ampm: h < 12 ? 'AM' : 'PM',
+    hour: String(h % 12 === 0 ? 12 : h % 12),
+    minute: String(m).padStart(2, '0'),
+  }
+}
+
+function to24h(ampm: string, hour: string, minute: string) {
+  if (!hour) return ''
+  let h = Number(hour)
+  if (ampm === 'AM' && h === 12) h = 0
+  if (ampm === 'PM' && h !== 12) h += 12
+  return `${String(h).padStart(2, '0')}:${minute}`
+}
+
+function TimePicker({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const parsed = parseTo12h(value)
+  const [ampm, setAmpm] = useState(parsed.ampm)
+  const [hour, setHour] = useState(parsed.hour)
+  const [minute, setMinute] = useState(parsed.minute)
+
+  const update = (a: string, h: string, m: string) => {
+    setAmpm(a); setHour(h); setMinute(m)
+    if (h) onChange(to24h(a, h, m))
+    else onChange('')
+  }
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+      <div className="flex gap-1">
+        <select value={ampm} onChange={e => update(e.target.value, hour, minute)}
+          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="AM">午前</option>
+          <option value="PM">午後</option>
+        </select>
+        <select value={hour} onChange={e => update(ampm, e.target.value, minute)}
+          className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">--</option>
+          {[12,1,2,3,4,5,6,7,8,9,10,11].map(h => (
+            <option key={h} value={String(h)}>{h}時</option>
+          ))}
+        </select>
+        <select value={minute} onChange={e => update(ampm, hour, e.target.value)}
+          className="w-16 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          {['00','15','30','45'].map(m => <option key={m} value={m}>{m}分</option>)}
+        </select>
+      </div>
     </div>
   )
 }
@@ -285,18 +329,8 @@ function ScheduleModal({ schedule, defaultDate, userId, onClose, onSaved }: Sche
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">開始時刻</label>
-              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">終了時刻</label>
-              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          </div>
+          <TimePicker value={startTime} onChange={setStartTime} label="開始時刻" />
+          <TimePicker value={endTime} onChange={setEndTime} label="終了時刻" />
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">メモ</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
