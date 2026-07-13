@@ -76,7 +76,10 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
     }
   }
 
-  // 備考欄はそのまま空欄（テンプレート通り）
+  // 備考欄のサンプルテキストをクリア（テンプレートに入っているデフォルト文言を削除）
+  for (let row = 34; row <= 38; row++) {
+    ws.getCell(`A${row}`).value = ''
+  }
 
   const buffer = await wb.xlsx.writeBuffer()
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })

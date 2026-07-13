@@ -36,8 +36,8 @@ export default function CalendarPage() {
   })
 
   useEffect(() => {
-    createClient().auth.getUser().then(({ data }) => {
-      if (data.user) setUserId(data.user.id)
+    createClient().auth.getSession().then(({ data }) => {
+      if (data.session) setUserId(data.session.user.id)
     })
   }, [])
 
