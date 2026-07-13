@@ -196,13 +196,19 @@ export default function SchedulePage() {
     }
   })
 
-  // Limit to 4 events per day before passing to FullCalendar to prevent "+more" link generation
+  // Limit to 2 events per day (more causes row height inequality with expandRows)
   const perDayCount: Record<string, number> = {}
   const limitedEvents = [...holidayEvents, ...events].filter(e => {
     const date = (e.date as string).slice(0, 10)
     perDayCount[date] = (perDayCount[date] || 0) + 1
-    return perDayCount[date] <= 4
+    return perDayCount[date] <= 2
   })
+
+  // Total schedule count per date for count badge
+  const scheduleCountByDate = schedules.reduce<Record<string, number>>((acc, s) => {
+    acc[s.date] = (acc[s.date] || 0) + 1
+    return acc
+  }, {})
 
   const prevMonth = () => {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -254,6 +260,8 @@ export default function SchedulePage() {
             .fc-event-main { padding: 0 !important; line-height: 1 !important; }
             .fc-daygrid-more-link { display: none !important; }
             .fc-day-other { opacity: 0.35; }
+            .fc-day-top-inner { display: flex; align-items: center; justify-content: space-between; padding: 1px 3px; }
+            .fc-day-badge { font-size: 9px; font-weight: 700; color: #6b7280; line-height: 1; }
             .fc-toolbar { display: none !important; }
             .fc-daygrid-body { width: 100% !important; }
             .fc-scrollgrid-sync-table { width: 100% !important; }
@@ -304,7 +312,9 @@ export default function SchedulePage() {
                 const isHoliday = holidayDates.has(dateStr)
                 const day = d.getDay()
                 const color = isHoliday || day === 0 ? '#ef4444' : day === 6 ? '#3b82f6' : ''
-                return { html: `<span style="${color ? `color:${color}` : ''}">${d.getDate()}</span>` }
+                const count = scheduleCountByDate[dateStr] || 0
+                const badge = count > 0 ? `<span class="fc-day-badge">${count}</span>` : ''
+                return { html: `<div class="fc-day-top-inner"><span style="${color ? `color:${color}` : ''}">${d.getDate()}</span>${badge}</div>` }
               }}
               eventContent={(arg) => (
                 <div style={{ fontSize: 10, padding: '1px 4px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', lineHeight: '16px', fontWeight: 500 }}>
