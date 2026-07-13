@@ -138,6 +138,10 @@ export default function SchedulePage() {
 
   const handleDateClick = (arg: DateClickArg) => setDaySheet(arg.dateStr)
   const handleEventClick = (arg: EventClickArg) => {
+    if (arg.event.extendedProps.isHoliday) {
+      setDaySheet(arg.event.startStr)
+      return
+    }
     const s = arg.event.extendedProps.schedule as Schedule
     setDaySheet(s.date)
   }
@@ -149,10 +153,10 @@ export default function SchedulePage() {
       id: `holiday-${h.date.toISOString()}`,
       title: h.name,
       date: h.date.toISOString().slice(0, 10),
-      display: 'background',
-      backgroundColor: '#fee2e2',
-      classNames: ['fc-holiday'],
-      extendedProps: { isHoliday: true, holidayName: h.name },
+      backgroundColor: '#fca5a5',
+      borderColor: 'transparent',
+      textColor: '#ffffff',
+      extendedProps: { isHoliday: true },
     }))
   })()
 
@@ -218,7 +222,6 @@ export default function SchedulePage() {
             .fc-day-sat .fc-daygrid-day-number { color: #3b82f6 !important; }
             .fc-day-holiday .fc-daygrid-day-number { color: #ef4444 !important; }
             .fc-holiday-name { font-size: 9px; color: #ef4444; line-height: 1; padding: 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-            .fc-bg-event.fc-holiday { background-color: #fee2e2 !important; opacity: 0.4 !important; }
           `}</style>
           {/* Custom header */}
           <div className="flex items-center justify-between px-1 mb-1">
@@ -264,7 +267,7 @@ export default function SchedulePage() {
                 const nameHtml = holiday ? `<div class="fc-holiday-name">${holiday.name}</div>` : ''
                 return { html: `<span style="${color ? `color:${color}` : ''}">${arg.date.getDate()}</span>${nameHtml}` }
               }}
-              dayMaxEvents={4}
+              dayMaxEvents={2}
               headerToolbar={{ left: '', center: '', right: '' }}
             />
           </div>
