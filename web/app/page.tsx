@@ -3,16 +3,19 @@ import { createClient } from '@/lib/supabase/server'
 
 export default async function Home() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  console.log('[Home] user:', user?.id ?? 'null', 'authError:', authError?.message ?? 'none')
 
   if (!user) redirect('/login')
 
-  // プロフィールを取得して管理者か判定
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('is_admin')
     .eq('id', user.id)
     .single()
+
+  console.log('[Home] profile:', JSON.stringify(profile), 'profileError:', profileError?.message ?? 'none')
 
   if (profile?.is_admin) {
     redirect('/attendance/admin/work-list')
