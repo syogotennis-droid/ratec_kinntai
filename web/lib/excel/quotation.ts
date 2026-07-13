@@ -1,4 +1,5 @@
 import { DocumentItem, Settings } from '@/lib/supabase/types'
+import { QUOTATION_TEMPLATE_B64 } from './template-b64'
 
 interface QuotationExcelData {
   docNo: string
@@ -21,10 +22,10 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
   const ExcelJSModule = await import('exceljs')
   const wb = new ExcelJSModule.default.Workbook()
 
-  const res = await fetch('/templates/quotation.xlsx')
-  if (!res.ok) throw new Error(`テンプレート取得失敗: ${res.status}`)
-  const arrayBuffer = await res.arrayBuffer()
-  await wb.xlsx.load(arrayBuffer)
+  const binary = atob(QUOTATION_TEMPLATE_B64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  await wb.xlsx.load(bytes.buffer)
 
   const ws = wb.getWorksheet('テンプレート')
   if (!ws) {
