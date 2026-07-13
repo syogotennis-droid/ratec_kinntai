@@ -292,7 +292,7 @@ export default function SchedulePage() {
               datesSet={handleDatesSet}
               height="calc(100vh - 108px)"
               expandRows={true}
-              dayMaxEvents={true}
+              dayMaxEvents={3}
               dayCellContent={(arg) => {
                 const d = arg.date
                 const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
