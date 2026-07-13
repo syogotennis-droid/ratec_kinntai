@@ -7,24 +7,73 @@ import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/lib/supabase/types'
 import { ProfileContext } from '@/lib/profile-context'
 
-const adminNavItems = [
-  { to: '/attendance/admin/work-list', label: '勤務管理', icon: '📝' },
-  { to: '/attendance/admin/sales', label: '売上管理', icon: '💰' },
-  { to: '/attendance/admin/bonuses', label: 'ボーナス管理', icon: '🎁' },
-  { to: '/attendance/admin/payroll', label: '給与計算', icon: '💴' },
-  { to: '/attendance/admin/employees', label: '従業員管理', icon: '👥' },
-  { to: '/orders/products', label: '商品マスター', icon: '📦' },
+interface NavItem {
+  to: string
+  label: string
+  icon: string
+}
+
+interface NavGroup {
+  heading: string
+  items: NavItem[]
+}
+
+const adminNavGroups: NavGroup[] = [
+  {
+    heading: '勤務',
+    items: [
+      { to: '/attendance/admin/work-list', label: '勤務管理', icon: '📝' },
+      { to: '/attendance/admin/payroll', label: '給与計算', icon: '💴' },
+      { to: '/attendance/admin/bonuses', label: 'ボーナス管理', icon: '🎁' },
+      { to: '/attendance/admin/employees', label: '従業員管理', icon: '👥' },
+    ],
+  },
+  {
+    heading: '共有',
+    items: [
+      { to: '/attendance/admin/sales', label: '売上管理', icon: '💰' },
+      { to: '/schedule', label: 'スケジュール', icon: '🗓️' },
+    ],
+  },
+  {
+    heading: '書類',
+    items: [
+      { to: '/orders/companies', label: '会社管理', icon: '🏢' },
+      { to: '/orders/projects', label: '案件管理', icon: '📁' },
+      { to: '/orders/quotations', label: '見積書', icon: '📋' },
+      { to: '/orders/invoices', label: '請求書', icon: '📄' },
+      { to: '/orders/purchase-orders', label: '発注書', icon: '🛒' },
+      { to: '/orders/suppliers', label: '仕入先', icon: '🏭' },
+      { to: '/orders/products', label: '商品マスター', icon: '📦' },
+    ],
+  },
 ]
 
-const employeeNavItems = [
-  { to: '/attendance/calendar', label: '勤務記録', icon: '📅' },
-  { to: '/attendance/sales', label: '売上管理', icon: '💰' },
-  { to: '/orders/companies', label: '会社管理', icon: '🏢' },
-  { to: '/orders/projects', label: '案件管理', icon: '📁' },
-  { to: '/orders/quotations', label: '見積書', icon: '📋' },
-  { to: '/orders/invoices', label: '請求書', icon: '📄' },
-  { to: '/orders/purchase-orders', label: '発注書', icon: '🛒' },
-  { to: '/orders/suppliers', label: '仕入先', icon: '🏭' },
+const employeeNavGroups: NavGroup[] = [
+  {
+    heading: '勤務',
+    items: [
+      { to: '/attendance/calendar', label: '勤務記録', icon: '📅' },
+    ],
+  },
+  {
+    heading: '共有',
+    items: [
+      { to: '/attendance/sales', label: '売上管理', icon: '💰' },
+      { to: '/schedule', label: 'スケジュール', icon: '🗓️' },
+    ],
+  },
+  {
+    heading: '書類',
+    items: [
+      { to: '/orders/companies', label: '会社管理', icon: '🏢' },
+      { to: '/orders/projects', label: '案件管理', icon: '📁' },
+      { to: '/orders/quotations', label: '見積書', icon: '📋' },
+      { to: '/orders/invoices', label: '請求書', icon: '📄' },
+      { to: '/orders/purchase-orders', label: '発注書', icon: '🛒' },
+      { to: '/orders/suppliers', label: '仕入先', icon: '🏭' },
+    ],
+  },
 ]
 
 interface Props {
@@ -36,7 +85,7 @@ export default function AppShell({ profile, children }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const navItems = profile.is_admin ? adminNavItems : employeeNavItems
+  const navGroups = profile.is_admin ? adminNavGroups : employeeNavGroups
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -46,25 +95,32 @@ export default function AppShell({ profile, children }: Props) {
   }
 
   const NavLinks = () => (
-    <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-      {navItems.map((item) => {
-        const isActive = pathname.startsWith(item.to)
-        return (
-          <Link
-            key={item.to}
-            href={item.to}
-            onClick={() => setSidebarOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              isActive
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-            }`}
-          >
-            <span className="text-base">{item.icon}</span>
-            {item.label}
-          </Link>
-        )
-      })}
+    <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
+      {navGroups.map((group) => (
+        <div key={group.heading}>
+          <p className="px-3 mb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{group.heading}</p>
+          <div className="space-y-0.5">
+            {group.items.map((item) => {
+              const isActive = pathname.startsWith(item.to)
+              return (
+                <Link
+                  key={item.to}
+                  href={item.to}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  <span className="text-base">{item.icon}</span>
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   )
 
