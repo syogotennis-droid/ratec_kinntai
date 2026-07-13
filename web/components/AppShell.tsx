@@ -17,8 +17,7 @@ const adminNavItems = [
 ]
 
 const employeeNavItems = [
-  { to: '/attendance/calendar', label: 'カレンダー', icon: '📅' },
-  { to: '/attendance/my-records', label: '勤務一覧', icon: '📋' },
+  { to: '/attendance/calendar', label: '勤務記録', icon: '📅' },
   { to: '/attendance/sales', label: '売上管理', icon: '💰' },
   { to: '/orders/companies', label: '会社管理', icon: '🏢' },
   { to: '/orders/projects', label: '案件管理', icon: '📁' },
