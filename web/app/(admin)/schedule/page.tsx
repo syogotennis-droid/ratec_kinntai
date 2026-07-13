@@ -1,13 +1,17 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import FullCalendar from '@fullcalendar/react'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction'
-import { EventClickArg, EventInput } from '@fullcalendar/core'
 import { createClient } from '@/lib/supabase/client'
 import { useProfile } from '@/lib/profile-context'
 import holidayJp from '@holiday-jp/holiday_jp'
+
+interface CalEvent {
+  title: string
+  date: string
+  backgroundColor: string
+  textColor: string
+  isHoliday?: boolean
+}
 
 interface Schedule {
   id: number
@@ -74,9 +78,6 @@ export default function SchedulePage() {
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null)
   const [addDate, setAddDate] = useState<string | null>(null)
   const [showMonthPicker, setShowMonthPicker] = useState(false)
-  const [displayYear, setDisplayYear] = useState(() => new Date().getFullYear())
-  const [displayMonth, setDisplayMonth] = useState(() => new Date().getMonth() + 1)
-  const calendarRef = useRef<FullCalendar>(null)
   const touchStartX = useRef(0)
   const [dragX, setDragX] = useState(0)
   const [sliding, setSliding] = useState(false)
@@ -108,39 +109,21 @@ export default function SchedulePage() {
     })
   }, [])
 
-  const applyRowHeights = useCallback(() => {
-    requestAnimationFrame(() => {
-      const rows = Array.from(document.querySelectorAll('.fc-daygrid-body tr')) as HTMLElement[]
-      if (!rows.length) return
-      const harness = document.querySelector('.fc-view-harness') as HTMLElement
-      const colHeader = document.querySelector('.fc-col-header') as HTMLElement
-      const availH = (harness?.offsetHeight ?? 500) - (colHeader?.offsetHeight ?? 24)
-      const rowH = Math.min(Math.floor(availH / rows.length), 95)
-      rows.forEach(row => { row.style.height = rowH + 'px' })
-      const frames = document.querySelectorAll('.fc-daygrid-day-frame') as NodeListOf<HTMLElement>
-      frames.forEach(frame => {
-        frame.style.height = rowH + 'px'
-        frame.style.overflow = 'hidden'
-        frame.style.minHeight = '0'
-      })
-    })
-  }, [])
+  const displayYear = Number(yearMonth.split('-')[0])
+  const displayMonth = Number(yearMonth.split('-')[1])
 
-  const handleDatesSet = (info: { startStr: string }) => {
-    const d = new Date(info.startStr)
-    d.setDate(d.getDate() + 14)
-    const y = d.getFullYear()
-    const m = d.getMonth() + 1
-    setDisplayYear(y)
-    setDisplayMonth(m)
-    setYearMonth(`${y}-${String(m).padStart(2, '0')}`)
-    applyRowHeights()
+  const goNext = () => {
+    const [y, m] = yearMonth.split('-').map(Number)
+    const d = new Date(y, m, 1)
+    setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
-
-  const goNext = () => calendarRef.current?.getApi().next()
-  const goPrev = () => calendarRef.current?.getApi().prev()
+  const goPrev = () => {
+    const [y, m] = yearMonth.split('-').map(Number)
+    const d = new Date(y, m - 2, 1)
+    setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
   const goToMonth = (y: number, m: number) => {
-    calendarRef.current?.getApi().gotoDate(`${y}-${String(m).padStart(2, '0')}-01`)
+    setYearMonth(`${y}-${String(m).padStart(2, '0')}`)
     setShowMonthPicker(false)
   }
 
@@ -174,48 +157,25 @@ export default function SchedulePage() {
     }
   }
 
-  const handleDateClick = (arg: DateClickArg) => setDaySheet(arg.dateStr)
-  const handleEventClick = (arg: EventClickArg) => {
-    if (arg.event.extendedProps.isHoliday) {
-      setDaySheet(arg.event.startStr)
-      return
-    }
-    const s = arg.event.extendedProps.schedule as Schedule
-    setDaySheet(s.date)
-  }
-
-  const holidayEvents: EventInput[] = (() => {
+  const holidayEvents: CalEvent[] = (() => {
     const start = new Date(Number(yearMonth.split('-')[0]) - 1, 0, 1)
     const end = new Date(Number(yearMonth.split('-')[0]) + 1, 11, 31)
-    return holidayJp.between(start, end).map((h: { date: Date; name: string }) => ({
-      id: `holiday-${h.date.toISOString()}`,
-      title: h.name,
-      date: h.date.toISOString().slice(0, 10),
-      backgroundColor: '#fca5a5',
-      borderColor: 'transparent',
-      textColor: '#ffffff',
-      extendedProps: { isHoliday: true },
-    }))
+    return holidayJp.between(start, end).map((h: { date: Date; name: string }) => {
+      const d = h.date
+      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      return { title: h.name, date, backgroundColor: '#fca5a5', textColor: '#ffffff', isHoliday: true }
+    })
   })()
 
-  const holidayDates = new Set(holidayEvents.map(e => e.date as string))
+  const holidayDates = new Set(holidayEvents.map(e => e.date))
 
-  const events: EventInput[] = schedules.map(s => {
+  const calEvents: CalEvent[] = schedules.map(s => {
     const p = profiles.find(pr => pr.id === s.created_by)
     const vividColor = p?.color || userColor(s.created_by)
-    const avatarChar = p?.avatar_char || p?.name?.charAt(0) || '?'
-    return {
-      id: String(s.id),
-      title: s.title,
-      date: s.date,
-      backgroundColor: colorBg(vividColor),
-      borderColor: 'transparent',
-      textColor: colorDark(vividColor),
-      extendedProps: { schedule: s, avatarChar, color: vividColor },
-    }
+    return { title: s.title, date: s.date, backgroundColor: colorBg(vividColor), textColor: colorDark(vividColor) }
   })
 
-  const allEvents = [...holidayEvents, ...events]
+  const allEvents = [...holidayEvents, ...calEvents]
 
   const numWeeks = useMemo(() => {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -223,6 +183,42 @@ export default function SchedulePage() {
     const daysInMonth = new Date(y, m, 0).getDate()
     return Math.ceil((firstDay + daysInMonth) / 7)
   }, [yearMonth])
+
+  const calendarDays = useMemo(() => {
+    const [y, m] = yearMonth.split('-').map(Number)
+    const firstDay = new Date(y, m - 1, 1).getDay()
+    const daysInMonth = new Date(y, m, 0).getDate()
+    const totalCells = numWeeks * 7
+    const days: Array<{ date: string; dayNum: number; isCurrentMonth: boolean }> = []
+    const prevDays = new Date(y, m - 1, 0).getDate()
+    for (let i = firstDay - 1; i >= 0; i--) {
+      const pd = new Date(y, m - 2, 1)
+      const d = prevDays - i
+      days.push({ date: `${pd.getFullYear()}-${String(pd.getMonth() + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dayNum: d, isCurrentMonth: false })
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      days.push({ date: `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dayNum: d, isCurrentMonth: true })
+    }
+    const nd = new Date(y, m, 1)
+    let ndd = 1
+    while (days.length < totalCells) {
+      days.push({ date: `${nd.getFullYear()}-${String(nd.getMonth() + 1).padStart(2,'0')}-${String(ndd).padStart(2,'0')}`, dayNum: ndd++, isCurrentMonth: false })
+    }
+    return days
+  }, [yearMonth, numWeeks])
+
+  const eventsByDate = useMemo(() => {
+    return allEvents.reduce<Record<string, CalEvent[]>>((acc, e) => {
+      if (!acc[e.date]) acc[e.date] = []
+      acc[e.date].push(e)
+      return acc
+    }, {})
+  }, [allEvents])
+
+  const todayStr = useMemo(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  }, [])
 
   const prevMonth = () => {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -263,30 +259,10 @@ export default function SchedulePage() {
       {view === 'calendar' ? (
         <>
           <style>{`
-            .fc-daygrid-day { cursor: pointer; transition: background-color 0.1s; }
-            .fc-daygrid-day:hover { background-color: #dbeafe !important; }
-            .fc-daygrid-day:active { background-color: #bfdbfe !important; }
-            .fc-daygrid-day-number { pointer-events: none; font-size: 11px; padding: 1px 3px !important; line-height: 1.4; }
-            .fc-daygrid-day-frame { min-height: 0 !important; }
-            .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; }
-            .fc-daygrid-event-harness { margin: 1px 0 0 !important; }
-            .fc-event { cursor: pointer; border-radius: 3px !important; padding: 0 !important; margin: 0 !important; }
-            .fc-event-main { padding: 0 !important; line-height: 1 !important; }
-            .fc-daygrid-more-link { font-size: 9px !important; color: #6b7280 !important; padding: 0 4px !important; line-height: 14px !important; font-weight: 500 !important; }
-            .fc-day-other { opacity: 0.35; }
-            .fc-toolbar { display: none !important; }
-            .fc-daygrid-body { width: 100% !important; }
-            .fc-scrollgrid-sync-table { width: 100% !important; }
             .drum-col { scrollbar-width: none; -ms-overflow-style: none; }
             .drum-col::-webkit-scrollbar { display: none; }
-            .fc-day-sun .fc-daygrid-day-number { color: #ef4444 !important; }
-            .fc-day-sat .fc-daygrid-day-number { color: #3b82f6 !important; }
-            .fc-holiday-name { font-size: 8px; color: #ef4444; line-height: 1; padding: 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-            .fc-col-header-cell { padding: 2px 0 !important; }
-            .fc-col-header-cell-cushion { font-size: 10px !important; padding: 2px 4px !important; }
-            .fc-scrollgrid-section-header td { border-bottom: 1px solid #e5e7eb !important; }
           `}</style>
-          {/* Custom header */}
+          {/* Header */}
           <div className="flex items-center justify-between px-2 mb-1">
             <button onClick={() => setShowMonthPicker(true)}
               className="flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
@@ -296,45 +272,63 @@ export default function SchedulePage() {
             {viewToggle}
           </div>
           {/* Swipe wrapper */}
-          <div className="overflow-hidden">
-          <div
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            style={{
-              transform: `translateX(${dragX}px)`,
-              transition: sliding ? 'transform 220ms ease-out' : 'none',
-              willChange: 'transform',
-            }}
-          >
-            <FullCalendar
-              ref={calendarRef}
-              plugins={[dayGridPlugin, interactionPlugin]}
-              initialView="dayGridMonth"
-              locale="ja"
-              events={allEvents}
-              dateClick={handleDateClick}
-              eventClick={handleEventClick}
-              datesSet={handleDatesSet}
-              height="calc(100vh - 108px)"
-              dayMaxEvents={3}
-              dayCellContent={(arg) => {
-                const d = arg.date
-                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-                const isHoliday = holidayDates.has(dateStr)
-                const day = d.getDay()
-                const color = isHoliday || day === 0 ? '#ef4444' : day === 6 ? '#3b82f6' : ''
-                return { html: `<span style="${color ? `color:${color}` : ''}">${d.getDate()}</span>` }
-              }}
-              eventContent={(arg) => (
-                <div style={{ fontSize: 10, padding: '1px 4px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', lineHeight: '16px', fontWeight: 500 }}>
-                  {arg.event.title}
+          <div style={{ overflow: 'hidden' }}>
+            <div
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              style={{ transform: `translateX(${dragX}px)`, transition: sliding ? 'transform 220ms ease-out' : 'none', willChange: 'transform' }}
+            >
+              {/* Calendar grid */}
+              <div style={{ height: 'calc(100vh - 108px)', display: 'flex', flexDirection: 'column' }}>
+                {/* Day-of-week header */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #e5e7eb' }}>
+                  {['日','月','火','水','木','金','土'].map((d, i) => (
+                    <div key={d} style={{ textAlign: 'center', padding: '3px 0', fontSize: 10, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                  ))}
                 </div>
-              )}
-              fixedWeekCount={false}
-              headerToolbar={{ left: '', center: '', right: '' }}
-            />
-          </div>
+                {/* Day cells */}
+                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, 1fr)` }}>
+                  {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
+                    const dayEvts = eventsByDate[date] ?? []
+                    const isToday = date === todayStr
+                    const isHoliday = holidayDates.has(date)
+                    const dow = new Date(`${date}T00:00:00`).getDay()
+                    const shown = dayEvts.slice(0, 3)
+                    const extra = dayEvts.length - 3
+                    const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
+                    return (
+                      <div
+                        key={date}
+                        onClick={() => setDaySheet(date)}
+                        style={{
+                          borderRight: '1px solid #f3f4f6',
+                          borderBottom: '1px solid #f3f4f6',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          backgroundColor: isToday ? '#fefce8' : undefined,
+                          opacity: isCurrentMonth ? 1 : 0.35,
+                        }}
+                      >
+                        <div style={{ fontSize: 11, padding: '1px 3px', lineHeight: '16px', color: numColor || undefined, fontWeight: isToday ? 700 : undefined }}>
+                          {dayNum}
+                        </div>
+                        <div style={{ padding: '0 1px', display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden' }}>
+                          {shown.map((e, i) => (
+                            <div key={i} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 10, lineHeight: '15px', padding: '0 3px', borderRadius: 3, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                              {e.title}
+                            </div>
+                          ))}
+                          {extra > 0 && (
+                            <div style={{ fontSize: 9, color: '#9ca3af', lineHeight: '13px', paddingLeft: 2, flexShrink: 0 }}>+{extra}</div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
           {showMonthPicker && (
             <MonthPicker
