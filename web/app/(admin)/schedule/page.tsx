@@ -197,6 +197,20 @@ export default function SchedulePage() {
 
   const daySchedules = daySheet ? (schedules.filter(s => s.date === daySheet)) : []
 
+  const currentView = view
+  const viewToggle = (
+    <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+      <button onClick={() => setView('calendar')}
+        className={`px-3 py-1.5 transition-colors ${currentView === 'calendar' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+        📅 カレンダー
+      </button>
+      <button onClick={() => setView('list')}
+        className={`px-3 py-1.5 transition-colors ${currentView === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+        📋 リスト
+      </button>
+    </div>
+  )
+
   return (
     <div className="px-2 pt-2 pb-0">
 
@@ -232,16 +246,7 @@ export default function SchedulePage() {
               {displayYear}年{displayMonth}月
               <span className="text-gray-400 text-xs">▾</span>
             </button>
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-              <button onClick={() => setView('calendar')}
-                className={`px-3 py-1.5 transition-colors ${view === 'calendar' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                📅 カレンダー
-              </button>
-              <button onClick={() => setView('list')}
-                className={`px-3 py-1.5 transition-colors ${view === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                📋 リスト
-              </button>
-            </div>
+            {viewToggle}
           </div>
           {/* Swipe wrapper */}
           <div className="overflow-hidden">
