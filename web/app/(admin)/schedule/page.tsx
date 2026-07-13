@@ -19,15 +19,14 @@ interface Schedule {
   created_at: string
 }
 
+interface UserProfile {
+  id: string
+  name: string
+}
+
 const USER_COLORS = [
-  '#3b82f6', // blue
-  '#22c55e', // green
-  '#f97316', // orange
-  '#a855f7', // purple
-  '#ef4444', // red
-  '#06b6d4', // cyan
-  '#eab308', // yellow
-  '#ec4899', // pink
+  '#3b82f6', '#22c55e', '#f97316', '#a855f7',
+  '#ef4444', '#06b6d4', '#eab308', '#ec4899',
 ]
 
 function userColor(userId: string | null) {
@@ -49,10 +48,11 @@ export default function SchedulePage() {
   const profile = useProfile()
   const [view, setView] = useState<'calendar' | 'list'>('calendar')
   const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
+  const [daySheet, setDaySheet] = useState<string | null>(null)
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null)
-  const [defaultDate, setDefaultDate] = useState<string | undefined>(undefined)
+  const [addDate, setAddDate] = useState<string | null>(null)
   const [yearMonth, setYearMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -75,26 +75,23 @@ export default function SchedulePage() {
 
   useEffect(() => { fetchSchedules() }, [fetchSchedules])
 
+  useEffect(() => {
+    createClient().from('profiles').select('id, name').eq('is_active', true).then(({ data }) => {
+      setProfiles(data ?? [])
+    })
+  }, [])
+
   const handleDatesSet = (info: { startStr: string }) => {
     const d = new Date(info.startStr)
     d.setDate(d.getDate() + 14)
     setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
 
-  const openAdd = (date?: string) => {
-    setEditSchedule(null)
-    setDefaultDate(date)
-    setShowModal(true)
+  const handleDateClick = (arg: DateClickArg) => setDaySheet(arg.dateStr)
+  const handleEventClick = (arg: EventClickArg) => {
+    const s = arg.event.extendedProps.schedule as Schedule
+    setDaySheet(s.date)
   }
-
-  const openEdit = (s: Schedule) => {
-    setEditSchedule(s)
-    setDefaultDate(undefined)
-    setShowModal(true)
-  }
-
-  const handleDateClick = (arg: DateClickArg) => openAdd(arg.dateStr)
-  const handleEventClick = (arg: EventClickArg) => openEdit(arg.event.extendedProps.schedule as Schedule)
 
   const events: EventInput[] = schedules.map(s => ({
     id: String(s.id),
@@ -121,6 +118,8 @@ export default function SchedulePage() {
     acc[s.date].push(s)
     return acc
   }, {})
+
+  const daySchedules = daySheet ? (schedules.filter(s => s.date === daySheet)) : []
 
   return (
     <div className="px-2 pt-2 pb-0">
@@ -165,7 +164,7 @@ export default function SchedulePage() {
           />
         </>
       ) : (
-        <div className="max-w-xl">
+        <div className="max-w-xl px-2">
           <div className="flex items-center gap-2 mb-3">
             <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100">‹</button>
             <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
@@ -188,14 +187,12 @@ export default function SchedulePage() {
                     </p>
                     <div className="space-y-1.5">
                       {items.map(s => (
-                        <div key={s.id} onClick={() => openEdit(s)}
+                        <div key={s.id} onClick={() => { setDaySheet(date) }}
                           className="flex items-start gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors">
-                          {s.start_time && (
-                            <span className="text-xs text-gray-400 shrink-0 pt-0.5">
-                              {formatTime(s.start_time)}{s.end_time ? `〜${formatTime(s.end_time)}` : ''}
-                            </span>
-                          )}
-                          <div className="flex-1 min-w-0">
+                          <span className="text-xs text-gray-400 shrink-0 pt-0.5 w-12 text-right">
+                            {s.start_time ? formatTime(s.start_time) : '終日'}
+                          </span>
+                          <div style={{ borderLeftColor: userColor(s.created_by) }} className="border-l-[3px] pl-2 flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900">{s.title}</p>
                             {s.notes && <p className="text-xs text-gray-400 mt-0.5">{s.notes}</p>}
                           </div>
@@ -210,12 +207,25 @@ export default function SchedulePage() {
         </div>
       )}
 
-      {showModal && (
+      {/* Day sheet */}
+      {daySheet && (
+        <DaySheet
+          date={daySheet}
+          schedules={daySchedules}
+          profiles={profiles}
+          onClose={() => setDaySheet(null)}
+          onAdd={() => { setAddDate(daySheet); setEditSchedule(null); setDaySheet(null) }}
+          onEdit={(s) => { setEditSchedule(s); setAddDate(null); setDaySheet(null) }}
+        />
+      )}
+
+      {/* Add / Edit modal */}
+      {(addDate !== null || editSchedule !== null) && (
         <ScheduleModal
           schedule={editSchedule}
-          defaultDate={defaultDate}
+          defaultDate={addDate ?? undefined}
           userId={profile.id}
-          onClose={() => { setShowModal(false); setEditSchedule(null) }}
+          onClose={() => { setAddDate(null); setEditSchedule(null) }}
           onSaved={fetchSchedules}
         />
       )}
@@ -223,15 +233,92 @@ export default function SchedulePage() {
   )
 }
 
-// 24h string "HH:MM" を {ampm, hour, minute} に変換
+interface DaySheetProps {
+  date: string
+  schedules: Schedule[]
+  profiles: UserProfile[]
+  onClose: () => void
+  onAdd: () => void
+  onEdit: (s: Schedule) => void
+}
+
+function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DaySheetProps) {
+  const [, m, d] = date.split('-').map(Number)
+  const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][new Date(date).getDay()]
+  const isWeekend = new Date(date).getDay() === 0 || new Date(date).getDay() === 6
+
+  const sorted = [...schedules].sort((a, b) => {
+    if (!a.start_time && b.start_time) return -1
+    if (a.start_time && !b.start_time) return 1
+    if (!a.start_time && !b.start_time) return 0
+    return (a.start_time ?? '').localeCompare(b.start_time ?? '')
+  })
+
+  return (
+    <div className="fixed inset-0 z-50" onClick={onClose}>
+      <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[70vh] flex flex-col"
+        onClick={e => e.stopPropagation()}>
+        {/* Handle bar */}
+        <div className="flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        </div>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-2 pb-3">
+          <h2 className={`text-lg font-bold ${isWeekend ? 'text-red-500' : 'text-gray-900'}`}>
+            {m}月{d}日 {dayOfWeek}曜日
+          </h2>
+          <button onClick={onAdd}
+            className="w-9 h-9 bg-gray-900 rounded-full flex items-center justify-center text-white text-xl font-light">
+            +
+          </button>
+        </div>
+        {/* List */}
+        <div className="overflow-y-auto flex-1 px-5 pb-8">
+          {sorted.length === 0 ? (
+            <p className="text-sm text-gray-400 py-6 text-center">予定なし</p>
+          ) : (
+            <div className="space-y-1">
+              {sorted.map(s => {
+                const color = userColor(s.created_by)
+                const p = profiles.find(pr => pr.id === s.created_by)
+                const initial = p?.name?.charAt(0) ?? '?'
+                const isAllDay = !s.start_time
+                return (
+                  <div key={s.id} onClick={() => onEdit(s)}
+                    className="flex items-start gap-3 py-3 cursor-pointer hover:bg-gray-50 rounded-xl px-2">
+                    <div className="w-12 text-xs text-gray-400 text-right shrink-0 pt-1 leading-tight">
+                      {isAllDay ? (
+                        <span>終日</span>
+                      ) : (
+                        <>
+                          <span className="block">{formatTime(s.start_time)}</span>
+                          {s.end_time && <span className="block">{formatTime(s.end_time)}</span>}
+                        </>
+                      )}
+                    </div>
+                    <div style={{ borderLeftColor: color }} className="border-l-[3px] pl-3 flex-1 min-w-0 py-0.5">
+                      <p className="text-sm font-medium text-gray-900">{s.title}</p>
+                      {s.notes && <p className="text-xs text-gray-400 mt-0.5">{s.notes}</p>}
+                    </div>
+                    <div style={{ backgroundColor: color }}
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      {initial}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function parseTo12h(val: string) {
   if (!val) return { ampm: 'AM', hour: '', minute: '00' }
   const [h, m] = val.split(':').map(Number)
-  return {
-    ampm: h < 12 ? 'AM' : 'PM',
-    hour: String(h % 12 === 0 ? 12 : h % 12),
-    minute: String(m).padStart(2, '0'),
-  }
+  return { ampm: h < 12 ? 'AM' : 'PM', hour: String(h % 12 === 0 ? 12 : h % 12), minute: String(m).padStart(2, '0') }
 }
 
 function to24h(ampm: string, hour: string, minute: string) {
@@ -247,13 +334,10 @@ function TimePicker({ value, onChange, label }: { value: string; onChange: (v: s
   const [ampm, setAmpm] = useState(parsed.ampm)
   const [hour, setHour] = useState(parsed.hour)
   const [minute, setMinute] = useState(parsed.minute)
-
   const update = (a: string, h: string, m: string) => {
     setAmpm(a); setHour(h); setMinute(m)
-    if (h) onChange(to24h(a, h, m))
-    else onChange('')
+    onChange(h ? to24h(a, h, m) : '')
   }
-
   return (
     <div>
       <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
@@ -266,9 +350,7 @@ function TimePicker({ value, onChange, label }: { value: string; onChange: (v: s
         <select value={hour} onChange={e => update(ampm, e.target.value, minute)}
           className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="">--</option>
-          {[12,1,2,3,4,5,6,7,8,9,10,11].map(h => (
-            <option key={h} value={String(h)}>{h}時</option>
-          ))}
+          {[12,1,2,3,4,5,6,7,8,9,10,11].map(h => <option key={h} value={String(h)}>{h}時</option>)}
         </select>
         <select value={minute} onChange={e => update(ampm, hour, e.target.value)}
           className="w-16 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -290,6 +372,7 @@ interface ScheduleModalProps {
 function ScheduleModal({ schedule, defaultDate, userId, onClose, onSaved }: ScheduleModalProps) {
   const [title, setTitle] = useState(schedule?.title ?? '')
   const [date, setDate] = useState(schedule?.date ?? defaultDate ?? new Date().toISOString().slice(0, 10))
+  const [allDay, setAllDay] = useState(!schedule?.start_time)
   const [startTime, setStartTime] = useState(schedule?.start_time?.slice(0, 5) ?? '')
   const [endTime, setEndTime] = useState(schedule?.end_time?.slice(0, 5) ?? '')
   const [notes, setNotes] = useState(schedule?.notes ?? '')
@@ -301,22 +384,19 @@ function ScheduleModal({ schedule, defaultDate, userId, onClose, onSaved }: Sche
     setError(null)
     setSaving(true)
     try {
-      const supabase = createClient()
       const payload = {
-        title,
-        date,
-        start_time: startTime || null,
-        end_time: endTime || null,
+        title, date,
+        start_time: allDay ? null : (startTime || null),
+        end_time: allDay ? null : (endTime || null),
         notes: notes || null,
         created_by: userId,
       }
       if (schedule) {
-        await supabase.from('schedules').update(payload).eq('id', schedule.id)
+        await createClient().from('schedules').update(payload).eq('id', schedule.id)
       } else {
-        await supabase.from('schedules').insert(payload)
+        await createClient().from('schedules').insert(payload)
       }
-      onSaved()
-      onClose()
+      onSaved(); onClose()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '保存に失敗しました')
     } finally {
@@ -328,8 +408,7 @@ function ScheduleModal({ schedule, defaultDate, userId, onClose, onSaved }: Sche
     if (!schedule || !confirm('削除しますか？')) return
     setSaving(true)
     await createClient().from('schedules').delete().eq('id', schedule.id)
-    onSaved()
-    onClose()
+    onSaved(); onClose()
   }
 
   return (
@@ -347,8 +426,16 @@ function ScheduleModal({ schedule, defaultDate, userId, onClose, onSaved }: Sche
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <TimePicker value={startTime} onChange={setStartTime} label="開始時刻" />
-          <TimePicker value={endTime} onChange={setEndTime} label="終了時刻" />
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <input type="checkbox" checked={allDay} onChange={e => setAllDay(e.target.checked)} className="w-4 h-4" />
+            終日
+          </label>
+          {!allDay && (
+            <>
+              <TimePicker value={startTime} onChange={setStartTime} label="開始時刻" />
+              <TimePicker value={endTime} onChange={setEndTime} label="終了時刻" />
+            </>
+          )}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">メモ</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
