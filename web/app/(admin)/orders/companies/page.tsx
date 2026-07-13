@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Company } from '@/lib/supabase/types'
+import { Company, CompanyContact } from '@/lib/supabase/types'
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([])
@@ -100,6 +100,37 @@ function CompanyModal({ company, onClose, onSaved }: CompanyModalProps) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [contacts, setContacts] = useState<CompanyContact[]>([])
+  const [newContactName, setNewContactName] = useState('')
+  const [newContactPosition, setNewContactPosition] = useState('')
+  const [addingContact, setAddingContact] = useState(false)
+
+  useEffect(() => {
+    if (!company) return
+    createClient().from('company_contacts').select('*').eq('company_id', company.id).order('created_at').then(({ data }) => {
+      setContacts(data ?? [])
+    })
+  }, [company])
+
+  const handleAddContact = async () => {
+    if (!newContactName || !company) return
+    setAddingContact(true)
+    const { data } = await createClient().from('company_contacts').insert({
+      company_id: company.id,
+      name: newContactName,
+      position: newContactPosition || null,
+    }).select().single()
+    if (data) setContacts(prev => [...prev, data])
+    setNewContactName('')
+    setNewContactPosition('')
+    setAddingContact(false)
+  }
+
+  const handleDeleteContact = async (id: number) => {
+    await createClient().from('company_contacts').delete().eq('id', id)
+    setContacts(prev => prev.filter(c => c.id !== id))
+  }
+
   const handleSave = async () => {
     if (!name) return
     setError(null)
@@ -170,6 +201,44 @@ function CompanyModal({ company, onClose, onSaved }: CompanyModalProps) {
               <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
               表示する
             </label>
+          )}
+
+          {company && (
+            <div className="border-t border-gray-100 pt-3">
+              <p className="text-xs font-medium text-gray-700 mb-2">担当者</p>
+              <div className="space-y-1.5 mb-2">
+                {contacts.map(c => (
+                  <div key={c.id} className="flex items-center gap-2 text-xs">
+                    <span className="flex-1 text-gray-800">{c.name}{c.position && <span className="text-gray-400 ml-1">（{c.position}）</span>}</span>
+                    <button onClick={() => handleDeleteContact(c.id)} className="text-red-400 hover:text-red-600">×</button>
+                  </div>
+                ))}
+                {contacts.length === 0 && <p className="text-xs text-gray-400">担当者なし</p>}
+              </div>
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={newContactName}
+                  onChange={e => setNewContactName(e.target.value)}
+                  placeholder="氏名"
+                  className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <input
+                  type="text"
+                  value={newContactPosition}
+                  onChange={e => setNewContactPosition(e.target.value)}
+                  placeholder="役職（任意）"
+                  className="w-24 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <button
+                  onClick={handleAddContact}
+                  disabled={!newContactName || addingContact}
+                  className="px-2 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded"
+                >
+                  追加
+                </button>
+              </div>
+            </div>
           )}
         </div>
         {error && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}

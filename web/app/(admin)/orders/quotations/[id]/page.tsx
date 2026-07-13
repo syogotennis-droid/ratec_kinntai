@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Quotation, DocumentItem, Project, Supplier, QuotationStatus, Settings } from '@/lib/supabase/types'
+import { Quotation, DocumentItem, Project, Supplier, QuotationStatus, Settings, CompanyContact } from '@/lib/supabase/types'
 import Link from 'next/link'
 import { downloadQuotationExcel } from '@/lib/excel/quotation'
 import ProductSearch from '@/components/ProductSearch'
@@ -29,6 +29,7 @@ export default function QuotationDetailPage() {
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [contacts, setContacts] = useState<CompanyContact[]>([])
   const [projectId, setProjectId] = useState<number>(0)
   const [supplierId, setSupplierId] = useState<number>(0)
   const [docNo, setDocNo] = useState('')
@@ -70,6 +71,16 @@ export default function QuotationDetailPage() {
   }, [id])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  useEffect(() => {
+    if (!projectId) return
+    const proj = projects.find(p => p.id === projectId) as { company_id?: number } | undefined
+    const companyId = proj?.company_id
+    if (!companyId) return
+    createClient().from('company_contacts').select('*').eq('company_id', companyId).order('created_at').then(({ data }) => {
+      setContacts(data ?? [])
+    })
+  }, [projectId, projects])
 
   const subtotal = items.reduce((s, item) => s + item.amount, 0)
   const taxAmount = Math.floor(subtotal * TAX_RATE)
@@ -212,9 +223,19 @@ export default function QuotationDetailPage() {
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">担当者（任意）</label>
-          <input type="text" value={contactPerson} onChange={e => setContactPerson(e.target.value)}
-            placeholder="例：山田 太郎"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          {contacts.length > 0 ? (
+            <select value={contactPerson} onChange={e => setContactPerson(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">なし</option>
+              {contacts.map(c => (
+                <option key={c.id} value={c.name}>{c.name}{c.position ? `（${c.position}）` : ''}</option>
+              ))}
+            </select>
+          ) : (
+            <input type="text" value={contactPerson} onChange={e => setContactPerson(e.target.value)}
+              placeholder="例：山田 太郎"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          )}
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">備考</label>

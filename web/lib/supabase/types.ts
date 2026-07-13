@@ -124,6 +124,14 @@ export interface Company {
   is_active: boolean
 }
 
+export interface CompanyContact {
+  id: number
+  company_id: number
+  name: string
+  position: string | null
+  created_at: string
+}
+
 export interface Project {
   id: number
   company_id: number
