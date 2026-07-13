@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, EmploymentType } from '@/lib/supabase/types'
+import { createEmployee } from './actions'
 
 const EMPLOYMENT_LABELS: Record<EmploymentType, string> = {
   hourly: '時給',
@@ -135,26 +136,22 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
         }).eq('id', profile.id)
       } else {
         if (!password) { setError('パスワードを入力してください'); setSaving(false); return }
-        const email = `${employeeId}@ratec.local`
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({ email, password })
-        if (signUpError) throw signUpError
-        if (!authData.user) throw new Error('ユーザー作成に失敗しました')
-        await supabase.from('profiles').insert({
-          id: authData.user.id,
-          employee_id: employeeId,
+        const result = await createEmployee({
+          employeeId,
           name,
-          name_kana: nameKana || null,
-          department: department || null,
-          employment_type: employmentType,
-          hourly_wage: Number(hourlyWage) || 0,
-          daily_wage: Number(dailyWage) || 0,
+          nameKana,
+          department,
+          employmentType,
+          hourlyWage: Number(hourlyWage) || 0,
+          dailyWage: Number(dailyWage) || 0,
           transportation: Number(transportation) || 0,
-          fixed_allowance: Number(fixedAllowance) || 0,
-          overtime_rate: Number(overtimeRate) || 1.25,
-          holiday_rate: Number(holidayRate) || 1.35,
-          is_admin: isAdmin,
-          is_active: true,
+          fixedAllowance: Number(fixedAllowance) || 0,
+          overtimeRate: Number(overtimeRate) || 1.25,
+          holidayRate: Number(holidayRate) || 1.35,
+          isAdmin,
+          password,
         })
+        if (result.error) throw new Error(result.error)
       }
       onSaved()
       onClose()
