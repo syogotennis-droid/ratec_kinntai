@@ -294,8 +294,9 @@ export default function SchedulePage() {
                     const isToday = date === todayStr
                     const isHoliday = holidayDates.has(date)
                     const dow = new Date(`${date}T00:00:00`).getDay()
-                    const shown = dayEvts.slice(0, 3)
-                    const extra = dayEvts.length - 3
+                    const maxPerCell = numWeeks >= 6 ? 3 : numWeeks === 5 ? 5 : 6
+                    const shown = dayEvts.slice(0, maxPerCell)
+                    const extra = dayEvts.length - maxPerCell
                     const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
                     return (
                       <div
