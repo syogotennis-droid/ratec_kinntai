@@ -19,6 +19,24 @@ interface Schedule {
   created_at: string
 }
 
+const USER_COLORS = [
+  '#3b82f6', // blue
+  '#22c55e', // green
+  '#f97316', // orange
+  '#a855f7', // purple
+  '#ef4444', // red
+  '#06b6d4', // cyan
+  '#eab308', // yellow
+  '#ec4899', // pink
+]
+
+function userColor(userId: string | null) {
+  if (!userId) return USER_COLORS[0]
+  let hash = 0
+  for (let i = 0; i < userId.length; i++) hash = (hash * 31 + userId.charCodeAt(i)) >>> 0
+  return USER_COLORS[hash % USER_COLORS.length]
+}
+
 function formatTime(t: string | null) {
   if (!t) return ''
   const [h, m] = t.slice(0, 5).split(':').map(Number)
@@ -82,7 +100,7 @@ export default function SchedulePage() {
     id: String(s.id),
     title: s.title,
     date: s.date,
-    backgroundColor: '#3b82f6',
+    backgroundColor: userColor(s.created_by),
     borderColor: 'transparent',
     extendedProps: { schedule: s },
   }))
