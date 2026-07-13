@@ -255,7 +255,7 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
             </div>
           )}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">アバター文字（1文字）</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">カレンダー表示文字</label>
             <div className="flex items-center gap-3">
               <input
                 type="text"
@@ -265,13 +265,15 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
                 placeholder="山"
                 className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              {avatarChar && (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
                   style={{ backgroundColor: '#3b82f6' }}>
-                  {avatarChar}
+                  {avatarChar || '山'}
                 </div>
-              )}
+                <span className="text-xs text-gray-400">←カレンダーでの見え方</span>
+              </div>
             </div>
+            <p className="mt-1 text-xs text-gray-400">名前の頭文字など1文字を入力</p>
           </div>
           <div className="flex gap-4">
             <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
