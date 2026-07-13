@@ -279,7 +279,7 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-2">カラー</label>
             <div className="flex flex-wrap gap-2">
-              {['#3b82f6','#22c55e','#f97316','#a855f7','#ef4444','#06b6d4','#eab308','#ec4899','#64748b','#84cc16','#f43f5e','#8b5cf6'].map(c => (
+              {['#2563eb','#16a34a','#ea580c','#9333ea','#dc2626','#0891b2','#b45309','#db2777','#475569','#65a30d','#be185d','#7c3aed'].map(c => (
                 <button
                   key={c}
                   type="button"

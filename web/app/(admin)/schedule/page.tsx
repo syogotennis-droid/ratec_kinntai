@@ -32,8 +32,8 @@ interface UserProfile {
 }
 
 const USER_COLORS = [
-  '#3b82f6', '#22c55e', '#f97316', '#a855f7',
-  '#ef4444', '#06b6d4', '#eab308', '#ec4899',
+  '#2563eb', '#16a34a', '#ea580c', '#9333ea',
+  '#dc2626', '#0891b2', '#b45309', '#db2777',
 ]
 
 function userColor(userId: string | null) {
@@ -177,7 +177,7 @@ export default function SchedulePage() {
   const calEvents: CalEvent[] = schedules.map(s => {
     const p = profiles.find(pr => pr.id === s.created_by)
     const vividColor = p?.color || userColor(s.created_by)
-    return { title: s.title, date: s.date, backgroundColor: vividColor, textColor: bestTextColor(vividColor) }
+    return { title: s.title, date: s.date, backgroundColor: vividColor, textColor: '#ffffff' }
   })
 
   const allEvents = [...holidayEvents, ...calEvents]
@@ -312,7 +312,7 @@ export default function SchedulePage() {
                           borderBottom: '1px solid #f3f4f6',
                           overflow: 'hidden',
                           cursor: 'pointer',
-                          backgroundColor: isToday ? '#fefce8' : undefined,
+                          backgroundColor: isToday ? '#eff6ff' : undefined,
                           opacity: isCurrentMonth ? 1 : 0.35,
                         }}
                       >
@@ -321,7 +321,7 @@ export default function SchedulePage() {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
                           {shown.map((e, i) => (
-                            <div key={i} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 10, fontWeight: 500, lineHeight: '16px', padding: '0 2px', borderRadius: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0, marginBottom: 1 }}>
+                            <div key={i} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 11, fontWeight: 600, lineHeight: '17px', padding: '0 3px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0, marginBottom: 1 }}>
                               {e.title}
                             </div>
                           ))}
