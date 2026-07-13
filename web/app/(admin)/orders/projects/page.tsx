@@ -111,7 +111,7 @@ interface ProjectModalProps {
 
 function ProjectModal({ project, companies, onClose, onSaved }: ProjectModalProps) {
   const [name, setName] = useState(project?.name ?? '')
-  const [companyId, setCompanyId] = useState(project?.company_id ?? (companies[0]?.id ?? 0))
+  const [companyId, setCompanyId] = useState(project?.company_id ?? 0)
   const [companySearch, setCompanySearch] = useState(
     project ? (companies.find(c => c.id === project.company_id)?.name ?? '') : ''
   )
