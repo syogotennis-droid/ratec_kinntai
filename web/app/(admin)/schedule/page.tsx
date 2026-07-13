@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction'
@@ -198,6 +198,13 @@ export default function SchedulePage() {
 
   const allEvents = [...holidayEvents, ...events]
 
+  const numWeeks = useMemo(() => {
+    const [y, m] = yearMonth.split('-').map(Number)
+    const firstDay = new Date(y, m - 1, 1).getDay()
+    const daysInMonth = new Date(y, m, 0).getDate()
+    return Math.ceil((firstDay + daysInMonth) / 7)
+  }, [yearMonth])
+
   const prevMonth = () => {
     const [y, m] = yearMonth.split('-').map(Number)
     const d = new Date(y, m - 2, 1)
@@ -241,8 +248,9 @@ export default function SchedulePage() {
             .fc-daygrid-day:hover { background-color: #dbeafe !important; }
             .fc-daygrid-day:active { background-color: #bfdbfe !important; }
             .fc-daygrid-day-number { pointer-events: none; font-size: 11px; padding: 1px 3px !important; line-height: 1.4; }
-            .fc-daygrid-day-frame { overflow: hidden !important; min-height: 0 !important; }
-            .fc-daygrid-day-events { margin: 0 !important; padding: 0 1px 1px !important; }
+            .fc-daygrid-body tr { height: calc((100vh - 128px) / ${numWeeks}) !important; }
+            .fc-daygrid-day-frame { height: 100% !important; overflow: hidden !important; min-height: 0 !important; }
+            .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; }
             .fc-daygrid-event-harness { margin: 1px 0 0 !important; }
             .fc-event { cursor: pointer; border-radius: 3px !important; padding: 0 !important; margin: 0 !important; }
             .fc-event-main { padding: 0 !important; line-height: 1 !important; }
@@ -291,7 +299,6 @@ export default function SchedulePage() {
               eventClick={handleEventClick}
               datesSet={handleDatesSet}
               height="calc(100vh - 108px)"
-              expandRows={true}
               dayMaxEvents={3}
               dayCellContent={(arg) => {
                 const d = arg.date
