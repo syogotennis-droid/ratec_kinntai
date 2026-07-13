@@ -196,6 +196,7 @@ export default function SchedulePage() {
               height="calc(100vh - 110px)"
               expandRows={true}
               dayCellContent={(arg) => ({ html: `<span>${arg.date.getDate()}</span>` })}
+              dayMaxEvents={4}
               headerToolbar={{ left: '', center: '', right: '' }}
             />
           </div>
