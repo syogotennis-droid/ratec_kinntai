@@ -316,17 +316,17 @@ export default function SchedulePage() {
                           opacity: isCurrentMonth ? 1 : 0.35,
                         }}
                       >
-                        <div style={{ fontSize: 11, padding: '1px 3px', lineHeight: '16px', color: numColor || undefined, fontWeight: isToday ? 700 : undefined }}>
+                        <div style={{ fontSize: 10, padding: '1px 2px', lineHeight: '14px', color: numColor || '#374151', fontWeight: isToday ? 700 : 400 }}>
                           {dayNum}
                         </div>
-                        <div style={{ padding: '0 1px', display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
                           {shown.map((e, i) => (
-                            <div key={i} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 10, fontWeight: 700, lineHeight: '15px', padding: '0 3px', borderRadius: 3, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                            <div key={i} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 10, fontWeight: 500, lineHeight: '16px', padding: '0 2px', borderRadius: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0, marginBottom: 1 }}>
                               {e.title}
                             </div>
                           ))}
                           {extra > 0 && (
-                            <div style={{ fontSize: 10, color: '#6b7280', lineHeight: '14px', paddingLeft: 3, fontWeight: 600, flexShrink: 0 }}>+{extra}</div>
+                            <div style={{ fontSize: 10, color: '#6b7280', lineHeight: '14px', paddingLeft: 2, fontWeight: 500, flexShrink: 0 }}>+{extra}</div>
                           )}
                         </div>
                       </div>
