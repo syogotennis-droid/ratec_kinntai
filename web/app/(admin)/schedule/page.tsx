@@ -163,7 +163,7 @@ export default function SchedulePage() {
     return holidayJp.between(start, end).map((h: { date: Date; name: string }) => {
       const d = h.date
       const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      return { title: h.name, date, backgroundColor: '#fca5a5', textColor: '#ffffff', isHoliday: true }
+      return { title: h.name, date, backgroundColor: '#ef4444', textColor: '#ffffff', isHoliday: true }
     })
   })()
 
@@ -172,7 +172,7 @@ export default function SchedulePage() {
   const calEvents: CalEvent[] = schedules.map(s => {
     const p = profiles.find(pr => pr.id === s.created_by)
     const vividColor = p?.color || userColor(s.created_by)
-    return { title: s.title, date: s.date, backgroundColor: colorBg(vividColor), textColor: colorDark(vividColor) }
+    return { title: s.title, date: s.date, backgroundColor: vividColor, textColor: '#ffffff' }
   })
 
   const allEvents = [...holidayEvents, ...calEvents]
