@@ -54,7 +54,7 @@ export default function NewQuotationPage() {
   }
 
   const handleSave = async () => {
-    if (!projectId || !docNo) { setError('案件と見積書番号を入力してください'); return }
+    if (!projectId) { setError('案件を選択してください'); return }
     setError(null)
     setSaving(true)
     try {
@@ -109,7 +109,7 @@ export default function NewQuotationPage() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">見積書番号 *</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">見積書番号（任意）</label>
             <input type="text" value={docNo} onChange={e => setDocNo(e.target.value)} placeholder="Q-2026-001"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
