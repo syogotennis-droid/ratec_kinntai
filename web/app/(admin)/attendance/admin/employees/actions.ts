@@ -3,11 +3,10 @@
 import { createClient } from '@supabase/supabase-js'
 
 function createAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error(`env missing: url=${!!url} key=${!!key}`)
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
 }
 
 interface CreateEmployeeInput {
@@ -26,39 +25,43 @@ interface CreateEmployeeInput {
   password: string
 }
 
-export async function createEmployee(input: CreateEmployeeInput) {
-  const admin = createAdminClient()
+export async function createEmployee(input: CreateEmployeeInput): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const admin = createAdminClient()
 
-  const { data: authData, error: authError } = await admin.auth.admin.createUser({
-    email: `${input.employeeId}@ratec.local`,
-    password: input.password,
-    email_confirm: true,
-  })
+    const { data: authData, error: authError } = await admin.auth.admin.createUser({
+      email: `${input.employeeId}@ratec.local`,
+      password: input.password,
+      email_confirm: true,
+    })
 
-  if (authError) return { error: authError.message }
-  if (!authData.user) return { error: 'ユーザー作成に失敗しました' }
+    if (authError) return { error: `auth: ${authError.message}` }
+    if (!authData.user) return { error: 'ユーザー作成に失敗しました' }
 
-  const { error: profileError } = await admin.from('profiles').insert({
-    id: authData.user.id,
-    employee_id: input.employeeId,
-    name: input.name,
-    name_kana: input.nameKana || null,
-    department: input.department || null,
-    employment_type: input.employmentType,
-    hourly_wage: input.hourlyWage,
-    daily_wage: input.dailyWage,
-    transportation: input.transportation,
-    fixed_allowance: input.fixedAllowance,
-    overtime_rate: input.overtimeRate,
-    holiday_rate: input.holidayRate,
-    is_admin: input.isAdmin,
-    is_active: true,
-  })
+    const { error: profileError } = await admin.from('profiles').insert({
+      id: authData.user.id,
+      employee_id: input.employeeId,
+      name: input.name,
+      name_kana: input.nameKana || null,
+      department: input.department || null,
+      employment_type: input.employmentType,
+      hourly_wage: input.hourlyWage,
+      daily_wage: input.dailyWage,
+      transportation: input.transportation,
+      fixed_allowance: input.fixedAllowance,
+      overtime_rate: input.overtimeRate,
+      holiday_rate: input.holidayRate,
+      is_admin: input.isAdmin,
+      is_active: true,
+    })
 
-  if (profileError) {
-    await admin.auth.admin.deleteUser(authData.user.id)
-    return { error: profileError.message }
+    if (profileError) {
+      await admin.auth.admin.deleteUser(authData.user.id)
+      return { error: `profile: ${profileError.message}` }
+    }
+
+    return { success: true }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) }
   }
-
-  return { success: true }
 }
