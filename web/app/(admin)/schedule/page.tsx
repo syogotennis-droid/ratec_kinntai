@@ -238,14 +238,12 @@ export default function SchedulePage() {
             .fc-scrollgrid-section-header td { border-bottom: 1px solid #e5e7eb !important; }
           `}</style>
           {/* Custom header */}
-          <div className="flex items-center justify-between px-1 mb-1">
-            <button onClick={goPrev} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 text-lg">‹</button>
+          <div className="flex items-center px-2 mb-1">
             <button onClick={() => setShowMonthPicker(true)}
-              className="flex items-center gap-1 text-sm font-bold text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100">
+              className="flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
               {displayYear}年{displayMonth}月
               <span className="text-gray-400 text-xs">▾</span>
             </button>
-            <button onClick={goNext} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 text-lg">›</button>
           </div>
           {/* Swipe wrapper */}
           <div className="overflow-hidden">
