@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Quotation, DocumentItem, Project, Supplier, QuotationStatus } from '@/lib/supabase/types'
+import { Quotation, DocumentItem, Project, Supplier, QuotationStatus, Settings } from '@/lib/supabase/types'
 import Link from 'next/link'
+import { downloadQuotationExcel } from '@/lib/excel/quotation'
 
 const TAX_RATE = 0.1
 const STATUSES: QuotationStatus[] = ['作成中', '確定', '失注']
@@ -19,8 +20,11 @@ export default function QuotationDetailPage() {
   const [quotation, setQuotation] = useState<FullQuotation | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [settings, setSettings] = useState<Settings | null>(null)
+  const [customerName, setCustomerName] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [projectId, setProjectId] = useState<number>(0)
@@ -34,15 +38,17 @@ export default function QuotationDetailPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
-    const [qRes, projectsRes, suppliersRes] = await Promise.all([
+    const [qRes, projectsRes, suppliersRes, settingsRes] = await Promise.all([
       supabase.from('quotations').select('*, quotation_items(*)').eq('id', id).single(),
-      supabase.from('projects').select('*').order('name'),
+      supabase.from('projects').select('*, companies(name)').order('name'),
       supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
+      supabase.from('settings').select('*').single(),
     ])
     const q = qRes.data as FullQuotation | null
     setQuotation(q)
     setProjects(projectsRes.data ?? [])
     setSuppliers(suppliersRes.data ?? [])
+    setSettings(settingsRes.data ?? null)
     if (q) {
       setProjectId(q.project_id)
       setSupplierId(q.supplier_id ?? 0)
@@ -52,6 +58,9 @@ export default function QuotationDetailPage() {
       setNotes(q.notes ?? '')
       const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
       setItems(sorted.map(({ id: _id, ...rest }) => rest))
+      // 顧客名を取得
+      const proj = (projectsRes.data ?? []).find(p => p.id === q.project_id)
+      setCustomerName((proj as { companies?: { name: string } | null } | undefined)?.companies?.name ?? '')
     }
     setLoading(false)
   }, [id])
@@ -61,6 +70,27 @@ export default function QuotationDetailPage() {
   const subtotal = items.reduce((s, item) => s + item.amount, 0)
   const taxAmount = Math.floor(subtotal * TAX_RATE)
   const totalAmount = subtotal + taxAmount
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const proj = projects.find(p => p.id === projectId)
+      await downloadQuotationExcel({
+        docNo,
+        issueDate,
+        customerName: (proj as { companies?: { name: string } | null } | undefined)?.companies?.name ?? customerName,
+        projectName: proj?.name ?? '',
+        notes,
+        items,
+        subtotal,
+        taxAmount,
+        totalAmount,
+        settings,
+      })
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const updateItem = (idx: number, field: keyof Omit<DocumentItem, 'id'>, value: string | number) => {
     setItems(prev => {
@@ -120,6 +150,10 @@ export default function QuotationDetailPage() {
       <div className="flex items-center gap-3 mb-4">
         <Link href="/orders/quotations" className="text-sm text-blue-600 hover:underline">← 一覧</Link>
         <h1 className="text-sm font-bold text-gray-900 flex-1">見積書</h1>
+        <button onClick={handleExport} disabled={exporting || saving}
+          className="px-3 py-1.5 text-xs font-medium bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white rounded-lg">
+          {exporting ? '出力中...' : 'Excel出力'}
+        </button>
         <button onClick={handleDelete} disabled={saving} className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg">削除</button>
       </div>
       <div className="space-y-3 mb-6">
