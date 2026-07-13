@@ -262,7 +262,7 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
                 value={avatarChar}
                 onChange={e => setAvatarChar(e.target.value.slice(0, 1))}
                 maxLength={1}
-                placeholder="例：山"
+                placeholder="山"
                 className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {avatarChar && (
