@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { SalesRecord, SalesPhoto } from '@/lib/supabase/types'
+import { useProfile } from '@/lib/profile-context'
 
 export default function MySalesPage() {
-  const [userId, setUserId] = useState<string | null>(null)
+  const profile = useProfile()
+  const userId = profile.id
   const [yearMonth, setYearMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -15,14 +17,7 @@ export default function MySalesPage() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<{ record?: SalesRecord | null; date?: string } | null>(null)
 
-  useEffect(() => {
-    createClient().auth.getSession().then(({ data }) => {
-      if (data.session) setUserId(data.session.user.id)
-    })
-  }, [])
-
   const fetchRecords = useCallback(async () => {
-    if (!userId) return
     setLoading(true)
     const supabase = createClient()
     const [year, month] = yearMonth.split('-').map(Number)
@@ -65,7 +60,7 @@ export default function MySalesPage() {
     setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
 
-  if (!userId) return <div className="p-6 text-sm text-gray-500">読み込み中...</div>
+
 
   return (
     <div className="p-4 max-w-2xl">

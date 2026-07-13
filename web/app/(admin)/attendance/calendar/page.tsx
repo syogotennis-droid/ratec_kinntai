@@ -8,6 +8,7 @@ import { EventClickArg, EventInput } from '@fullcalendar/core'
 import { createClient } from '@/lib/supabase/client'
 import { WorkRecord } from '@/lib/supabase/types'
 import WorkRecordModal from '@/components/WorkRecordModal'
+import { useProfile } from '@/lib/profile-context'
 
 const WORK_TYPE_COLORS: Record<string, string> = {
   normal: '#3b82f6',
@@ -26,7 +27,8 @@ const WORK_TYPE_LABELS: Record<string, string> = {
 }
 
 export default function CalendarPage() {
-  const [userId, setUserId] = useState<string | null>(null)
+  const profile = useProfile()
+  const userId = profile.id
   const [records, setRecords] = useState<WorkRecord[]>([])
   const [modalDate, setModalDate] = useState<string | null>(null)
   const [editRecord, setEditRecord] = useState<WorkRecord | null>(null)
@@ -35,14 +37,7 @@ export default function CalendarPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
 
-  useEffect(() => {
-    createClient().auth.getSession().then(({ data }) => {
-      if (data.session) setUserId(data.session.user.id)
-    })
-  }, [])
-
   const fetchRecords = useCallback(async () => {
-    if (!userId) return
     const supabase = createClient()
     const [year, month] = currentYearMonth.split('-').map(Number)
     const start = `${currentYearMonth}-01`

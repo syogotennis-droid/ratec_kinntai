@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/lib/supabase/types'
+import { ProfileContext } from '@/lib/profile-context'
 
 const adminNavItems = [
   { to: '/attendance/admin/work-list', label: '勤務管理', icon: '📝' },
@@ -89,6 +90,7 @@ export default function AppShell({ profile, children }: Props) {
   )
 
   return (
+    <ProfileContext.Provider value={profile}>
     <div className="flex h-screen overflow-hidden">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:w-56 md:flex-col md:flex-shrink-0 border-r border-gray-200 bg-white">
@@ -123,5 +125,6 @@ export default function AppShell({ profile, children }: Props) {
         </main>
       </div>
     </div>
+    </ProfileContext.Provider>
   )
 }

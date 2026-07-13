@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { WorkRecord } from '@/lib/supabase/types'
 import WorkRecordModal from '@/components/WorkRecordModal'
+import { useProfile } from '@/lib/profile-context'
 
 const WORK_TYPE_LABELS: Record<string, string> = {
   normal: '通常',
@@ -22,7 +23,8 @@ const WORK_TYPE_COLORS: Record<string, string> = {
 }
 
 export default function MyRecordsPage() {
-  const [userId, setUserId] = useState<string | null>(null)
+  const profile = useProfile()
+  const userId = profile.id
   const [yearMonth, setYearMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -32,14 +34,7 @@ export default function MyRecordsPage() {
   const [editRecord, setEditRecord] = useState<WorkRecord | null>(null)
   const [showAdd, setShowAdd] = useState(false)
 
-  useEffect(() => {
-    createClient().auth.getSession().then(({ data }) => {
-      if (data.session) setUserId(data.session.user.id)
-    })
-  }, [])
-
   const fetchRecords = useCallback(async () => {
-    if (!userId) return
     setLoading(true)
     const supabase = createClient()
     const [year, month] = yearMonth.split('-').map(Number)
