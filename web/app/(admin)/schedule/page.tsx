@@ -863,17 +863,19 @@ function WorkRecordModal({ workRecord, defaultDate, userId, onClose, onSaved }: 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const isPaidLeave = workType === 'paid_leave'
+
   const handleSave = async () => {
-    if (!date || !startTime || !endTime) return
+    if (!date || (!isPaidLeave && (!startTime || !endTime))) return
     setError(null)
     setSaving(true)
     try {
       const payload = {
         user_id: userId,
         work_date: date,
-        start_time: startTime,
-        end_time: endTime,
-        break_minutes: Number(breakMinutes) || 0,
+        start_time: isPaidLeave ? '00:00' : startTime,
+        end_time: isPaidLeave ? '00:00' : endTime,
+        break_minutes: isPaidLeave ? 0 : (Number(breakMinutes) || 0),
         work_type: workType,
         notes: notes || null,
       }
@@ -923,27 +925,31 @@ function WorkRecordModal({ workRecord, defaultDate, userId, onClose, onSaved }: 
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">開始時刻 *</label>
-              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">終了時刻 *</label>
-              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">休憩時間（分）</label>
-            <select value={breakMinutes} onChange={e => setBreakMinutes(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              {[0, 15, 30, 45, 60, 75, 90, 120].map(m => (
-                <option key={m} value={String(m)}>{m}分</option>
-              ))}
-            </select>
-          </div>
+          {!isPaidLeave && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">開始時刻 *</label>
+                  <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">終了時刻 *</label>
+                  <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">休憩時間（分）</label>
+                <select value={breakMinutes} onChange={e => setBreakMinutes(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {[0, 15, 30, 45, 60, 75, 90, 120].map(m => (
+                    <option key={m} value={String(m)}>{m}分</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">メモ</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
@@ -957,7 +963,7 @@ function WorkRecordModal({ workRecord, defaultDate, userId, onClose, onSaved }: 
           )}
           <div className="flex-1" />
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">キャンセル</button>
-          <button onClick={handleSave} disabled={saving || !date || !startTime || !endTime}
+          <button onClick={handleSave} disabled={saving || !date || (!isPaidLeave && (!startTime || !endTime))}
             className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
             {saving ? '保存中...' : '保存'}
           </button>
