@@ -248,13 +248,13 @@ export default function SchedulePage() {
             .fc-daygrid-day:hover { background-color: #dbeafe !important; }
             .fc-daygrid-day:active { background-color: #bfdbfe !important; }
             .fc-daygrid-day-number { pointer-events: none; font-size: 11px; padding: 1px 3px !important; line-height: 1.4; }
-            .fc-daygrid-body tr { height: calc((100vh - 128px) / ${numWeeks}) !important; }
+            .fc-daygrid-body tr { height: min(calc((100vh - 128px) / ${numWeeks}), 90px) !important; }
             .fc-daygrid-day-frame { height: 100% !important; overflow: hidden !important; min-height: 0 !important; }
             .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; }
             .fc-daygrid-event-harness { margin: 1px 0 0 !important; }
             .fc-event { cursor: pointer; border-radius: 3px !important; padding: 0 !important; margin: 0 !important; }
             .fc-event-main { padding: 0 !important; line-height: 1 !important; }
-            .fc-daygrid-more-link { display: none !important; }
+            .fc-daygrid-more-link { font-size: 9px !important; color: #6b7280 !important; padding: 0 4px !important; line-height: 14px !important; font-weight: 500 !important; }
             .fc-day-other { opacity: 0.35; }
             .fc-toolbar { display: none !important; }
             .fc-daygrid-body { width: 100% !important; }
