@@ -58,6 +58,8 @@ export default function SchedulePage() {
   const [displayMonth, setDisplayMonth] = useState(() => new Date().getMonth() + 1)
   const calendarRef = useRef<FullCalendar>(null)
   const touchStartX = useRef(0)
+  const [dragX, setDragX] = useState(0)
+  const [sliding, setSliding] = useState(false)
   const [yearMonth, setYearMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -103,10 +105,34 @@ export default function SchedulePage() {
     setShowMonthPicker(false)
   }
 
-  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (sliding) return
+    setDragX(e.touches[0].clientX - touchStartX.current)
+  }
   const handleTouchEnd = (e: React.TouchEvent) => {
+    if (sliding) return
     const diff = touchStartX.current - e.changedTouches[0].clientX
-    if (Math.abs(diff) > 60) { diff > 0 ? goNext() : goPrev() }
+    const W = window.innerWidth
+    if (Math.abs(diff) > 60) {
+      const dir = diff > 0 ? 1 : -1
+      setSliding(true)
+      setDragX(-dir * W)
+      setTimeout(() => {
+        dir > 0 ? goNext() : goPrev()
+        setDragX(dir * W)
+        setTimeout(() => {
+          setDragX(0)
+          setSliding(false)
+        }, 30)
+      }, 220)
+    } else {
+      setSliding(true)
+      setDragX(0)
+      setTimeout(() => setSliding(false), 220)
+    }
   }
 
   const handleDateClick = (arg: DateClickArg) => setDaySheet(arg.dateStr)
@@ -183,7 +209,17 @@ export default function SchedulePage() {
             <button onClick={goNext} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 text-lg">›</button>
           </div>
           {/* Swipe wrapper */}
-          <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+          <div className="overflow-hidden">
+          <div
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            style={{
+              transform: `translateX(${dragX}px)`,
+              transition: sliding ? 'transform 220ms ease-out' : 'none',
+              willChange: 'transform',
+            }}
+          >
             <FullCalendar
               ref={calendarRef}
               plugins={[dayGridPlugin, interactionPlugin]}
@@ -199,6 +235,7 @@ export default function SchedulePage() {
               dayMaxEvents={4}
               headerToolbar={{ left: '', center: '', right: '' }}
             />
+          </div>
           </div>
           {showMonthPicker && (
             <MonthPicker
