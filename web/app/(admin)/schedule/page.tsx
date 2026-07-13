@@ -222,7 +222,7 @@ export default function SchedulePage() {
             .fc-daygrid-day:active { background-color: #bfdbfe !important; }
             .fc-daygrid-day-number { pointer-events: none; font-size: 11px; padding: 1px 3px !important; line-height: 1.4; }
             .fc-daygrid-day-frame { overflow: hidden !important; min-height: 0 !important; height: 100%; }
-            .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; max-height: 34px !important; }
+            .fc-daygrid-day-events { overflow: hidden !important; margin: 0 !important; padding: 0 1px 1px !important; max-height: 68px !important; }
             .fc-daygrid-event-harness { margin: 1px 0 0 !important; }
             .fc-event { cursor: pointer; border-radius: 3px !important; padding: 0 !important; margin: 0 !important; }
             .fc-event-main { padding: 0 !important; line-height: 1 !important; }
@@ -303,7 +303,7 @@ export default function SchedulePage() {
                   </div>
                 )
               }}
-              dayMaxEvents={2}
+              dayMaxEvents={4}
               headerToolbar={{ left: '', center: '', right: '' }}
             />
           </div>
