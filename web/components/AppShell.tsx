@@ -127,8 +127,7 @@ export default function AppShell({ profile, children }: Props) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className="px-4 py-4 border-b border-gray-200">
-        <h1 className="text-sm font-bold text-gray-900">業務管理システム</h1>
-        <p className="text-xs text-gray-500 mt-0.5">{profile.name}</p>
+        <p className="text-sm font-medium text-gray-900">{profile.name}</p>
       </div>
       <NavLinks />
       <div className="px-3 py-4 border-t border-gray-200">
@@ -170,8 +169,8 @@ export default function AppShell({ profile, children }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <h1 className="text-sm font-bold text-gray-900">業務管理システム</h1>
-          <span className="text-xs text-gray-500">{profile.name}</span>
+          <span className="text-sm font-medium text-gray-900">{profile.name}</span>
+          <span />
         </header>
 
         <main className="flex-1 overflow-y-auto">
