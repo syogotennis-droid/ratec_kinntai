@@ -20,19 +20,19 @@ interface NavGroup {
 
 const adminNavGroups: NavGroup[] = [
   {
+    heading: '共有',
+    items: [
+      { to: '/schedule', label: 'スケジュール', icon: '🗓️' },
+      { to: '/attendance/admin/sales', label: '売上管理', icon: '💰' },
+    ],
+  },
+  {
     heading: '勤務',
     items: [
       { to: '/attendance/admin/work-list', label: '勤務管理', icon: '📝' },
       { to: '/attendance/admin/payroll', label: '給与計算', icon: '💴' },
       { to: '/attendance/admin/bonuses', label: 'ボーナス管理', icon: '🎁' },
       { to: '/attendance/admin/employees', label: '従業員管理', icon: '👥' },
-    ],
-  },
-  {
-    heading: '共有',
-    items: [
-      { to: '/attendance/admin/sales', label: '売上管理', icon: '💰' },
-      { to: '/schedule', label: 'スケジュール', icon: '🗓️' },
     ],
   },
   {
@@ -51,16 +51,16 @@ const adminNavGroups: NavGroup[] = [
 
 const employeeNavGroups: NavGroup[] = [
   {
-    heading: '勤務',
+    heading: '共有',
     items: [
-      { to: '/attendance/calendar', label: '勤務記録', icon: '📅' },
+      { to: '/schedule', label: 'スケジュール', icon: '🗓️' },
+      { to: '/attendance/sales', label: '売上管理', icon: '💰' },
     ],
   },
   {
-    heading: '共有',
+    heading: '勤務',
     items: [
-      { to: '/attendance/sales', label: '売上管理', icon: '💰' },
-      { to: '/schedule', label: 'スケジュール', icon: '🗓️' },
+      { to: '/attendance/calendar', label: '勤務記録', icon: '📅' },
     ],
   },
   {
