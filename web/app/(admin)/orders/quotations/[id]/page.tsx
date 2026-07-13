@@ -76,6 +76,7 @@ export default function QuotationDetailPage() {
   const totalAmount = subtotal + taxAmount
 
   const handleExport = async () => {
+    setError(null)
     setExporting(true)
     try {
       const proj = projects.find(p => p.id === projectId)
@@ -92,6 +93,8 @@ export default function QuotationDetailPage() {
         totalAmount,
         settings,
       })
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Excel出力に失敗しました')
     } finally {
       setExporting(false)
     }

@@ -22,11 +22,15 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
   const wb = new ExcelJSModule.default.Workbook()
 
   const res = await fetch('/templates/quotation.xlsx')
+  if (!res.ok) throw new Error(`テンプレート取得失敗: ${res.status}`)
   const arrayBuffer = await res.arrayBuffer()
   await wb.xlsx.load(arrayBuffer)
 
   const ws = wb.getWorksheet('テンプレート')
-  if (!ws) throw new Error('テンプレートシートが見つかりません')
+  if (!ws) {
+    const names = wb.worksheets.map(s => s.name).join(', ')
+    throw new Error(`シートが見つかりません。存在するシート: ${names}`)
+  }
 
   // 宛先 (A2:D3 merged の左上セル)
   ws.getCell('A2').value = data.customerName ? `${data.customerName}　御中` : ''
