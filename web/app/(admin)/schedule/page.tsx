@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction'
@@ -53,6 +53,11 @@ export default function SchedulePage() {
   const [daySheet, setDaySheet] = useState<string | null>(null)
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null)
   const [addDate, setAddDate] = useState<string | null>(null)
+  const [showMonthPicker, setShowMonthPicker] = useState(false)
+  const [displayYear, setDisplayYear] = useState(() => new Date().getFullYear())
+  const [displayMonth, setDisplayMonth] = useState(() => new Date().getMonth() + 1)
+  const calendarRef = useRef<FullCalendar>(null)
+  const touchStartX = useRef(0)
   const [yearMonth, setYearMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -84,7 +89,24 @@ export default function SchedulePage() {
   const handleDatesSet = (info: { startStr: string }) => {
     const d = new Date(info.startStr)
     d.setDate(d.getDate() + 14)
-    setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+    const y = d.getFullYear()
+    const m = d.getMonth() + 1
+    setDisplayYear(y)
+    setDisplayMonth(m)
+    setYearMonth(`${y}-${String(m).padStart(2, '0')}`)
+  }
+
+  const goNext = () => calendarRef.current?.getApi().next()
+  const goPrev = () => calendarRef.current?.getApi().prev()
+  const goToMonth = (y: number, m: number) => {
+    calendarRef.current?.getApi().gotoDate(`${y}-${String(m).padStart(2, '0')}-01`)
+    setShowMonthPicker(false)
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const diff = touchStartX.current - e.changedTouches[0].clientX
+    if (Math.abs(diff) > 60) { diff > 0 ? goNext() : goPrev() }
   }
 
   const handleDateClick = (arg: DateClickArg) => setDaySheet(arg.dateStr)
@@ -144,24 +166,47 @@ export default function SchedulePage() {
             .fc-daygrid-day:active { background-color: #bfdbfe !important; }
             .fc-daygrid-day-number { pointer-events: none; font-size: 12px; padding: 2px 4px !important; }
             .fc-event { cursor: pointer; font-size: 11px; padding: 1px 4px; border-radius: 4px; }
-            .fc-toolbar-title { font-size: 1rem !important; font-weight: 700; }
-            .fc-button { font-size: 0.75rem !important; padding: 4px 10px !important; }
+            .fc-toolbar { display: none !important; }
             .fc-daygrid-body { width: 100% !important; }
             .fc-scrollgrid-sync-table { width: 100% !important; }
+            .drum-col { scrollbar-width: none; -ms-overflow-style: none; }
+            .drum-col::-webkit-scrollbar { display: none; }
           `}</style>
-          <FullCalendar
-            plugins={[dayGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            locale="ja"
-            events={events}
-            dateClick={handleDateClick}
-            eventClick={handleEventClick}
-            datesSet={handleDatesSet}
-            height="calc(100vh - 100px)"
-            expandRows={true}
-            dayCellContent={(arg) => ({ html: `<span>${arg.date.getDate()}</span>` })}
-            buttonText={{ today: '今日', month: '月', week: '週' }}
-          />
+          {/* Custom header */}
+          <div className="flex items-center justify-between px-1 mb-1">
+            <button onClick={goPrev} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 text-lg">‹</button>
+            <button onClick={() => setShowMonthPicker(true)}
+              className="flex items-center gap-1 text-sm font-bold text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100">
+              {displayYear}年{displayMonth}月
+              <span className="text-gray-400 text-xs">▾</span>
+            </button>
+            <button onClick={goNext} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 text-lg">›</button>
+          </div>
+          {/* Swipe wrapper */}
+          <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+            <FullCalendar
+              ref={calendarRef}
+              plugins={[dayGridPlugin, interactionPlugin]}
+              initialView="dayGridMonth"
+              locale="ja"
+              events={events}
+              dateClick={handleDateClick}
+              eventClick={handleEventClick}
+              datesSet={handleDatesSet}
+              height="calc(100vh - 110px)"
+              expandRows={true}
+              dayCellContent={(arg) => ({ html: `<span>${arg.date.getDate()}</span>` })}
+              headerToolbar={{ left: '', center: '', right: '' }}
+            />
+          </div>
+          {showMonthPicker && (
+            <MonthPicker
+              year={displayYear}
+              month={displayMonth}
+              onSelect={goToMonth}
+              onClose={() => setShowMonthPicker(false)}
+            />
+          )}
         </>
       ) : (
         <div className="max-w-xl px-2">
@@ -309,6 +354,76 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
               })}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MonthPicker({ year, month, onSelect, onClose }: { year: number; month: number; onSelect: (y: number, m: number) => void; onClose: () => void }) {
+  const ITEM_H = 48
+  const years = Array.from({ length: 11 }, (_, i) => 2021 + i)
+  const months = Array.from({ length: 12 }, (_, i) => i + 1)
+  const [selYear, setSelYear] = useState(year)
+  const [selMonth, setSelMonth] = useState(month)
+  const yearRef = useRef<HTMLDivElement>(null)
+  const monthRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const yIdx = years.indexOf(year)
+    const mIdx = month - 1
+    yearRef.current?.scrollTo({ top: yIdx * ITEM_H, behavior: 'instant' as ScrollBehavior })
+    monthRef.current?.scrollTo({ top: mIdx * ITEM_H, behavior: 'instant' as ScrollBehavior })
+  }, [])
+
+  const onYearScroll = () => {
+    const idx = Math.round((yearRef.current?.scrollTop ?? 0) / ITEM_H)
+    setSelYear(years[Math.max(0, Math.min(idx, years.length - 1))])
+  }
+  const onMonthScroll = () => {
+    const idx = Math.round((monthRef.current?.scrollTop ?? 0) / ITEM_H)
+    setSelMonth(months[Math.max(0, Math.min(idx, months.length - 1))])
+  }
+
+  const PAD = ITEM_H * 2
+
+  return (
+    <div className="fixed inset-0 z-[60]" onClick={onClose}>
+      <div className="absolute top-20 left-4 right-4 max-w-xs mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}>
+        <div className="relative flex" style={{ height: ITEM_H * 5 }}>
+          {/* 選択ハイライト */}
+          <div className="absolute inset-x-3 rounded-xl bg-gray-100 pointer-events-none z-10"
+            style={{ top: ITEM_H * 2, height: ITEM_H }} />
+          {/* 年列 */}
+          <div ref={yearRef} onScroll={onYearScroll} className="drum-col flex-1 overflow-y-scroll"
+            style={{ scrollSnapType: 'y mandatory' }}>
+            <div style={{ height: PAD }} />
+            {years.map(y => (
+              <div key={y} className={`flex items-center justify-center text-sm transition-all ${y === selYear ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+                style={{ height: ITEM_H, scrollSnapAlign: 'center' }}>
+                {y}年
+              </div>
+            ))}
+            <div style={{ height: PAD }} />
+          </div>
+          {/* 月列 */}
+          <div ref={monthRef} onScroll={onMonthScroll} className="drum-col flex-1 overflow-y-scroll"
+            style={{ scrollSnapType: 'y mandatory' }}>
+            <div style={{ height: PAD }} />
+            {months.map(m => (
+              <div key={m} className={`flex items-center justify-center text-sm transition-all ${m === selMonth ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+                style={{ height: ITEM_H, scrollSnapAlign: 'center' }}>
+                {m}月
+              </div>
+            ))}
+            <div style={{ height: PAD }} />
+          </div>
+        </div>
+        <div className="flex border-t border-gray-100">
+          <button onClick={onClose} className="flex-1 py-3 text-sm text-gray-500 hover:bg-gray-50">キャンセル</button>
+          <button onClick={() => onSelect(selYear, selMonth)}
+            className="flex-1 py-3 text-sm font-bold text-blue-600 hover:bg-blue-50 border-l border-gray-100">確定</button>
         </div>
       </div>
     </div>
