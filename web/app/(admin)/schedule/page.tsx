@@ -1038,15 +1038,6 @@ function WorkRecordModal({ workRecord, defaultDate, userId, onClose, onSaved }: 
             <>
               <TimePicker value={startTime} onChange={setStartTime} label="開始時刻 *" />
               <TimePicker value={endTime} onChange={setEndTime} label="終了時刻 *" />
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">休憩時間（分）</label>
-                <select value={breakMinutes} onChange={e => setBreakMinutes(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {[0, 15, 30, 45, 60, 75, 90, 120].map(m => (
-                    <option key={m} value={String(m)}>{m}分</option>
-                  ))}
-                </select>
-              </div>
             </>
           )}
           <div>
@@ -1054,6 +1045,17 @@ function WorkRecordModal({ workRecord, defaultDate, userId, onClose, onSaved }: 
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
+          {!isPaidLeave && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">休憩時間（分）</label>
+              <select value={breakMinutes} onChange={e => setBreakMinutes(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {[0, 15, 30, 45, 60, 75, 90, 120].map(m => (
+                  <option key={m} value={String(m)}>{m}分</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         {error && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
         <div className="mt-5 flex gap-2">
