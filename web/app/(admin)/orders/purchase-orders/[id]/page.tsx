@@ -247,7 +247,6 @@ export default function PurchaseOrderDetailPage() {
       projectName,
       notes,
       items,
-      settings,
     })
   }
 
