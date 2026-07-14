@@ -1,4 +1,4 @@
-import { DocumentItem, Settings, Supplier } from '@/lib/supabase/types'
+import { DocumentItem, Settings } from '@/lib/supabase/types'
 import { PURCHASE_ORDER_TEMPLATE_B64 } from './purchase-order-template-b64'
 
 export interface PurchaseOrderExcelData {
@@ -26,33 +26,54 @@ export async function downloadPurchaseOrderExcel(data: PurchaseOrderExcelData) {
   const wb = XLSX.read(templateBytes, { type: 'array', cellStyles: true })
   const ws = wb.Sheets[wb.SheetNames[0]]
 
-  const s = (v: string) => ({ v, t: 's' as const })
-  const n = (v: number) => ({ v, t: 'n' as const })
-
-  // Doc number and date
-  ws['L3'] = s(data.docNo)
-  ws['J6'] = { v: dateToExcelSerial(data.issueDate), t: 'n' as const, z: 'yyyy/m/d' }
-
-  // Supplier (left side - who we're ordering from)
-  ws['A8'] = s(data.supplierName ? data.supplierName + '　　御中' : '')
-
-  // Our company info (right side)
-  if (data.settings) {
-    ws['J9'] = s(data.settings.company_name)
-    ws['J10'] = s(data.settings.company_postal ? '〒' + data.settings.company_postal : '')
-    ws['J11'] = s(data.settings.company_address)
-    ws['K13'] = s(data.settings.company_tel)
-    ws['K14'] = s(data.settings.company_fax)
+  // Write string to a cell, preserving existing style
+  const ws_str = (addr: string, v: string) => {
+    const existing = ws[addr] || {}
+    ws[addr] = { ...existing, v, t: 's', w: undefined, f: undefined }
   }
 
-  // Clear item rows
+  // Write number to a cell, preserving existing style
+  const ws_num = (addr: string, v: number) => {
+    const existing = ws[addr] || {}
+    ws[addr] = { ...existing, v, t: 'n', w: undefined, f: undefined }
+  }
+
+  // Write only if value is non-empty (keeps template default when no data)
+  const ws_str_if = (addr: string, v: string | null | undefined) => {
+    if (v) ws_str(addr, v)
+  }
+
+  // Doc number
+  ws_str(addr('L', 3), data.docNo)
+
+  // Date (replace TODAY() formula with actual date)
+  const dateCell = ws[addr('J', 6)] || {}
+  ws[addr('J', 6)] = { ...dateCell, v: dateToExcelSerial(data.issueDate), t: 'n', z: 'yyyy/m/d', w: undefined, f: undefined }
+
+  // Supplier (left side)
+  ws_str_if(addr('A', 8), data.supplierName ? data.supplierName + '　　御中' : null)
+
+  // Our company info (right side) - only write if settings has values
+  const st = data.settings
+  if (st) {
+    ws_str_if(addr('J', 9), st.company_name)
+    ws_str_if(addr('J', 10), st.company_postal ? '〒' + st.company_postal : null)
+    ws_str_if(addr('J', 11), st.company_address)
+    ws_str_if(addr('K', 13), st.company_tel)
+    ws_str_if(addr('K', 14), st.company_fax)
+  }
+
+  // Clear delivery date cell (had weird time format in template)
+  ws_str(addr('B', 14), '')
+
+  // Clear item rows (preserve style)
   for (let r = 0; r < MAX_ITEMS; r++) {
     const row = ITEM_START_ROW + r
-    ws['A' + row] = s('')
-    ws['B' + row] = s('')
-    ws['H' + row] = s('')
-    ws['I' + row] = s('')
-    ws['J' + row] = s('')
+    ws_str(addr('A', row), '')
+    ws_str(addr('B', row), '')
+    ws_str(addr('H', row), '')
+    ws_str(addr('I', row), '')
+    ws_str(addr('J', row), '')
   }
 
   // Write items
@@ -60,21 +81,22 @@ export async function downloadPurchaseOrderExcel(data: PurchaseOrderExcelData) {
   for (let i = 0; i < limitedItems.length; i++) {
     const row = ITEM_START_ROW + i
     const item = limitedItems[i]
-    ws['A' + row] = n(i + 1)
-    ws['B' + row] = s(item.spec ? item.name + '　' + item.spec : item.name)
-    ws['H' + row] = n(item.qty)
+    ws_num(addr('A', row), i + 1)
+    ws_str(addr('B', row), item.spec ? item.name + '　' + item.spec : item.name)
+    ws_num(addr('H', row), item.qty)
     if (item.unit_price !== 0) {
-      ws['I' + row] = n(item.unit_price)
-      ws['J' + row] = { v: item.qty * item.unit_price, t: 'n' as const, f: `H${row}*I${row}` }
+      ws_num(addr('I', row), item.unit_price)
+      const amtCell = ws[addr('J', row)] || {}
+      ws[addr('J', row)] = { ...amtCell, v: item.qty * item.unit_price, t: 'n', w: undefined }
     }
   }
 
   // Project name
-  ws['A35'] = s('案件名：' + data.projectName)
+  ws_str(addr('A', 35), '案件名：' + data.projectName)
 
-  // Notes (replaces the 畠山様 section)
-  ws['A37'] = s(data.notes ? '備考：' + data.notes : '備考：')
-  ws['A38'] = s('')
+  // Notes row
+  ws_str(addr('A', 37), data.notes ? '備考：' + data.notes : '備考：')
+  ws_str(addr('A', 38), '')
 
   const wbout = XLSX.write(wb, { bookType: 'xls', type: 'array', cellStyles: true })
   const blob = new Blob([wbout], { type: 'application/vnd.ms-excel' })
@@ -84,4 +106,8 @@ export async function downloadPurchaseOrderExcel(data: PurchaseOrderExcelData) {
   a.download = `注文書_${data.docNo || '未設定'}_${data.issueDate}.xls`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+function addr(col: string, row: number): string {
+  return col + row
 }
