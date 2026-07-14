@@ -54,7 +54,7 @@ export default function InvoiceDetailPage() {
     setLoading(true)
     const supabase = createClient()
     const [invRes, companiesRes, projectsRes, settingsRes] = await Promise.all([
-      supabase.from('invoices').select('*, invoice_items(*), project:projects(id,name,company_id,companies(name,postal,address))').eq('id', id).single(),
+      supabase.from('invoices').select('*, items:invoice_items(*), project:projects(id,name,company_id,companies(name,postal,address))').eq('id', id).single(),
       supabase.from('companies').select('*').eq('is_active', true).order('name'),
       supabase.from('projects').select('*').order('name'),
       supabase.from('settings').select('*').single(),
