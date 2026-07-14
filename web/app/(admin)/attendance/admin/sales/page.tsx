@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, SalesRecord, SalesPhoto } from '@/lib/supabase/types'
+import { useSidebar } from '@/lib/sidebar-context'
 
 interface SalesWithProfile extends SalesRecord {
   profile?: Profile
 }
 
 export default function AdminSalesPage() {
+  const openSidebar = useSidebar()
   const [yearMonth, setYearMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -69,13 +71,20 @@ export default function AdminSalesPage() {
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100 text-lg">‹</button>
-          <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
-          <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100 text-lg">›</button>
+      <div className="relative flex items-center px-1 mb-3" style={{ height: 44 }}>
+        <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-1">
+            <button onClick={prevMonth} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
+            <span className="text-base font-bold text-gray-900 px-2">{yearMonth.replace('-', '年')}月</span>
+            <button onClick={nextMonth} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <select
             value={filterUserId}
             onChange={e => setFilterUserId(e.target.value)}

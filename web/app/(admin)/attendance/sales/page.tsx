@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { SalesRecord, SalesPhoto } from '@/lib/supabase/types'
 import { useProfile } from '@/lib/profile-context'
+import { useSidebar } from '@/lib/sidebar-context'
 
 export default function MySalesPage() {
   const profile = useProfile()
+  const openSidebar = useSidebar()
   const userId = profile.id
   const [yearMonth, setYearMonth] = useState(() => {
     const now = new Date()
@@ -63,20 +65,28 @@ export default function MySalesPage() {
 
 
   return (
-    <div className="p-4 max-w-2xl">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100">‹</button>
-          <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
-          <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100">›</button>
+    <div className="max-w-2xl">
+      <div className="relative flex items-center px-1 mb-3" style={{ height: 44 }}>
+        <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-1">
+            <button onClick={prevMonth} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
+            <span className="text-base font-bold text-gray-900 px-2">{yearMonth.replace('-', '年')}月</span>
+            <button onClick={nextMonth} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
+          </div>
         </div>
         <button
           onClick={() => setModal({ date: new Date().toISOString().slice(0, 10) })}
-          className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+          className="ml-auto px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
         >
           + 追加
         </button>
       </div>
+      <div className="px-4">
 
       <div className="flex gap-4 mb-4 px-1">
         <div className="text-xs text-gray-500">売上 <span className="text-gray-900 font-medium">¥{totalAmount.toLocaleString()}</span></div>
@@ -128,6 +138,7 @@ export default function MySalesPage() {
           onSaved={fetchRecords}
         />
       )}
+      </div>
     </div>
   )
 }
