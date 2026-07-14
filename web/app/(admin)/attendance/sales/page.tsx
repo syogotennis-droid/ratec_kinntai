@@ -80,7 +80,7 @@ export default function MySalesPage() {
           </div>
         </div>
         <button
-          onClick={() => setModal({ date: new Date().toISOString().slice(0, 10) })}
+          onClick={() => setModal({ date: new Date().toLocaleDateString('sv-SE') })}
           className="ml-auto px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
         >
           + 追加

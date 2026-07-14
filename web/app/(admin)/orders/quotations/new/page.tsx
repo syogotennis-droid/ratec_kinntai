@@ -17,7 +17,7 @@ export default function NewQuotationPage() {
   const [projectId, setProjectId] = useState<number>(0)
   const [supplierId, setSupplierId] = useState<number>(0)
   const [docNo, setDocNo] = useState('')
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10))
+  const [issueDate, setIssueDate] = useState(new Date().toLocaleDateString('sv-SE'))
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([
     { sort_order: 0, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }

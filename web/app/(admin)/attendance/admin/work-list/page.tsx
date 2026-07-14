@@ -351,7 +351,7 @@ function EmployeeDetail({ profile, yearMonth, isClosed: initialClosed, onBack }:
           <div className="flex justify-end mb-3">
             {!isClosed && (
               <button
-                onClick={() => { setEditRecord(null); setModalDate(new Date().toISOString().slice(0, 10)) }}
+                onClick={() => { setEditRecord(null); setModalDate(new Date().toLocaleDateString('sv-SE')) }}
                 className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
               >
                 + 追加

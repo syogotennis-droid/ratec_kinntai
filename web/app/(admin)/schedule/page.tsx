@@ -815,7 +815,7 @@ interface ScheduleModalProps {
 
 function ScheduleModal({ schedule, defaultDate, userId, onClose, onSaved }: ScheduleModalProps) {
   const [title, setTitle] = useState(schedule?.title ?? '')
-  const [date, setDate] = useState(schedule?.date ?? defaultDate ?? new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(schedule?.date ?? defaultDate ?? new Date().toLocaleDateString('sv-SE'))
   const [allDay, setAllDay] = useState(!schedule?.start_time)
   const [startTime, setStartTime] = useState(schedule?.start_time?.slice(0, 5) ?? '')
   const [endTime, setEndTime] = useState(schedule?.end_time?.slice(0, 5) ?? '')

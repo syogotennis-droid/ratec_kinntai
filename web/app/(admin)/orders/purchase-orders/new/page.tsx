@@ -18,7 +18,7 @@ export default function NewPurchaseOrderPage() {
   const [projectId, setProjectId] = useState<number>(0)
   const [supplierId, setSupplierId] = useState<number>(0)
   const [docNo, setDocNo] = useState('')
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10))
+  const [issueDate, setIssueDate] = useState(new Date().toLocaleDateString('sv-SE'))
   const [deliveryPostal, setDeliveryPostal] = useState('')
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [notes, setNotes] = useState('')
