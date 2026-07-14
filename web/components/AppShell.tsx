@@ -37,12 +37,12 @@ const adminNavGroups: NavGroup[] = [
   {
     heading: '書類',
     items: [
-      { to: '/orders/companies', label: '会社管理' },
       { to: '/orders/projects', label: '工事管理' },
       { to: '/orders/quotations', label: '見積書' },
       { to: '/orders/invoices', label: '請求書/納品書' },
       { to: '/orders/purchase-orders', label: '注文書' },
-      { to: '/orders/suppliers', label: '仕入先' },
+      { to: '/orders/companies', label: '取引先管理' },
+      { to: '/orders/suppliers', label: '仕入先管理' },
       { to: '/orders/products', label: '商品マスター' },
     ],
   },
@@ -58,12 +58,12 @@ const employeeNavGroups: NavGroup[] = [
   {
     heading: '書類',
     items: [
-      { to: '/orders/companies', label: '会社管理' },
       { to: '/orders/projects', label: '工事管理' },
       { to: '/orders/quotations', label: '見積書' },
       { to: '/orders/invoices', label: '請求書/納品書' },
       { to: '/orders/purchase-orders', label: '注文書' },
-      { to: '/orders/suppliers', label: '仕入先' },
+      { to: '/orders/companies', label: '取引先管理' },
+      { to: '/orders/suppliers', label: '仕入先管理' },
     ],
   },
 ]
