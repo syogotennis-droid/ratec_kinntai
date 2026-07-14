@@ -127,9 +127,9 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
       </div>
 
       <div className="flex gap-4 mb-4 px-1">
-        <div className="text-xs text-gray-500">売上 <span className="text-gray-900 font-medium">¥{totalAmount.toLocaleString()}</span></div>
-        <div className="text-xs text-gray-500">原価 <span className="text-gray-900 font-medium">¥{totalCost.toLocaleString()}</span></div>
-        <div className="text-xs text-gray-500">粗利 <span className="font-medium text-green-700">¥{(totalAmount - totalCost).toLocaleString()}</span></div>
+        <div className="text-xs md:text-sm text-gray-500">売上 <span className="text-gray-900 font-medium">¥{totalAmount.toLocaleString()}</span></div>
+        <div className="text-xs md:text-sm text-gray-500">原価 <span className="text-gray-900 font-medium">¥{totalCost.toLocaleString()}</span></div>
+        <div className="text-xs md:text-sm text-gray-500">粗利 <span className="font-medium text-green-700">¥{(totalAmount - totalCost).toLocaleString()}</span></div>
         <div className="text-xs text-gray-400 ml-auto">{filtered.length}件</div>
       </div>
 
@@ -143,7 +143,7 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
             <div
               key={r.id}
               onClick={() => setModal({ record: r })}
-              className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
+              className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
             >
               {photoThumbs[r.id] ? (
                 <div className="relative w-10 h-10 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100">
@@ -159,15 +159,15 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs text-gray-500 shrink-0">{r.record_date.slice(5).replace('-', '/')}</span>
-                  <span className="text-xs font-medium text-gray-700 shrink-0">{r.profile?.name ?? '—'}</span>
+                  <span className="text-xs md:text-sm text-gray-500 shrink-0">{r.record_date.slice(5).replace('-', '/')}</span>
+                  <span className="text-xs md:text-sm font-medium text-gray-700 shrink-0">{r.profile?.name ?? '—'}</span>
                 </div>
-                <div className="text-sm text-gray-900 truncate">{r.description || '—'}</div>
+                <div className="text-sm md:text-base text-gray-900 truncate">{r.description || '—'}</div>
                 {(r.cost ?? 0) > 0 && (
-                  <div className="text-xs text-gray-400">原価 ¥{(r.cost ?? 0).toLocaleString()}</div>
+                  <div className="text-xs md:text-sm text-gray-400">原価 ¥{(r.cost ?? 0).toLocaleString()}</div>
                 )}
               </div>
-              <div className="text-sm font-medium text-gray-900 shrink-0">¥{r.amount.toLocaleString()}</div>
+              <div className="text-sm md:text-lg font-medium text-gray-900 shrink-0">¥{r.amount.toLocaleString()}</div>
             </div>
           ))}
         </div>

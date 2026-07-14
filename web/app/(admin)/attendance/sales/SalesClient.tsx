@@ -110,9 +110,9 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
       <div className="px-4">
 
       <div className="flex gap-4 mb-4 px-1">
-        <div className="text-xs text-gray-500">売上 <span className="text-gray-900 font-medium">¥{totalAmount.toLocaleString()}</span></div>
-        <div className="text-xs text-gray-500">原価 <span className="text-gray-900 font-medium">¥{totalCost.toLocaleString()}</span></div>
-        <div className="text-xs text-gray-500">粗利 <span className="font-medium text-green-700">¥{(totalAmount - totalCost).toLocaleString()}</span></div>
+        <div className="text-xs md:text-sm text-gray-500">売上 <span className="text-gray-900 font-medium">¥{totalAmount.toLocaleString()}</span></div>
+        <div className="text-xs md:text-sm text-gray-500">原価 <span className="text-gray-900 font-medium">¥{totalCost.toLocaleString()}</span></div>
+        <div className="text-xs md:text-sm text-gray-500">粗利 <span className="font-medium text-green-700">¥{(totalAmount - totalCost).toLocaleString()}</span></div>
       </div>
 
       {loading ? (
@@ -125,7 +125,7 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
             <div
               key={r.id}
               onClick={() => setModal({ record: r })}
-              className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
+              className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
             >
               {photoThumbs[r.id] ? (
                 <div className="relative w-10 h-10 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100">
@@ -139,16 +139,16 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
               ) : (
                 <div className="w-10 md:w-20 shrink-0" />
               )}
-              <div className="w-12 text-xs text-gray-500 shrink-0">
+              <div className="w-12 md:w-16 text-xs md:text-sm text-gray-500 shrink-0">
                 {r.record_date.slice(5).replace('-', '/')}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm text-gray-900 truncate">{r.description || '—'}</div>
+                <div className="text-sm md:text-base text-gray-900 truncate">{r.description || '—'}</div>
                 {(r.cost ?? 0) > 0 && (
-                  <div className="text-xs text-gray-400">原価 ¥{(r.cost ?? 0).toLocaleString()}</div>
+                  <div className="text-xs md:text-sm text-gray-400">原価 ¥{(r.cost ?? 0).toLocaleString()}</div>
                 )}
               </div>
-              <div className="text-sm font-medium text-gray-900 shrink-0">¥{r.amount.toLocaleString()}</div>
+              <div className="text-sm md:text-lg font-medium text-gray-900 shrink-0">¥{r.amount.toLocaleString()}</div>
             </div>
           ))}
         </div>
