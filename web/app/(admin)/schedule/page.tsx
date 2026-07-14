@@ -293,11 +293,14 @@ export default function SchedulePage() {
               </svg>
             </button>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <button onClick={() => setShowMonthPicker(true)}
-                className="pointer-events-auto flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
-                {displayYear}年{displayMonth}月
-                <span className="text-gray-400 text-xs">▾</span>
-              </button>
+              <div className="pointer-events-auto flex items-center gap-1">
+                <button onClick={goPrev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
+                <button onClick={() => setShowMonthPicker(true)}
+                  className="text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
+                  {displayYear}年{displayMonth}月
+                </button>
+                <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
+              </div>
             </div>
             <div className="ml-auto">{viewToggle}</div>
           </div>
@@ -380,11 +383,14 @@ export default function SchedulePage() {
               </svg>
             </button>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <button onClick={() => setShowMonthPicker(true)}
-                className="pointer-events-auto flex items-center gap-1 text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
-                {displayYear}年{displayMonth}月
-                <span className="text-gray-400 text-xs">▾</span>
-              </button>
+              <div className="pointer-events-auto flex items-center gap-1">
+                <button onClick={goPrev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
+                <button onClick={() => setShowMonthPicker(true)}
+                  className="text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
+                  {displayYear}年{displayMonth}月
+                </button>
+                <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
+              </div>
             </div>
             <div className="ml-auto">{viewToggle}</div>
           </div>
