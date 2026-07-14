@@ -3,20 +3,29 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Company, Project, DocumentItem } from '@/lib/supabase/types'
+import { Company, Project, DocumentItem, Quotation } from '@/lib/supabase/types'
 import Link from 'next/link'
 
 const TAX_RATE = 0.1
+const DEFAULT_DISCOUNT_DIGITS = 4
+
+interface QuotationWithItems extends Quotation {
+  items: DocumentItem[]
+}
 
 export default function NewInvoicePage() {
   const router = useRouter()
   const [companies, setCompanies] = useState<Company[]>([])
   const [projects, setProjects] = useState<Project[]>([])
+  const [quotations, setQuotations] = useState<QuotationWithItems[]>([])
+
   const [companyId, setCompanyId] = useState<number>(0)
   const [projectId, setProjectId] = useState<number>(0)
+  const [quotationId, setQuotationId] = useState<number>(0)
   const [docNo, setDocNo] = useState('')
   const [issueDate, setIssueDate] = useState(new Date().toLocaleDateString('sv-SE'))
   const [notes, setNotes] = useState('')
+  const [discountDigits, setDiscountDigits] = useState(DEFAULT_DISCOUNT_DIGITS)
   const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([
     { sort_order: 0, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }
   ])
@@ -34,11 +43,32 @@ export default function NewInvoicePage() {
     })
   }, [])
 
+  useEffect(() => {
+    if (!projectId) { setQuotations([]); return }
+    createClient()
+      .from('quotations')
+      .select('*, items:quotation_items(*)')
+      .eq('project_id', projectId)
+      .order('issue_date', { ascending: false })
+      .then(({ data }) => setQuotations((data ?? []) as QuotationWithItems[]))
+  }, [projectId])
+
   const filteredProjects = companyId ? projects.filter(p => p.company_id === companyId) : projects
 
-  const subtotal = items.reduce((s, i) => s + i.amount, 0)
-  const taxAmount = Math.floor(subtotal * TAX_RATE)
-  const totalAmount = subtotal + taxAmount
+  const itemsSubtotal = items.reduce((s, i) => s + i.amount, 0)
+  const divisor = Math.pow(10, discountDigits)
+  const discountAmount = itemsSubtotal > 0 ? -(itemsSubtotal % divisor) : 0
+  const adjustedSubtotal = itemsSubtotal + discountAmount
+  const taxAmount = Math.floor(adjustedSubtotal * TAX_RATE)
+  const totalAmount = adjustedSubtotal + taxAmount
+
+  const importFromQuotation = (qId: number) => {
+    setQuotationId(qId)
+    const q = quotations.find(q => q.id === qId)
+    if (!q) return
+    const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
+    setItems(sorted.map(({ id: _id, ...rest }) => rest))
+  }
 
   const updateItem = (idx: number, field: keyof Omit<DocumentItem, 'id'>, value: string | number) => {
     setItems(prev => {
@@ -63,13 +93,15 @@ export default function NewInvoicePage() {
       const supabase = createClient()
       const { data: inv, error: invErr } = await supabase.from('invoices').insert({
         project_id: projectId,
+        quotation_id: quotationId || null,
         doc_no: docNo,
         issue_date: issueDate,
         status: '下書き',
         notes: notes || null,
-        subtotal,
+        subtotal: adjustedSubtotal,
         tax_amount: taxAmount,
         total_amount: totalAmount,
+        discount_digits: discountDigits,
       }).select().single()
       if (invErr) throw invErr
       if (items.length > 0) {
@@ -89,14 +121,14 @@ export default function NewInvoicePage() {
     <div className="p-4 max-w-2xl">
       <div className="flex items-center gap-3 mb-4">
         <Link href="/orders/invoices" className="text-sm text-blue-600 hover:underline">← 一覧</Link>
-        <h1 className="text-sm font-bold text-gray-900">新規請求書</h1>
+        <h1 className="text-sm font-bold text-gray-900">新規請求書/納品書</h1>
       </div>
 
       <div className="space-y-3 mb-6">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">取引先</label>
-            <select value={companyId} onChange={e => { setCompanyId(Number(e.target.value)); setProjectId(0) }}
+            <select value={companyId} onChange={e => { setCompanyId(Number(e.target.value)); setProjectId(0); setQuotationId(0); setQuotations([]) }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value={0}>選択してください</option>
               {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -104,13 +136,29 @@ export default function NewInvoicePage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">工事名 *</label>
-            <select value={projectId} onChange={e => setProjectId(Number(e.target.value))}
+            <select value={projectId} onChange={e => { setProjectId(Number(e.target.value)); setQuotationId(0) }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value={0}>選択してください</option>
               {filteredProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
         </div>
+
+        {quotations.length > 0 && (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">見積書から引き継ぐ</label>
+            <select value={quotationId} onChange={e => importFromQuotation(Number(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value={0}>選択してください</option>
+              {quotations.map(q => (
+                <option key={q.id} value={q.id}>
+                  {q.doc_no || '番号なし'} {q.issue_date} ¥{q.total_amount.toLocaleString()} [{q.status}]
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">請求書番号 *</label>
@@ -176,15 +224,33 @@ export default function NewInvoicePage() {
             </tbody>
           </table>
         </div>
+
         <div className="mt-3 border-t border-gray-200 pt-3 space-y-1 text-sm">
           <div className="flex justify-between">
-            <span className="text-gray-600">小計</span><span>¥{subtotal.toLocaleString()}</span>
+            <span className="text-gray-600">明細小計</span>
+            <span>¥{itemsSubtotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600 flex items-center gap-1">
+              特別調整値引き（<input
+                type="number" value={discountDigits} min={1} max={8}
+                onChange={e => setDiscountDigits(Math.max(1, Math.min(8, Number(e.target.value))))}
+                className="w-10 px-1 py-0.5 border border-gray-300 rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />桁）
+            </span>
+            <span className="text-red-600">¥{discountAmount.toLocaleString()}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">消費税（10%）</span><span>¥{taxAmount.toLocaleString()}</span>
+            <span className="text-gray-600">課税対象計</span>
+            <span>¥{adjustedSubtotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">消費税（10%）</span>
+            <span>¥{taxAmount.toLocaleString()}</span>
           </div>
           <div className="flex justify-between font-bold text-base">
-            <span>合計</span><span>¥{totalAmount.toLocaleString()}</span>
+            <span>合計</span>
+            <span>¥{totalAmount.toLocaleString()}</span>
           </div>
         </div>
       </div>

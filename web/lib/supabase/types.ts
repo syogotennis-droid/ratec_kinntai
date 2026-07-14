@@ -218,6 +218,7 @@ export interface Invoice {
   subtotal: number
   tax_amount: number
   total_amount: number
+  discount_digits: number
   notes: string | null
   items?: DocumentItem[]
 }

@@ -247,6 +247,7 @@ CREATE TABLE invoices (
   subtotal INTEGER DEFAULT 0,
   tax_amount INTEGER DEFAULT 0,
   total_amount INTEGER DEFAULT 0,
+  discount_digits INTEGER DEFAULT 4,
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

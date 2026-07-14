@@ -3,15 +3,20 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Invoice, DocumentItem, Company, Project, InvoiceStatus } from '@/lib/supabase/types'
+import { Invoice, DocumentItem, Company, Project, InvoiceStatus, Quotation, Settings } from '@/lib/supabase/types'
 import Link from 'next/link'
+import { downloadInvoiceExcel } from '@/lib/excel/invoice'
 
 const TAX_RATE = 0.1
 const STATUSES: InvoiceStatus[] = ['下書き', '発行済', '送付済', '入金済']
 
 interface FullInvoice extends Invoice {
   items: DocumentItem[]
-  project?: { id: number; name: string; company_id: number; companies?: { name: string } } | null
+  project?: { id: number; name: string; company_id: number; companies?: { name: string; postal: string; address: string } | null } | null
+}
+
+interface QuotationWithItems extends Quotation {
+  items: DocumentItem[]
 }
 
 export default function InvoiceDetailPage() {
@@ -20,35 +25,44 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<FullInvoice | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
   const [projects, setProjects] = useState<Project[]>([])
+  const [quotations, setQuotations] = useState<QuotationWithItems[]>([])
+  const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [projectId, setProjectId] = useState<number>(0)
+  const [quotationId, setQuotationId] = useState<number>(0)
   const [docNo, setDocNo] = useState('')
   const [issueDate, setIssueDate] = useState('')
   const [status, setStatus] = useState<InvoiceStatus>('下書き')
   const [notes, setNotes] = useState('')
+  const [discountDigits, setDiscountDigits] = useState(4)
   const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
-    const [invRes, companiesRes, projectsRes] = await Promise.all([
-      supabase.from('invoices').select('*, invoice_items(*), projects(id,name,company_id,companies(name))').eq('id', id).single(),
+    const [invRes, companiesRes, projectsRes, settingsRes] = await Promise.all([
+      supabase.from('invoices').select('*, invoice_items(*), project:projects(id,name,company_id,companies(name,postal,address))').eq('id', id).single(),
       supabase.from('companies').select('*').eq('is_active', true).order('name'),
       supabase.from('projects').select('*').order('name'),
+      supabase.from('settings').select('*').single(),
     ])
     const inv = invRes.data as FullInvoice | null
     setInvoice(inv)
     setCompanies(companiesRes.data ?? [])
     setProjects(projectsRes.data ?? [])
+    setSettings(settingsRes.data ?? null)
     if (inv) {
       setProjectId(inv.project_id)
+      setQuotationId(inv.quotation_id ?? 0)
       setDocNo(inv.doc_no)
       setIssueDate(inv.issue_date)
       setStatus(inv.status)
       setNotes(inv.notes ?? '')
+      setDiscountDigits(inv.discount_digits ?? 4)
       const sortedItems = [...(inv.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
       setItems(sortedItems.map(({ id: _id, ...rest }) => rest))
     }
@@ -57,9 +71,31 @@ export default function InvoiceDetailPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const subtotal = items.reduce((s, item) => s + item.amount, 0)
-  const taxAmount = Math.floor(subtotal * TAX_RATE)
-  const totalAmount = subtotal + taxAmount
+  // Load quotations when project changes
+  useEffect(() => {
+    if (!projectId) { setQuotations([]); return }
+    createClient()
+      .from('quotations')
+      .select('*, items:quotation_items(*)')
+      .eq('project_id', projectId)
+      .order('issue_date', { ascending: false })
+      .then(({ data }) => setQuotations((data ?? []) as QuotationWithItems[]))
+  }, [projectId])
+
+  const itemsSubtotal = items.reduce((s, item) => s + item.amount, 0)
+  const divisor = Math.pow(10, discountDigits)
+  const discountAmount = itemsSubtotal > 0 ? -(itemsSubtotal % divisor) : 0
+  const adjustedSubtotal = itemsSubtotal + discountAmount
+  const taxAmount = Math.floor(adjustedSubtotal * TAX_RATE)
+  const totalAmount = adjustedSubtotal + taxAmount
+
+  const importFromQuotation = (qId: number) => {
+    setQuotationId(qId)
+    const q = quotations.find(q => q.id === qId)
+    if (!q) return
+    const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
+    setItems(sorted.map(({ id: _id, ...rest }) => rest))
+  }
 
   const updateItem = (idx: number, field: keyof Omit<DocumentItem, 'id'>, value: string | number) => {
     setItems(prev => {
@@ -76,6 +112,35 @@ export default function InvoiceDetailPage() {
   const addItem = () => setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])
   const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx))
 
+  const handleExport = async () => {
+    setError(null)
+    setExporting(true)
+    try {
+      const proj = invoice?.project
+      const company = companies.find(c => c.id === proj?.company_id) ?? null
+      await downloadInvoiceExcel({
+        docNo,
+        issueDate,
+        customerName: (proj?.companies?.name) ?? '',
+        customerPostal: (proj?.companies as { postal?: string } | null | undefined)?.postal ?? company?.postal ?? '',
+        customerAddress: (proj?.companies as { address?: string } | null | undefined)?.address ?? company?.address ?? '',
+        notes,
+        items,
+        discountDigits,
+        discountAmount,
+        adjustedSubtotal,
+        taxAmount,
+        totalAmount,
+        settings,
+        company,
+      })
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Excel出力に失敗しました')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const handleSave = async () => {
     setError(null)
     setSaving(true)
@@ -83,13 +148,15 @@ export default function InvoiceDetailPage() {
       const supabase = createClient()
       await supabase.from('invoices').update({
         project_id: projectId,
+        quotation_id: quotationId || null,
         doc_no: docNo,
         issue_date: issueDate,
         status,
         notes: notes || null,
-        subtotal,
+        subtotal: adjustedSubtotal,
         tax_amount: taxAmount,
         total_amount: totalAmount,
+        discount_digits: discountDigits,
       }).eq('id', id)
       await supabase.from('invoice_items').delete().eq('invoice_id', Number(id))
       if (items.length > 0) {
@@ -120,15 +187,15 @@ export default function InvoiceDetailPage() {
   if (loading) return <div className="p-6 text-sm text-gray-500">読み込み中...</div>
   if (!invoice) return <div className="p-6 text-sm text-gray-500">見つかりません</div>
 
-  const filteredProjects = projectId
-    ? projects
-    : projects.filter(p => companies.some(c => c.id === p.company_id))
-
   return (
     <div className="p-4 max-w-2xl">
       <div className="flex items-center gap-3 mb-4">
         <Link href="/orders/invoices" className="text-sm text-blue-600 hover:underline">← 一覧</Link>
-        <h1 className="text-sm font-bold text-gray-900 flex-1">請求書</h1>
+        <h1 className="text-sm font-bold text-gray-900 flex-1">請求書/納品書</h1>
+        <button onClick={handleExport} disabled={exporting || saving}
+          className="px-3 py-1.5 text-xs font-medium bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white rounded-lg">
+          {exporting ? '出力中...' : 'Excel出力'}
+        </button>
         <button onClick={handleDelete} disabled={saving} className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg">削除</button>
       </div>
 
@@ -136,7 +203,7 @@ export default function InvoiceDetailPage() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">工事名</label>
-            <select value={projectId} onChange={e => setProjectId(Number(e.target.value))}
+            <select value={projectId} onChange={e => { setProjectId(Number(e.target.value)); setQuotationId(0) }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value={0}>選択してください</option>
               {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -150,6 +217,22 @@ export default function InvoiceDetailPage() {
             </select>
           </div>
         </div>
+
+        {quotations.length > 0 && (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">見積書から引き継ぐ</label>
+            <select value={quotationId} onChange={e => importFromQuotation(Number(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value={0}>選択してください</option>
+              {quotations.map(q => (
+                <option key={q.id} value={q.id}>
+                  {q.doc_no || '番号なし'} {q.issue_date} ¥{q.total_amount.toLocaleString()} [{q.status}]
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">請求書番号</label>
@@ -218,8 +301,22 @@ export default function InvoiceDetailPage() {
 
         <div className="mt-3 border-t border-gray-200 pt-3 space-y-1 text-sm">
           <div className="flex justify-between">
-            <span className="text-gray-600">小計</span>
-            <span>¥{subtotal.toLocaleString()}</span>
+            <span className="text-gray-600">明細小計</span>
+            <span>¥{itemsSubtotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600 flex items-center gap-1">
+              特別調整値引き（<input
+                type="number" value={discountDigits} min={1} max={8}
+                onChange={e => setDiscountDigits(Math.max(1, Math.min(8, Number(e.target.value))))}
+                className="w-10 px-1 py-0.5 border border-gray-300 rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />桁）
+            </span>
+            <span className="text-red-600">¥{discountAmount.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">課税対象計</span>
+            <span>¥{adjustedSubtotal.toLocaleString()}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">消費税（10%）</span>
