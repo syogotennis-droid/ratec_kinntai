@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { downloadQuotationExcel } from '@/lib/excel/quotation'
 import ProductSearch from '@/components/ProductSearch'
 import { Product } from '@/lib/supabase/types'
+import { useProfile } from '@/lib/profile-context'
 
 const TAX_RATE = 0.1
 const STATUSES: QuotationStatus[] = ['作成中', '確定', '失注']
@@ -19,6 +20,7 @@ interface FullQuotation extends Quotation {
 export default function QuotationDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const profile = useProfile()
   const [quotation, setQuotation] = useState<FullQuotation | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -103,6 +105,7 @@ export default function QuotationDetailPage() {
         taxAmount,
         totalAmount,
         settings,
+        handlerName: profile?.name,
       })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Excel出力に失敗しました')
