@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Company, Project, DocumentItem, Quotation } from '@/lib/supabase/types'
@@ -13,13 +13,21 @@ interface QuotationWithItems extends Quotation {
   items: DocumentItem[]
 }
 
+interface ProjectWithCompany extends Project {
+  companyData: Company
+}
+
 export default function NewInvoicePage() {
   const router = useRouter()
+  const searchRef = useRef<HTMLDivElement>(null)
+
   const [companies, setCompanies] = useState<Company[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [quotations, setQuotations] = useState<QuotationWithItems[]>([])
 
-  const [companyId, setCompanyId] = useState<number>(0)
+  const [search, setSearch] = useState('')
+  const [showResults, setShowResults] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<ProjectWithCompany | null>(null)
   const [projectId, setProjectId] = useState<number>(0)
   const [quotationId, setQuotationId] = useState<number>(0)
   const [docNo, setDocNo] = useState('')
@@ -41,8 +49,25 @@ export default function NewInvoicePage() {
       setCompanies(c.data ?? [])
       setProjects(p.data ?? [])
     })
+    // Generate today's doc_no
+    generateDocNo().then(setDocNo)
   }, [])
 
+  const generateDocNo = async () => {
+    const today = new Date().toLocaleDateString('sv-SE')
+    const mmdd = today.slice(5, 7) + today.slice(8, 10)
+    const { data } = await createClient()
+      .from('invoices')
+      .select('doc_no')
+      .like('doc_no', `${mmdd}-%`)
+    const maxN = (data ?? []).reduce((max, inv) => {
+      const n = parseInt(inv.doc_no.split('-')[1] ?? '0')
+      return Math.max(max, isNaN(n) ? 0 : n)
+    }, 0)
+    return `${mmdd}-${maxN + 1}`
+  }
+
+  // Load quotations and auto-import latest when project changes
   useEffect(() => {
     if (!projectId) { setQuotations([]); return }
     createClient()
@@ -50,17 +75,54 @@ export default function NewInvoicePage() {
       .select('*, items:quotation_items(*)')
       .eq('project_id', projectId)
       .order('issue_date', { ascending: false })
-      .then(({ data }) => setQuotations((data ?? []) as QuotationWithItems[]))
+      .then(({ data }) => {
+        const qs = (data ?? []) as QuotationWithItems[]
+        setQuotations(qs)
+        if (qs.length > 0) {
+          const latest = qs[0]
+          setQuotationId(latest.id)
+          const sorted = [...(latest.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
+          setItems(sorted.map(({ id: _id, ...rest }) => rest))
+        }
+      })
   }, [projectId])
 
-  const filteredProjects = companyId ? projects.filter(p => p.company_id === companyId) : projects
+  // Click outside to close results
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowResults(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
-  const itemsSubtotal = items.reduce((s, i) => s + i.amount, 0)
-  const divisor = Math.pow(10, discountDigits)
-  const discountAmount = itemsSubtotal > 0 ? -(itemsSubtotal % divisor) : 0
-  const adjustedSubtotal = itemsSubtotal + discountAmount
-  const taxAmount = Math.floor(adjustedSubtotal * TAX_RATE)
-  const totalAmount = adjustedSubtotal + taxAmount
+  const projectsWithCompany: ProjectWithCompany[] = projects
+    .map(p => ({ ...p, companyData: companies.find(c => c.id === p.company_id)! }))
+    .filter(p => p.companyData)
+
+  const filtered = search
+    ? projectsWithCompany.filter(p =>
+        p.name.includes(search) || p.companyData.name.includes(search)
+      )
+    : projectsWithCompany
+
+  // Group by company
+  const grouped = filtered.reduce<Record<number, { company: Company; projs: ProjectWithCompany[] }>>((acc, p) => {
+    if (!acc[p.company_id]) acc[p.company_id] = { company: p.companyData, projs: [] }
+    acc[p.company_id].projs.push(p)
+    return acc
+  }, {})
+
+  const selectProject = (p: ProjectWithCompany) => {
+    setSelectedProject(p)
+    setProjectId(p.id)
+    setSearch('')
+    setShowResults(false)
+    setQuotationId(0)
+    setItems([{ sort_order: 0, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])
+  }
 
   const importFromQuotation = (qId: number) => {
     setQuotationId(qId)
@@ -69,6 +131,13 @@ export default function NewInvoicePage() {
     const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
     setItems(sorted.map(({ id: _id, ...rest }) => rest))
   }
+
+  const itemsSubtotal = items.reduce((s, i) => s + i.amount, 0)
+  const divisor = Math.pow(10, discountDigits)
+  const discountAmount = itemsSubtotal > 0 ? -(itemsSubtotal % divisor) : 0
+  const adjustedSubtotal = itemsSubtotal + discountAmount
+  const taxAmount = Math.floor(adjustedSubtotal * TAX_RATE)
+  const totalAmount = adjustedSubtotal + taxAmount
 
   const updateItem = (idx: number, field: keyof Omit<DocumentItem, 'id'>, value: string | number) => {
     setItems(prev => {
@@ -86,15 +155,17 @@ export default function NewInvoicePage() {
   const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx))
 
   const handleSave = async () => {
-    if (!projectId || !docNo) { setError('工事名と請求書番号を入力してください'); return }
+    if (!projectId) { setError('工事名を選択してください'); return }
     setError(null)
     setSaving(true)
     try {
+      // Re-generate doc_no at save time to ensure uniqueness
+      const finalDocNo = await generateDocNo()
       const supabase = createClient()
       const { data: inv, error: invErr } = await supabase.from('invoices').insert({
         project_id: projectId,
         quotation_id: quotationId || null,
-        doc_no: docNo,
+        doc_no: finalDocNo,
         issue_date: issueDate,
         status: '下書き',
         notes: notes || null,
@@ -125,31 +196,60 @@ export default function NewInvoicePage() {
       </div>
 
       <div className="space-y-3 mb-6">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">取引先</label>
-            <select value={companyId} onChange={e => { setCompanyId(Number(e.target.value)); setProjectId(0); setQuotationId(0); setQuotations([]) }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value={0}>選択してください</option>
-              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">工事名 *</label>
-            <select value={projectId} onChange={e => { setProjectId(Number(e.target.value)); setQuotationId(0) }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value={0}>選択してください</option>
-              {filteredProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+        {/* Project search */}
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">工事名 *</label>
+          <div className="relative" ref={searchRef}>
+            {selectedProject ? (
+              <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                <span className="text-xs text-gray-500">{selectedProject.companyData.name}</span>
+                <span className="text-sm text-gray-900 flex-1">{selectedProject.name}</span>
+                <button onClick={() => { setSelectedProject(null); setProjectId(0); setQuotations([]) }}
+                  className="text-gray-400 hover:text-gray-600 text-xs">×</button>
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setShowResults(true) }}
+                onFocus={() => setShowResults(true)}
+                placeholder="会社名・工事名で検索"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            )}
+            {showResults && !selectedProject && (
+              <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-auto">
+                {Object.values(grouped).length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-gray-400">該当なし</div>
+                ) : (
+                  Object.values(grouped).map(({ company, projs }) => (
+                    <div key={company.id}>
+                      <div className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-gray-50 sticky top-0">
+                        {company.name}
+                      </div>
+                      {projs.map(p => (
+                        <button
+                          key={p.id}
+                          onMouseDown={() => selectProject(p)}
+                          className="w-full text-left px-5 py-2 text-sm text-gray-800 hover:bg-blue-50 transition-colors"
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {quotations.length > 0 && (
+        {/* Quotation selector (if multiple) */}
+        {quotations.length > 1 && (
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">見積書から引き継ぐ</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">引き継ぐ見積書</label>
             <select value={quotationId} onChange={e => importFromQuotation(Number(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value={0}>選択してください</option>
               {quotations.map(q => (
                 <option key={q.id} value={q.id}>
                   {q.doc_no || '番号なし'} {q.issue_date} ¥{q.total_amount.toLocaleString()} [{q.status}]
@@ -158,12 +258,16 @@ export default function NewInvoicePage() {
             </select>
           </div>
         )}
+        {quotations.length === 1 && (
+          <p className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+            見積書 {quotations[0].doc_no || quotations[0].issue_date} から明細を引き継ぎました
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">請求書番号 *</label>
-            <input type="text" value={docNo} onChange={e => setDocNo(e.target.value)} placeholder="INV-2026-001"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className="block text-xs font-medium text-gray-700 mb-1">請求書番号（自動）</label>
+            <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 bg-gray-50">{docNo || '...'}</div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">発行日</label>
