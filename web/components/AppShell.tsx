@@ -11,7 +11,6 @@ import { SidebarContext } from '@/lib/sidebar-context'
 interface NavItem {
   to: string
   label: string
-  icon: string
 }
 
 interface NavGroup {
@@ -22,29 +21,29 @@ interface NavGroup {
 const adminNavGroups: NavGroup[] = [
   {
     items: [
-      { to: '/schedule', label: '勤怠/予定', icon: '🗓️' },
-      { to: '/attendance/admin/sales', label: '売上管理', icon: '💰' },
+      { to: '/schedule', label: '勤怠/予定' },
+      { to: '/attendance/admin/sales', label: '売上管理' },
     ],
   },
   {
     heading: '勤務',
     items: [
-      { to: '/attendance/admin/work-list', label: '勤務管理', icon: '📝' },
-      { to: '/attendance/admin/payroll', label: '給与計算', icon: '💴' },
-      { to: '/attendance/admin/bonuses', label: 'ボーナス管理', icon: '🎁' },
-      { to: '/attendance/admin/employees', label: '従業員管理', icon: '👥' },
+      { to: '/attendance/admin/work-list', label: '勤務管理' },
+      { to: '/attendance/admin/payroll', label: '給与計算' },
+      { to: '/attendance/admin/bonuses', label: 'ボーナス管理' },
+      { to: '/attendance/admin/employees', label: '従業員管理' },
     ],
   },
   {
     heading: '書類',
     items: [
-      { to: '/orders/companies', label: '会社管理', icon: '🏢' },
-      { to: '/orders/projects', label: '案件管理', icon: '📁' },
-      { to: '/orders/quotations', label: '見積書', icon: '📋' },
-      { to: '/orders/invoices', label: '請求書', icon: '📄' },
-      { to: '/orders/purchase-orders', label: '発注書', icon: '🛒' },
-      { to: '/orders/suppliers', label: '仕入先', icon: '🏭' },
-      { to: '/orders/products', label: '商品マスター', icon: '📦' },
+      { to: '/orders/companies', label: '会社管理' },
+      { to: '/orders/projects', label: '案件管理' },
+      { to: '/orders/quotations', label: '見積書' },
+      { to: '/orders/invoices', label: '請求書' },
+      { to: '/orders/purchase-orders', label: '発注書' },
+      { to: '/orders/suppliers', label: '仕入先' },
+      { to: '/orders/products', label: '商品マスター' },
     ],
   },
 ]
@@ -52,19 +51,19 @@ const adminNavGroups: NavGroup[] = [
 const employeeNavGroups: NavGroup[] = [
   {
     items: [
-      { to: '/schedule', label: '勤怠/予定', icon: '🗓️' },
-      { to: '/attendance/sales', label: '売上管理', icon: '💰' },
+      { to: '/schedule', label: '勤怠/予定' },
+      { to: '/attendance/sales', label: '売上管理' },
     ],
   },
   {
     heading: '書類',
     items: [
-      { to: '/orders/companies', label: '会社管理', icon: '🏢' },
-      { to: '/orders/projects', label: '案件管理', icon: '📁' },
-      { to: '/orders/quotations', label: '見積書', icon: '📋' },
-      { to: '/orders/invoices', label: '請求書', icon: '📄' },
-      { to: '/orders/purchase-orders', label: '発注書', icon: '🛒' },
-      { to: '/orders/suppliers', label: '仕入先', icon: '🏭' },
+      { to: '/orders/companies', label: '会社管理' },
+      { to: '/orders/projects', label: '案件管理' },
+      { to: '/orders/quotations', label: '見積書' },
+      { to: '/orders/invoices', label: '請求書' },
+      { to: '/orders/purchase-orders', label: '発注書' },
+      { to: '/orders/suppliers', label: '仕入先' },
     ],
   },
 ]
@@ -106,7 +105,6 @@ export default function AppShell({ profile, children }: Props) {
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   }`}
                 >
-                  <span className="text-base">{item.icon}</span>
                   {item.label}
                 </Link>
               )
@@ -128,7 +126,6 @@ export default function AppShell({ profile, children }: Props) {
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
         >
-          <span>🚪</span>
           ログアウト
         </button>
       </div>
