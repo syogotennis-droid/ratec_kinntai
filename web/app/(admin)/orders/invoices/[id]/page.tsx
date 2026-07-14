@@ -199,7 +199,7 @@ export default function InvoiceDetailPage() {
     setSaving(true)
     try {
       const supabase = createClient()
-      await supabase.from('invoices').update({
+      const { error: updateErr } = await supabase.from('invoices').update({
         project_id: projectId,
         quotation_id: quotationId || null,
         doc_no: docNo,
@@ -211,11 +211,14 @@ export default function InvoiceDetailPage() {
         total_amount: totalAmount,
         discount_digits: discountDigits,
       }).eq('id', id)
-      await supabase.from('invoice_items').delete().eq('invoice_id', Number(id))
+      if (updateErr) throw new Error(updateErr.message)
+      const { error: deleteErr } = await supabase.from('invoice_items').delete().eq('invoice_id', Number(id))
+      if (deleteErr) throw new Error(deleteErr.message)
       if (items.length > 0) {
-        await supabase.from('invoice_items').insert(
+        const { error: insertErr } = await supabase.from('invoice_items').insert(
           items.map((item, i) => ({ ...item, invoice_id: Number(id), sort_order: i }))
         )
+        if (insertErr) throw new Error(insertErr.message)
       }
       router.push('/orders/invoices')
     } catch (e: unknown) {
