@@ -52,7 +52,7 @@ export default function PurchaseOrdersPage() {
       {loading ? (
         <div className="text-sm text-gray-500 py-8 text-center">読み込み中...</div>
       ) : displayed.length === 0 ? (
-        <div className="text-sm text-gray-500 py-8 text-center">発注書がありません</div>
+        <div className="text-sm text-gray-500 py-8 text-center">注文書がありません</div>
       ) : (
         <div className="space-y-2">
           {displayed.map(o => (

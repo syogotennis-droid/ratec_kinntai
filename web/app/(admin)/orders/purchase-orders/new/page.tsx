@@ -1,21 +1,46 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Company, Project, Supplier, DocumentItem, Settings } from '@/lib/supabase/types'
+import { Company, DocumentItem, Settings, Supplier } from '@/lib/supabase/types'
 import Link from 'next/link'
 
 const TAX_RATE = 0.1
 
+interface ProjectWithCompany {
+  id: number
+  name: string
+  company_id: number
+  companyData: Company
+}
+
+interface QuotationWithItems {
+  id: number
+  doc_no: string
+  issue_date: string
+  items?: DocumentItem[]
+}
+
+async function generateDocNo() {
+  const today = new Date().toLocaleDateString('sv-SE')
+  const mmdd = today.slice(5, 7) + today.slice(8, 10)
+  const { data } = await createClient().from('purchase_orders').select('doc_no').like('doc_no', `${mmdd}-%`)
+  const maxN = (data ?? []).reduce((max, po) => {
+    const n = parseInt(po.doc_no.split('-')[1] ?? '0')
+    return Math.max(max, isNaN(n) ? 0 : n)
+  }, 0)
+  return `${mmdd}-${maxN + 1}`
+}
+
 export default function NewPurchaseOrderPage() {
   const router = useRouter()
-  const [companies, setCompanies] = useState<Company[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
+  const [allProjects, setAllProjects] = useState<ProjectWithCompany[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [companyId, setCompanyId] = useState<number>(0)
+
   const [projectId, setProjectId] = useState<number>(0)
+  const [projectName, setProjectName] = useState('')
   const [supplierId, setSupplierId] = useState<number>(0)
   const [docNo, setDocNo] = useState('')
   const [issueDate, setIssueDate] = useState(new Date().toLocaleDateString('sv-SE'))
@@ -25,19 +50,31 @@ export default function NewPurchaseOrderPage() {
   const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([
     { sort_order: 0, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }
   ])
+
+  const [quotations, setQuotations] = useState<QuotationWithItems[]>([])
+  const [quotationId, setQuotationId] = useState<number | null>(null)
+
+  const [searchText, setSearchText] = useState('')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
     Promise.all([
-      supabase.from('companies').select('*').eq('is_active', true).order('name'),
-      supabase.from('projects').select('*').order('name'),
+      supabase.from('projects').select('*, companies(*)').eq('status', 'active').order('name'),
       supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
       supabase.from('settings').select('*').single(),
-    ]).then(([c, p, s, st]) => {
-      setCompanies(c.data ?? [])
-      setProjects(p.data ?? [])
+    ]).then(([p, s, st]) => {
+      const projects = (p.data ?? []).map((proj: any) => ({
+        id: proj.id,
+        name: proj.name,
+        company_id: proj.company_id,
+        companyData: proj.companies as Company,
+      }))
+      setAllProjects(projects)
       setSuppliers(s.data ?? [])
       if (st.data) {
         setSettings(st.data)
@@ -47,7 +84,66 @@ export default function NewPurchaseOrderPage() {
     })
   }, [])
 
-  const filteredProjects = companyId ? projects.filter(p => p.company_id === companyId) : projects
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    if (!projectId) { setQuotations([]); setQuotationId(null); return }
+    createClient()
+      .from('quotations')
+      .select('*, items:quotation_items(*)')
+      .eq('project_id', projectId)
+      .order('issue_date', { ascending: false })
+      .then(({ data }) => {
+        const qs = (data ?? []) as QuotationWithItems[]
+        setQuotations(qs)
+        if (qs.length > 0) {
+          const latest = qs[0]
+          setQuotationId(latest.id)
+          importFromQuotation(latest)
+        }
+      })
+  }, [projectId])
+
+  const importFromQuotation = (q: QuotationWithItems) => {
+    const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
+    setItems(sorted.map(item => ({
+      sort_order: item.sort_order,
+      name: item.name,
+      spec: item.spec ?? '',
+      qty: item.qty,
+      unit: item.unit,
+      unit_price: 0,
+      amount: 0,
+    })))
+  }
+
+  const filtered = searchText
+    ? allProjects.filter(p =>
+        p.name.includes(searchText) || p.companyData?.name.includes(searchText)
+      )
+    : allProjects
+
+  const grouped = filtered.reduce<Record<number, { company: Company; projs: ProjectWithCompany[] }>>((acc, p) => {
+    if (!acc[p.company_id]) acc[p.company_id] = { company: p.companyData, projs: [] }
+    acc[p.company_id].projs.push(p)
+    return acc
+  }, {})
+
+  const selectProject = (p: ProjectWithCompany) => {
+    setProjectId(p.id)
+    setProjectName(p.name)
+    setSearchText(p.name)
+    setDropdownOpen(false)
+  }
+
   const subtotal = items.reduce((s, i) => s + i.amount, 0)
   const taxAmount = Math.floor(subtotal * TAX_RATE)
   const totalAmount = subtotal + taxAmount
@@ -63,15 +159,17 @@ export default function NewPurchaseOrderPage() {
   }
 
   const handleSave = async () => {
-    if (!projectId || !docNo || !supplierId) { setError('工事名・発注書番号・仕入先を入力してください'); return }
+    if (!projectId) { setError('工事名を選択してください'); return }
     setError(null)
     setSaving(true)
     try {
+      const generatedDocNo = await generateDocNo()
       const supabase = createClient()
       const { data: po, error: poErr } = await supabase.from('purchase_orders').insert({
         project_id: projectId,
-        supplier_id: supplierId,
-        doc_no: docNo,
+        quotation_id: quotationId || null,
+        supplier_id: supplierId || null,
+        doc_no: generatedDocNo,
         issue_date: issueDate,
         delivery_postal: deliveryPostal,
         delivery_address: deliveryAddress,
@@ -80,9 +178,21 @@ export default function NewPurchaseOrderPage() {
         tax_amount: taxAmount,
         total_amount: totalAmount,
       }).select().single()
-      if (poErr) throw poErr
+      if (poErr) throw new Error(poErr.message)
       if (items.length > 0) {
-        await supabase.from('purchase_order_items').insert(items.map((item, i) => ({ ...item, purchase_order_id: po.id, sort_order: i })))
+        const { error: itemsErr } = await supabase.from('purchase_order_items').insert(
+          items.map((item, i) => ({
+            purchase_order_id: po.id,
+            sort_order: i,
+            name: item.name,
+            spec: item.spec ?? '',
+            qty: item.qty,
+            unit: item.unit,
+            unit_price: item.unit_price,
+            amount: item.amount,
+          }))
+        )
+        if (itemsErr) throw new Error(itemsErr.message)
       }
       router.push(`/orders/purchase-orders/${po.id}`)
     } catch (e: unknown) {
@@ -96,56 +206,64 @@ export default function NewPurchaseOrderPage() {
     <div className="p-4 max-w-2xl">
       <div className="flex items-center gap-3 mb-4">
         <Link href="/orders/purchase-orders" className="text-sm text-blue-600 hover:underline">← 一覧</Link>
-        <h1 className="text-sm font-bold text-gray-900">新規発注書</h1>
+        <h1 className="text-sm font-bold text-gray-900">新規注文書</h1>
       </div>
       <div className="space-y-3 mb-6">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">取引先</label>
-            <select value={companyId} onChange={e => { setCompanyId(Number(e.target.value)); setProjectId(0) }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value={0}>選択してください</option>
-              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">工事名 *</label>
-            <select value={projectId} onChange={e => setProjectId(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value={0}>選択してください</option>
-              {filteredProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">案件名 *</label>
+          <div ref={searchRef} className="relative">
+            <input
+              type="text"
+              value={searchText}
+              onChange={e => { setSearchText(e.target.value); setDropdownOpen(true); if (!e.target.value) { setProjectId(0); setProjectName('') } }}
+              onFocus={() => setDropdownOpen(true)}
+              placeholder="会社名・工事名で検索"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {dropdownOpen && Object.keys(grouped).length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {Object.values(grouped).map(({ company, projs }) => (
+                  <div key={company?.id ?? 0}>
+                    <div className="px-3 py-1 text-xs font-semibold text-gray-400 bg-gray-50 sticky top-0">{company?.name ?? '不明'}</div>
+                    {projs.map(p => (
+                      <button key={p.id} onMouseDown={() => selectProject(p)}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 ${projectId === p.id ? 'text-blue-600 font-medium' : 'text-gray-800'}`}>
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+        {quotations.length > 1 && (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">見積書</label>
+            <select value={quotationId ?? ''} onChange={e => {
+              const id = Number(e.target.value)
+              setQuotationId(id)
+              const q = quotations.find(q => q.id === id)
+              if (q) importFromQuotation(q)
+            }} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {quotations.map(q => <option key={q.id} value={q.id}>{q.doc_no} ({q.issue_date})</option>)}
+            </select>
+          </div>
+        )}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">仕入先 *</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">仕入先</label>
           <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value={0}>選択してください</option>
+            <option value={0}>なし</option>
             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">発注書番号 *</label>
-            <input type="text" value={docNo} onChange={e => setDocNo(e.target.value)} placeholder="PO-2026-001"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">発注日</label>
             <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">納品先郵便番号</label>
-          <input type="text" value={deliveryPostal} onChange={e => setDeliveryPostal(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">納品先住所</label>
-          <input type="text" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">備考</label>
@@ -156,7 +274,8 @@ export default function NewPurchaseOrderPage() {
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-bold text-gray-700">明細</h2>
-          <button onClick={() => setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
+          <button onClick={() => setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])}
+            className="text-xs text-blue-600 hover:underline">+ 行追加</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[500px]">

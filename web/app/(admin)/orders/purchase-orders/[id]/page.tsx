@@ -1,28 +1,63 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { PurchaseOrder, DocumentItem, Project, Supplier } from '@/lib/supabase/types'
+import { Company, DocumentItem, Settings, Supplier } from '@/lib/supabase/types'
 import Link from 'next/link'
+import { downloadPurchaseOrderExcel } from '@/lib/excel/purchase-order'
 
 const TAX_RATE = 0.1
 
-interface FullPO extends PurchaseOrder {
+interface ProjectWithCompany {
+  id: number
+  name: string
+  company_id: number
+  companyData: Company
+}
+
+interface QuotationWithItems {
+  id: number
+  doc_no: string
+  issue_date: string
+  items?: DocumentItem[]
+}
+
+interface FullPO {
+  id: number
+  project_id: number
+  quotation_id: number | null
+  supplier_id: number | null
+  doc_no: string
+  issue_date: string
+  delivery_postal: string
+  delivery_address: string
+  notes: string | null
+  subtotal: number
+  tax_amount: number
+  total_amount: number
   items: DocumentItem[]
+  project: {
+    id: number
+    name: string
+    company_id: number
+    companies: { name: string } | null
+  } | null
 }
 
 export default function PurchaseOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const [po, setPo] = useState<FullPO | null>(null)
-  const [projects, setProjects] = useState<Project[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [allProjects, setAllProjects] = useState<ProjectWithCompany[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [settings, setSettings] = useState<Settings | null>(null)
+
   const [projectId, setProjectId] = useState<number>(0)
+  const [projectName, setProjectName] = useState('')
   const [supplierId, setSupplierId] = useState<number>(0)
   const [docNo, setDocNo] = useState('')
   const [issueDate, setIssueDate] = useState('')
@@ -31,26 +66,46 @@ export default function PurchaseOrderDetailPage() {
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([])
 
+  const [quotations, setQuotations] = useState<QuotationWithItems[]>([])
+  const [quotationId, setQuotationId] = useState<number | null>(null)
+
+  const [searchText, setSearchText] = useState('')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+
   const fetchData = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
-    const [poRes, projectsRes, suppliersRes] = await Promise.all([
-      supabase.from('purchase_orders').select('*, purchase_order_items(*)').eq('id', id).single(),
-      supabase.from('projects').select('*').order('name'),
+    const [poRes, projectsRes, suppliersRes, settingsRes] = await Promise.all([
+      supabase.from('purchase_orders')
+        .select('*, items:purchase_order_items(*), project:projects(id,name,company_id,companies(name))')
+        .eq('id', id).single(),
+      supabase.from('projects').select('*, companies(*)').eq('status', 'active').order('name'),
       supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
+      supabase.from('settings').select('*').single(),
     ])
     const data = poRes.data as FullPO | null
-    setPo(data)
-    setProjects(projectsRes.data ?? [])
+    const projects = (projectsRes.data ?? []).map((proj: any) => ({
+      id: proj.id,
+      name: proj.name,
+      company_id: proj.company_id,
+      companyData: proj.companies as Company,
+    }))
+    setAllProjects(projects)
     setSuppliers(suppliersRes.data ?? [])
+    if (settingsRes.data) setSettings(settingsRes.data)
     if (data) {
       setProjectId(data.project_id)
+      const proj = projects.find(p => p.id === data.project_id)
+      setProjectName(proj?.name ?? data.project?.name ?? '')
+      setSearchText(proj?.name ?? data.project?.name ?? '')
       setSupplierId(data.supplier_id ?? 0)
       setDocNo(data.doc_no)
       setIssueDate(data.issue_date)
       setDeliveryPostal(data.delivery_postal)
       setDeliveryAddress(data.delivery_address)
       setNotes(data.notes ?? '')
+      setQuotationId(data.quotation_id)
       const sorted = [...(data.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
       setItems(sorted.map(({ id: _id, ...rest }) => rest))
     }
@@ -59,7 +114,62 @@ export default function PurchaseOrderDetailPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const subtotal = items.reduce((s, item) => s + item.amount, 0)
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    if (!projectId) { setQuotations([]); return }
+    createClient()
+      .from('quotations')
+      .select('*, items:quotation_items(*)')
+      .eq('project_id', projectId)
+      .order('issue_date', { ascending: false })
+      .then(({ data }) => {
+        setQuotations((data ?? []) as QuotationWithItems[])
+      })
+  }, [projectId])
+
+  const importFromQuotation = (q: QuotationWithItems) => {
+    const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
+    setItems(sorted.map(item => ({
+      sort_order: item.sort_order,
+      name: item.name,
+      spec: item.spec ?? '',
+      qty: item.qty,
+      unit: item.unit,
+      unit_price: 0,
+      amount: 0,
+    })))
+  }
+
+  const filtered = searchText
+    ? allProjects.filter(p =>
+        p.name.includes(searchText) || p.companyData?.name.includes(searchText)
+      )
+    : allProjects
+
+  const grouped = filtered.reduce<Record<number, { company: Company; projs: ProjectWithCompany[] }>>((acc, p) => {
+    if (!acc[p.company_id]) acc[p.company_id] = { company: p.companyData, projs: [] }
+    acc[p.company_id].projs.push(p)
+    return acc
+  }, {})
+
+  const selectProject = (p: ProjectWithCompany) => {
+    setProjectId(p.id)
+    setProjectName(p.name)
+    setSearchText(p.name)
+    setDropdownOpen(false)
+    setQuotationId(null)
+  }
+
+  const subtotal = items.reduce((s, i) => s + i.amount, 0)
   const taxAmount = Math.floor(subtotal * TAX_RATE)
   const totalAmount = subtotal + taxAmount
 
@@ -78,8 +188,9 @@ export default function PurchaseOrderDetailPage() {
     setSaving(true)
     try {
       const supabase = createClient()
-      await supabase.from('purchase_orders').update({
+      const { error: updateErr } = await supabase.from('purchase_orders').update({
         project_id: projectId,
+        quotation_id: quotationId || null,
         supplier_id: supplierId || null,
         doc_no: docNo,
         issue_date: issueDate,
@@ -90,11 +201,24 @@ export default function PurchaseOrderDetailPage() {
         tax_amount: taxAmount,
         total_amount: totalAmount,
       }).eq('id', id)
-      await supabase.from('purchase_order_items').delete().eq('purchase_order_id', Number(id))
+      if (updateErr) throw new Error(updateErr.message)
+      const { error: deleteErr } = await supabase.from('purchase_order_items').delete().eq('purchase_order_id', Number(id))
+      if (deleteErr) throw new Error(deleteErr.message)
       if (items.length > 0) {
-        await supabase.from('purchase_order_items').insert(items.map((item, i) => ({ ...item, purchase_order_id: Number(id), sort_order: i })))
+        const { error: insertErr } = await supabase.from('purchase_order_items').insert(
+          items.map((item, i) => ({
+            purchase_order_id: Number(id),
+            sort_order: i,
+            name: item.name,
+            spec: item.spec ?? '',
+            qty: item.qty,
+            unit: item.unit,
+            unit_price: item.unit_price,
+            amount: item.amount,
+          }))
+        )
+        if (insertErr) throw new Error(insertErr.message)
       }
-      router.push('/orders/purchase-orders')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '保存に失敗しました')
     } finally {
@@ -114,37 +238,83 @@ export default function PurchaseOrderDetailPage() {
     }
   }
 
+  const handleExcel = async () => {
+    const supplierObj = suppliers.find(s => s.id === supplierId)
+    await downloadPurchaseOrderExcel({
+      docNo,
+      issueDate,
+      supplierName: supplierObj?.name ?? '',
+      projectName,
+      notes,
+      items,
+      settings,
+    })
+  }
+
   if (loading) return <div className="p-6 text-sm text-gray-500">読み込み中...</div>
-  if (!po) return <div className="p-6 text-sm text-gray-500">見つかりません</div>
 
   return (
     <div className="p-4 max-w-2xl">
       <div className="flex items-center gap-3 mb-4">
         <Link href="/orders/purchase-orders" className="text-sm text-blue-600 hover:underline">← 一覧</Link>
-        <h1 className="text-sm font-bold text-gray-900 flex-1">発注書</h1>
+        <h1 className="text-sm font-bold text-gray-900 flex-1">注文書</h1>
+        <button onClick={handleExcel} className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg">Excel出力</button>
         <button onClick={handleDelete} disabled={saving} className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg">削除</button>
       </div>
       <div className="space-y-3 mb-6">
-        <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">案件名</label>
+          <div ref={searchRef} className="relative">
+            <input
+              type="text"
+              value={searchText}
+              onChange={e => { setSearchText(e.target.value); setDropdownOpen(true); if (!e.target.value) { setProjectId(0); setProjectName('') } }}
+              onFocus={() => setDropdownOpen(true)}
+              placeholder="会社名・工事名で検索"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {dropdownOpen && Object.keys(grouped).length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {Object.values(grouped).map(({ company, projs }) => (
+                  <div key={company?.id ?? 0}>
+                    <div className="px-3 py-1 text-xs font-semibold text-gray-400 bg-gray-50 sticky top-0">{company?.name ?? '不明'}</div>
+                    {projs.map(p => (
+                      <button key={p.id} onMouseDown={() => selectProject(p)}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 ${projectId === p.id ? 'text-blue-600 font-medium' : 'text-gray-800'}`}>
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        {quotations.length > 0 && (
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">工事名</label>
-            <select value={projectId} onChange={e => setProjectId(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <label className="block text-xs font-medium text-gray-700 mb-1">見積書から読み込み</label>
+            <select value={quotationId ?? ''} onChange={e => {
+              const qid = Number(e.target.value)
+              setQuotationId(qid)
+              const q = quotations.find(q => q.id === qid)
+              if (q) importFromQuotation(q)
+            }} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">選択してください</option>
+              {quotations.map(q => <option key={q.id} value={q.id}>{q.doc_no} ({q.issue_date})</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">仕入先</label>
-            <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value={0}>なし</option>
-              {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
+        )}
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">仕入先</label>
+          <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value={0}>なし</option>
+            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">発注書番号</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">注文書番号</label>
             <input type="text" value={docNo} onChange={e => setDocNo(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
@@ -155,16 +325,6 @@ export default function PurchaseOrderDetailPage() {
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">納品先郵便番号</label>
-          <input type="text" value={deliveryPostal} onChange={e => setDeliveryPostal(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">納品先住所</label>
-          <input type="text" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">備考</label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
@@ -173,7 +333,8 @@ export default function PurchaseOrderDetailPage() {
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-bold text-gray-700">明細</h2>
-          <button onClick={() => setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
+          <button onClick={() => setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])}
+            className="text-xs text-blue-600 hover:underline">+ 行追加</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[500px]">
