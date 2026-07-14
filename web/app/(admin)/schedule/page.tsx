@@ -688,7 +688,7 @@ function TimePicker({ value, onChange, label }: { value: string; onChange: (v: s
       <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
       <div className="flex gap-1">
         <select value={ampm} onChange={e => update(e.target.value, hour, minute)}
-          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="AM">午前</option>
           <option value="PM">午後</option>
         </select>
@@ -698,7 +698,7 @@ function TimePicker({ value, onChange, label }: { value: string; onChange: (v: s
           {[12,1,2,3,4,5,6,7,8,9,10,11].map(h => <option key={h} value={String(h)}>{h}時</option>)}
         </select>
         <select value={minute} onChange={e => update(ampm, hour, e.target.value)}
-          className="w-16 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           {['00','15','30','45'].map(m => <option key={m} value={m}>{m}分</option>)}
         </select>
       </div>
