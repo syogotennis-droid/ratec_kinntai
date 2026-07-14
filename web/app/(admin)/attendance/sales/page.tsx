@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { SalesRecord } from '@/lib/supabase/types'
+import { getSalesPhotoSummary } from '@/lib/sales-photos'
 import SalesClient from './SalesClient'
 
 export default async function MySalesPage() {
@@ -21,20 +22,14 @@ export default async function MySalesPage() {
     .order('record_date', { ascending: false })
   const records: SalesRecord[] = data ?? []
 
-  const photoCounts: Record<number, number> = {}
-  if (records.length > 0) {
-    const { data: photos } = await supabase
-      .from('sales_photos')
-      .select('id, sales_record_id')
-      .in('sales_record_id', records.map(r => r.id))
-    for (const p of photos ?? []) photoCounts[p.sales_record_id] = (photoCounts[p.sales_record_id] ?? 0) + 1
-  }
+  const { counts: photoCounts, thumbs: photoThumbs } = await getSalesPhotoSummary(supabase, records.map(r => r.id))
 
   return (
     <SalesClient
       initialYearMonth={yearMonth}
       initialRecords={records}
       initialPhotoCounts={photoCounts}
+      initialPhotoThumbs={photoThumbs}
     />
   )
 }

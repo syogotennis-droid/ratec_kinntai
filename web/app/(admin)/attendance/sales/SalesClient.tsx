@@ -10,15 +10,17 @@ interface SalesClientProps {
   initialYearMonth: string
   initialRecords: SalesRecord[]
   initialPhotoCounts: Record<number, number>
+  initialPhotoThumbs: Record<number, string>
 }
 
-export default function SalesClient({ initialYearMonth, initialRecords, initialPhotoCounts }: SalesClientProps) {
+export default function SalesClient({ initialYearMonth, initialRecords, initialPhotoCounts, initialPhotoThumbs }: SalesClientProps) {
   const profile = useProfile()
   const openSidebar = useSidebar()
   const userId = profile.id
   const [yearMonth, setYearMonth] = useState(initialYearMonth)
   const [records, setRecords] = useState<SalesRecord[]>(initialRecords)
   const [photoCounts, setPhotoCounts] = useState<Record<number, number>>(initialPhotoCounts)
+  const [photoThumbs, setPhotoThumbs] = useState<Record<number, string>>(initialPhotoThumbs)
   const [loading, setLoading] = useState(false)
   const [modal, setModal] = useState<{ record?: SalesRecord | null; date?: string } | null>(null)
 
@@ -38,15 +40,27 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
     setRecords(recs)
     setLoading(false)
 
-    if (recs.length === 0) return
+    if (recs.length === 0) { setPhotoCounts({}); setPhotoThumbs({}); return }
     const { data: photos } = await supabase
       .from('sales_photos')
-      .select('id, sales_record_id')
+      .select('sales_record_id, storage_path, created_at')
       .in('sales_record_id', recs.map(r => r.id))
+      .order('created_at', { ascending: true })
     if (!photos) return
     const counts: Record<number, number> = {}
-    for (const p of photos) counts[p.sales_record_id] = (counts[p.sales_record_id] ?? 0) + 1
+    const firstPathByRecord: Record<number, string> = {}
+    for (const p of photos) {
+      counts[p.sales_record_id] = (counts[p.sales_record_id] ?? 0) + 1
+      if (!(p.sales_record_id in firstPathByRecord)) firstPathByRecord[p.sales_record_id] = p.storage_path
+    }
     setPhotoCounts(counts)
+
+    const entries = Object.entries(firstPathByRecord)
+    if (entries.length === 0) { setPhotoThumbs({}); return }
+    const { data: signed } = await supabase.storage.from('sales-photos').createSignedUrls(entries.map(([, path]) => path), 3600)
+    const thumbs: Record<number, string> = {}
+    signed?.forEach((s, i) => { if (s.signedUrl) thumbs[Number(entries[i][0])] = s.signedUrl })
+    setPhotoThumbs(thumbs)
   }, [userId, yearMonth])
 
   const didMount = useRef(false)
@@ -113,13 +127,17 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
               onClick={() => setModal({ record: r })}
               className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
             >
-              {photoCounts[r.id] ? (
-                <div className="flex flex-col items-center shrink-0 text-blue-500">
-                  <span className="text-lg">📷</span>
-                  <span className="text-xs font-medium">{photoCounts[r.id]}</span>
+              {photoThumbs[r.id] ? (
+                <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                  <img src={photoThumbs[r.id]} alt="" className="w-full h-full object-cover" />
+                  {photoCounts[r.id] > 1 && (
+                    <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] leading-none px-1 py-0.5 rounded-tl">
+                      {photoCounts[r.id]}
+                    </span>
+                  )}
                 </div>
               ) : (
-                <div className="w-6 shrink-0" />
+                <div className="w-10 shrink-0" />
               )}
               <div className="w-12 text-xs text-gray-500 shrink-0">
                 {r.record_date.slice(5).replace('-', '/')}
