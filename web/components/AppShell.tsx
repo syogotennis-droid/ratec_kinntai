@@ -43,7 +43,6 @@ const adminNavGroups: NavGroup[] = [
       { to: '/orders/purchase-orders', label: '注文書' },
       { to: '/orders/companies', label: '取引先管理' },
       { to: '/orders/suppliers', label: '仕入先管理' },
-      { to: '/orders/products', label: '商品マスター' },
     ],
   },
 ]
