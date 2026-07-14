@@ -139,7 +139,10 @@ export default function InvoiceDetailPage() {
     const q = quotations.find(q => q.id === qId)
     if (!q) return
     const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
-    setItems(sorted.map(({ id: _id, ...rest }) => rest))
+    setItems(sorted.map(item => ({
+      sort_order: item.sort_order, name: item.name, spec: item.spec ?? '',
+      qty: item.qty, unit: item.unit, unit_price: item.unit_price, amount: item.amount,
+    })))
   }
 
   const itemsSubtotal = items.reduce((s, item) => s + item.amount, 0)
@@ -216,7 +219,11 @@ export default function InvoiceDetailPage() {
       if (deleteErr) throw new Error(deleteErr.message)
       if (items.length > 0) {
         const { error: insertErr } = await supabase.from('invoice_items').insert(
-          items.map((item, i) => ({ ...item, invoice_id: Number(id), sort_order: i }))
+          items.map((item, i) => ({
+            invoice_id: Number(id), sort_order: i,
+            name: item.name, spec: item.spec ?? '', qty: item.qty,
+            unit: item.unit, unit_price: item.unit_price, amount: item.amount,
+          }))
         )
         if (insertErr) throw new Error(insertErr.message)
       }

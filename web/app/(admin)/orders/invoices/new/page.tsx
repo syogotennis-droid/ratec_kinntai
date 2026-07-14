@@ -82,7 +82,10 @@ export default function NewInvoicePage() {
           const latest = qs[0]
           setQuotationId(latest.id)
           const sorted = [...(latest.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
-          setItems(sorted.map(({ id: _id, ...rest }) => rest))
+          setItems(sorted.map(item => ({
+            sort_order: item.sort_order, name: item.name, spec: item.spec ?? '',
+            qty: item.qty, unit: item.unit, unit_price: item.unit_price, amount: item.amount,
+          })))
         }
       })
   }, [projectId])
@@ -129,7 +132,10 @@ export default function NewInvoicePage() {
     const q = quotations.find(q => q.id === qId)
     if (!q) return
     const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
-    setItems(sorted.map(({ id: _id, ...rest }) => rest))
+    setItems(sorted.map(item => ({
+      sort_order: item.sort_order, name: item.name, spec: item.spec ?? '',
+      qty: item.qty, unit: item.unit, unit_price: item.unit_price, amount: item.amount,
+    })))
   }
 
   const itemsSubtotal = items.reduce((s, i) => s + i.amount, 0)
@@ -176,9 +182,14 @@ export default function NewInvoicePage() {
       }).select().single()
       if (invErr) throw invErr
       if (items.length > 0) {
-        await supabase.from('invoice_items').insert(
-          items.map((item, i) => ({ ...item, invoice_id: inv.id, sort_order: i }))
+        const { error: itemsErr } = await supabase.from('invoice_items').insert(
+          items.map((item, i) => ({
+            invoice_id: inv.id, sort_order: i,
+            name: item.name, spec: item.spec ?? '', qty: item.qty,
+            unit: item.unit, unit_price: item.unit_price, amount: item.amount,
+          }))
         )
+        if (itemsErr) throw new Error(itemsErr.message)
       }
       router.push(`/orders/invoices/${inv.id}`)
     } catch (e: unknown) {
