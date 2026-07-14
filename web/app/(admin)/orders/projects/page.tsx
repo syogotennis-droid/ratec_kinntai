@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Project, Company, ProjectStatus } from '@/lib/supabase/types'
+import { useSidebar } from '@/lib/sidebar-context'
 
 interface ProjectWithCompany extends Project {
   companies?: { name: string } | null
@@ -21,6 +22,7 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
 }
 
 export default function ProjectsPage() {
+  const openSidebar = useSidebar()
   const [projects, setProjects] = useState<ProjectWithCompany[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,6 +52,11 @@ export default function ProjectsPage() {
   return (
     <div className="p-4">
       <div className="flex items-center gap-2 mb-3">
+        <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="案件名・会社名で検索"
           className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <button onClick={() => setShowAdd(true)}

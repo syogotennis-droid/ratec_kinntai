@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Company, CompanyContact } from '@/lib/supabase/types'
+import { useSidebar } from '@/lib/sidebar-context'
 
 export default function CompaniesPage() {
+  const openSidebar = useSidebar()
   const [companies, setCompanies] = useState<Company[]>([])
   const [loading, setLoading] = useState(true)
   const [editCompany, setEditCompany] = useState<Company | null>(null)
@@ -28,6 +30,11 @@ export default function CompaniesPage() {
   return (
     <div className="p-4">
       <div className="flex items-center gap-2 mb-4">
+        <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
         <input
           type="text"
           value={search}
