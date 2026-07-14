@@ -55,6 +55,7 @@ export default function PurchaseOrderDetailPage() {
   const [allProjects, setAllProjects] = useState<ProjectWithCompany[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [staffName, setStaffName] = useState('')
 
   const [projectId, setProjectId] = useState<number>(0)
   const [projectName, setProjectName] = useState('')
@@ -76,6 +77,11 @@ export default function PurchaseOrderDetailPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).single()
+      if (profile?.name) setStaffName(profile.name)
+    }
     const [poRes, projectsRes, suppliersRes, settingsRes] = await Promise.all([
       supabase.from('purchase_orders')
         .select('*, items:purchase_order_items(*), project:projects(id,name,company_id,companies(name))')
@@ -247,6 +253,7 @@ export default function PurchaseOrderDetailPage() {
       projectName,
       notes,
       items,
+      staffName,
     })
   }
 

@@ -8,6 +8,7 @@ export interface PurchaseOrderExcelData {
   projectName: string
   notes: string
   items: Omit<DocumentItem, 'id'>[]
+  staffName?: string
 }
 
 const ITEM_START_ROW = 22
@@ -36,6 +37,9 @@ export async function downloadPurchaseOrderExcel(data: PurchaseOrderExcelData) {
 
   // 仕入先（宛先）
   ws.getCell('A8').value = data.supplierName ? data.supplierName + '　　御中' : ''
+
+  // 担当者名
+  if (data.staffName) ws.getCell('L18').value = data.staffName
 
   // 納期日欄クリア
   ws.getCell('B14').value = null
