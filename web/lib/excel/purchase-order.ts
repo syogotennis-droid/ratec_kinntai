@@ -32,7 +32,7 @@ export async function downloadPurchaseOrderExcel(data: PurchaseOrderExcelData) {
   const XLSX = await import('xlsx')
 
   const templateBytes = Uint8Array.from(atob(PURCHASE_ORDER_TEMPLATE_B64), c => c.charCodeAt(0))
-  const wb = XLSX.read(templateBytes, { type: 'array', cellStyles: true })
+  const wb = XLSX.read(templateBytes, { type: 'array', cellStyles: true, cellNF: true })
   const ws = wb.Sheets[wb.SheetNames[0]]
 
   // 注文書番号
@@ -78,12 +78,12 @@ export async function downloadPurchaseOrderExcel(data: PurchaseOrderExcelData) {
   setStr(ws, 'A37', data.notes ? '備考：' + data.notes : '備考：')
   setStr(ws, 'A38', '')
 
-  const wbout = XLSX.write(wb, { bookType: 'xls', type: 'array', cellStyles: true })
-  const blob = new Blob([wbout], { type: 'application/vnd.ms-excel' })
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true })
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `注文書_${data.docNo || '未設定'}_${data.issueDate}.xls`
+  a.download = `注文書_${data.docNo || '未設定'}_${data.issueDate}.xlsx`
   a.click()
   URL.revokeObjectURL(url)
 }
