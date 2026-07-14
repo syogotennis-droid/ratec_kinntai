@@ -146,16 +146,16 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
               className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
             >
               {photoThumbs[r.id] ? (
-                <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                <div className="relative w-10 h-10 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100">
                   <img src={photoThumbs[r.id]} alt="" className="w-full h-full object-cover" />
                   {photoCounts[r.id] > 1 && (
-                    <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] leading-none px-1 py-0.5 rounded-tl">
+                    <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] md:text-xs leading-none px-1 py-0.5 rounded-tl">
                       {photoCounts[r.id]}
                     </span>
                   )}
                 </div>
               ) : (
-                <div className="w-10 shrink-0" />
+                <div className="w-10 md:w-20 shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
