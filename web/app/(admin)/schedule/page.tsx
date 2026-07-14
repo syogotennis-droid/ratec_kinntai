@@ -80,7 +80,7 @@ function formatTime(t: string | null) {
 export default function SchedulePage() {
   const profile = useProfile()
   const openSidebar = useSidebar()
-  const [view, setView] = useState<'schedule' | 'attendance'>('schedule')
+  const [view, setView] = useState<'schedule' | 'attendance'>('attendance')
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [workRecords, setWorkRecords] = useState<WorkRecord[]>([])
@@ -259,13 +259,13 @@ export default function SchedulePage() {
 
   const viewToggle = (
     <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-      <button onClick={() => setView('schedule')}
-        className={`px-3 py-1.5 transition-colors ${view === 'schedule' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-        予定
-      </button>
       <button onClick={() => setView('attendance')}
         className={`px-3 py-1.5 transition-colors ${view === 'attendance' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
         勤怠
+      </button>
+      <button onClick={() => setView('schedule')}
+        className={`px-3 py-1.5 transition-colors ${view === 'schedule' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+        予定
       </button>
     </div>
   )
@@ -432,9 +432,17 @@ export default function SchedulePage() {
                           {dayNum}
                         </div>
                         {wr && (
-                          <div style={{ backgroundColor: WORK_TYPE_COLOR[wr.work_type], color: '#ffffff', fontSize: 11, fontWeight: 600, lineHeight: '17px', padding: '0 3px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', marginBottom: 1 }}>
-                            {WORK_TYPE_LABEL[wr.work_type]}
-                          </div>
+                          <>
+                            <div style={{ backgroundColor: WORK_TYPE_COLOR[wr.work_type], color: '#ffffff', fontSize: 10, fontWeight: 600, lineHeight: '15px', padding: '0 2px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', marginBottom: 1 }}>
+                              {WORK_TYPE_LABEL[wr.work_type]}
+                            </div>
+                            {wr.work_type !== 'paid_leave' && (
+                              <div style={{ fontSize: 9, color: '#6b7280', lineHeight: '12px', padding: '0 2px', overflow: 'hidden' }}>
+                                <div>{wr.start_time.slice(0, 5)}</div>
+                                <div>{wr.end_time.slice(0, 5)}</div>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )
