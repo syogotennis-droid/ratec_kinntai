@@ -42,10 +42,6 @@ export default function CompaniesPage() {
           placeholder="会社名で検索"
           className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer whitespace-nowrap">
-          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
-          非表示含む
-        </label>
         <button
           onClick={() => setShowAdd(true)}
           className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg whitespace-nowrap"
