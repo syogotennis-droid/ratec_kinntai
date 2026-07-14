@@ -66,7 +66,7 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
   // 工事名 (A9)
   ws.getCell('A9').value = `【工事名】　${data.projectName ?? ''}`
 
-  // 明細行クリア
+  // 明細行クリア (印刷範囲内 A-G + 範囲外 H-K を全行クリア)
   for (let row = ITEM_START_ROW; row <= 37; row++) {
     ws.getCell(`A${row}`).value = null
     ws.getCell(`C${row}`).value = null
@@ -74,6 +74,10 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
     ws.getCell(`E${row}`).value = null
     ws.getCell(`F${row}`).value = null
     ws.getCell(`G${row}`).value = null
+    ws.getCell(`H${row}`).value = null  // 施工時間 (サンプル値・12人等をクリア)
+    ws.getCell(`I${row}`).value = null  // 仕入 (入力欄)
+    ws.getCell(`J${row}`).value = null
+    ws.getCell(`K${row}`).value = null
   }
 
   // 行 12-27 の A:B マージを 1行×2セル → 2行×1セルに変換（諸経費スタイル）
@@ -83,15 +87,30 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
     ws.mergeCells(`A${r}:B${r + 1}`)
   }
 
-  // 明細入力（各品目はペア行の偶数行マスターに書き込む）
+  // 明細入力 + 各行の仕入合計・粗利数式を設定
   const maxItems = Math.min(data.items.length, MAX_ITEMS)
-  for (let i = 0; i < maxItems; i++) {
-    const item = data.items[i]
-    const masterRow = ITEM_START_ROW + i * 2
-    ws.getCell(`A${masterRow}`).value = item.spec ? `${item.name}　${item.spec}` : item.name
-    ws.getCell(`D${masterRow}`).value = item.unit_price
-    ws.getCell(`E${masterRow}`).value = item.qty
-    ws.getCell(`F${masterRow}`).value = { formula: `D${masterRow}*E${masterRow}`, result: item.amount }
+  for (let i = 0; i < MAX_ITEMS; i++) {
+    const evenRow = ITEM_START_ROW + i * 2
+    const oddRow = evenRow + 1
+    const item = i < maxItems ? data.items[i] : null
+
+    // 品名・単価・数量・小計 (偶数行マスターのみ)
+    if (item) {
+      ws.getCell(`A${evenRow}`).value = item.spec ? `${item.name}　${item.spec}` : item.name
+      ws.getCell(`D${evenRow}`).value = item.unit_price
+      ws.getCell(`E${evenRow}`).value = item.qty
+      ws.getCell(`F${evenRow}`).value = { formula: `D${evenRow}*E${evenRow}`, result: item.amount }
+    }
+
+    // 仕入合計 (J) = 仕入単価 × 数量
+    const jResult = 0 // 仕入単価は手入力なので初期値 0
+    ws.getCell(`J${evenRow}`).value = { formula: `I${evenRow}*E${evenRow}`, result: jResult }
+    ws.getCell(`J${oddRow}`).value = { formula: `J${evenRow}`, result: jResult }
+
+    // 粗利 (K) = 小計 - 仕入合計
+    const kResult = item ? item.amount - jResult : 0
+    ws.getCell(`K${evenRow}`).value = { formula: `F${evenRow}-J${evenRow}`, result: kResult }
+    ws.getCell(`K${oddRow}`).value = { formula: `K${evenRow}`, result: kResult }
   }
 
   // 小計・消費税・合計
