@@ -21,7 +21,7 @@ interface NavGroup {
 const adminNavGroups: NavGroup[] = [
   {
     items: [
-      { to: '/schedule', label: '勤怠/予定' },
+      { to: '/schedule', label: '予定' },
       { to: '/attendance/admin/sales', label: '売上管理' },
     ],
   },

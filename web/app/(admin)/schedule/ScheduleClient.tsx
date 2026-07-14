@@ -91,7 +91,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
 }) {
   const profile = useProfile()
   const openSidebar = useSidebar()
-  const [view, setView] = useState<'schedule' | 'attendance'>('attendance')
+  const [view, setView] = useState<'schedule' | 'attendance'>(profile.is_admin ? 'schedule' : 'attendance')
   const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules)
   const [profiles] = useState<UserProfile[]>(initialProfiles)
   const [workRecords, setWorkRecords] = useState<WorkRecord[]>(initialWorkRecords)
@@ -306,7 +306,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                 <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
               </div>
             </div>
-            <div className="ml-auto">{viewToggle}</div>
+            {!profile.is_admin && <div className="ml-auto">{viewToggle}</div>}
           </div>
           {/* Swipe wrapper */}
           <div style={{ overflow: 'hidden' }}>
@@ -396,7 +396,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                 <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
               </div>
             </div>
-            <div className="ml-auto">{viewToggle}</div>
+            {!profile.is_admin && <div className="ml-auto">{viewToggle}</div>}
           </div>
           {/* Attendance calendar grid */}
           <div style={{ overflow: 'hidden' }}>
