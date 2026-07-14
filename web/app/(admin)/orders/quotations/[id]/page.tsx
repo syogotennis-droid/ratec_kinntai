@@ -6,8 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Quotation, DocumentItem, Project, Supplier, QuotationStatus, Settings, CompanyContact } from '@/lib/supabase/types'
 import Link from 'next/link'
 import { downloadQuotationExcel } from '@/lib/excel/quotation'
-import ProductSearch from '@/components/ProductSearch'
-import { Product } from '@/lib/supabase/types'
+import MitsubishiSearch from '@/components/MitsubishiSearch'
+import { Win2kResult } from '@/lib/win2k'
 import { useProfile } from '@/lib/profile-context'
 
 const TAX_RATE = 0.1
@@ -114,10 +114,11 @@ export default function QuotationDetailPage() {
     }
   }
 
-  const applyProduct = (idx: number, product: Product) => {
+  const applyWin2kResult = (idx: number, result: Win2kResult) => {
     setItems(prev => {
       const next = [...prev]
-      next[idx] = { ...next[idx], name: product.name, spec: product.spec, unit: product.unit, unit_price: product.unit_price, amount: next[idx].qty * product.unit_price }
+      const unitPrice = result.price ?? next[idx].unit_price
+      next[idx] = { ...next[idx], name: result.code, spec: result.category, unit_price: unitPrice, amount: next[idx].qty * unitPrice }
       return next
     })
   }
@@ -255,7 +256,7 @@ export default function QuotationDetailPage() {
           <table className="w-full text-xs min-w-[500px]">
             <thead>
               <tr className="border-b border-gray-200">
-                {['品番検索', '品名', '仕様', '数量', '単位', '単価', '金額', ''].map(h => (
+                {['型式検索(三菱)', '品名', '仕様', '数量', '単位', '単価', '金額', ''].map(h => (
                   <th key={h} className="text-left py-1.5 px-2 font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -263,7 +264,7 @@ export default function QuotationDetailPage() {
             <tbody>
               {items.map((item, idx) => (
                 <tr key={idx} className="border-b border-gray-100">
-                  <td className="py-1 px-1"><ProductSearch onSelect={p => applyProduct(idx, p)} /></td>
+                  <td className="py-1 px-1"><MitsubishiSearch onSelect={r => applyWin2kResult(idx, r)} /></td>
                   <td className="py-1 px-1"><input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="w-24 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                   <td className="py-1 px-1"><input value={item.spec} onChange={e => updateItem(idx, 'spec', e.target.value)} className="w-24 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                   <td className="py-1 px-1"><input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0} className="w-14 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
