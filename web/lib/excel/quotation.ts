@@ -102,15 +102,12 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
       ws.getCell(`F${evenRow}`).value = { formula: `D${evenRow}*E${evenRow}`, result: item.amount }
     }
 
-    // 仕入合計 (J) = 仕入単価 × 数量
-    const jResult = 0 // 仕入単価は手入力なので初期値 0
-    ws.getCell(`J${evenRow}`).value = { formula: `I${evenRow}*E${evenRow}`, result: jResult }
-    ws.getCell(`J${oddRow}`).value = { formula: `J${evenRow}`, result: jResult }
+    // 仕入合計 (J) = 仕入単価 × 数量（偶数行マスターのみ）
+    ws.getCell(`J${evenRow}`).value = { formula: `I${evenRow}*E${evenRow}`, result: 0 }
 
-    // 粗利 (K) = 小計 - 仕入合計
-    const kResult = item ? item.amount - jResult : 0
+    // 粗利 (K) = 小計 - 仕入合計（偶数行マスターのみ）
+    const kResult = item ? item.amount : 0
     ws.getCell(`K${evenRow}`).value = { formula: `F${evenRow}-J${evenRow}`, result: kResult }
-    ws.getCell(`K${oddRow}`).value = { formula: `K${evenRow}`, result: kResult }
   }
 
   // 小計・消費税・合計
