@@ -278,13 +278,13 @@ export default function SchedulePage() {
 
   return (
     <div className="pt-1 pb-0">
+      <style>{`
+        .drum-col { scrollbar-width: none; -ms-overflow-style: none; }
+        .drum-col::-webkit-scrollbar { display: none; }
+      `}</style>
 
       {view === 'schedule' ? (
         <>
-          <style>{`
-            .drum-col { scrollbar-width: none; -ms-overflow-style: none; }
-            .drum-col::-webkit-scrollbar { display: none; }
-          `}</style>
           {/* Header */}
           <div className="relative flex items-center px-1 mb-1" style={{ height: 44 }}>
             <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
@@ -675,32 +675,94 @@ function to24h(ampm: string, hour: string, minute: string) {
 }
 
 function TimePicker({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const ITEM_H = 44
   const parsed = parseTo12h(value)
-  const [ampm, setAmpm] = useState(parsed.ampm)
-  const [hour, setHour] = useState(parsed.hour)
-  const [minute, setMinute] = useState(parsed.minute)
-  const update = (a: string, h: string, m: string) => {
-    setAmpm(a); setHour(h); setMinute(m)
-    onChange(h ? to24h(a, h, m) : '')
+  const initAmpm = parsed.ampm === 'AM' ? '午前' : '午後'
+  const initHour = parsed.hour ? Number(parsed.hour) : 9
+  const initMinute = Number(parsed.minute || '0')
+
+  const ampmList = ['午前', '午後']
+  const hourList = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+  const minuteList = Array.from({ length: 60 }, (_, i) => i)
+
+  const [selAmpm, setSelAmpm] = useState(initAmpm)
+  const [selHour, setSelHour] = useState(initHour)
+  const [selMinute, setSelMinute] = useState(initMinute)
+
+  const selAmpmRef = useRef(initAmpm)
+  const selHourRef = useRef(initHour)
+  const selMinuteRef = useRef(initMinute)
+
+  const ampmRef = useRef<HTMLDivElement>(null)
+  const hourRef = useRef<HTMLDivElement>(null)
+  const minuteRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    ampmRef.current?.scrollTo({ top: ampmList.indexOf(initAmpm) * ITEM_H, behavior: 'instant' as ScrollBehavior })
+    hourRef.current?.scrollTo({ top: hourList.indexOf(initHour) * ITEM_H, behavior: 'instant' as ScrollBehavior })
+    minuteRef.current?.scrollTo({ top: initMinute * ITEM_H, behavior: 'instant' as ScrollBehavior })
+  }, [])
+
+  const emit = useCallback((ampm: string, hour: number, minute: number) => {
+    const h24 = ampm === '午前' ? (hour === 12 ? 0 : hour) : (hour === 12 ? 12 : hour + 12)
+    onChange(`${String(h24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
+  }, [onChange])
+
+  const onAmpmScroll = () => {
+    const idx = Math.round((ampmRef.current?.scrollTop ?? 0) / ITEM_H)
+    const val = ampmList[Math.max(0, Math.min(idx, ampmList.length - 1))]
+    selAmpmRef.current = val; setSelAmpm(val)
+    emit(val, selHourRef.current, selMinuteRef.current)
   }
+  const onHourScroll = () => {
+    const idx = Math.round((hourRef.current?.scrollTop ?? 0) / ITEM_H)
+    const val = hourList[Math.max(0, Math.min(idx, hourList.length - 1))]
+    selHourRef.current = val; setSelHour(val)
+    emit(selAmpmRef.current, val, selMinuteRef.current)
+  }
+  const onMinuteScroll = () => {
+    const idx = Math.round((minuteRef.current?.scrollTop ?? 0) / ITEM_H)
+    const val = minuteList[Math.max(0, Math.min(idx, minuteList.length - 1))]
+    selMinuteRef.current = val; setSelMinute(val)
+    emit(selAmpmRef.current, selHourRef.current, val)
+  }
+
+  const PAD = ITEM_H
+
   return (
     <div>
       <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
-      <div className="flex gap-1">
-        <select value={ampm} onChange={e => update(e.target.value, hour, minute)}
-          className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="AM">午前</option>
-          <option value="PM">午後</option>
-        </select>
-        <select value={hour} onChange={e => update(ampm, e.target.value, minute)}
-          className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">--</option>
-          {[12,1,2,3,4,5,6,7,8,9,10,11].map(h => <option key={h} value={String(h)}>{h}時</option>)}
-        </select>
-        <select value={minute} onChange={e => update(ampm, hour, e.target.value)}
-          className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          {['00','15','30','45'].map(m => <option key={m} value={m}>{m}分</option>)}
-        </select>
+      <div className="relative flex border border-gray-200 rounded-xl overflow-hidden bg-white" style={{ height: ITEM_H * 3 }}>
+        <div className="absolute inset-x-0 bg-gray-100 pointer-events-none" style={{ top: ITEM_H, height: ITEM_H, zIndex: 0 }} />
+        {/* 午前/午後 */}
+        <div ref={ampmRef} onScroll={onAmpmScroll} className="drum-col flex-1 overflow-y-scroll" style={{ scrollSnapType: 'y mandatory', zIndex: 1 }}>
+          <div style={{ height: PAD }} />
+          {ampmList.map(a => (
+            <div key={a} className={`flex items-center justify-center text-sm transition-all ${a === selAmpm ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+              style={{ height: ITEM_H, scrollSnapAlign: 'center' }}>{a}</div>
+          ))}
+          <div style={{ height: PAD }} />
+        </div>
+        <div className="w-px bg-gray-100" />
+        {/* 時 */}
+        <div ref={hourRef} onScroll={onHourScroll} className="drum-col flex-1 overflow-y-scroll" style={{ scrollSnapType: 'y mandatory', zIndex: 1 }}>
+          <div style={{ height: PAD }} />
+          {hourList.map(h => (
+            <div key={h} className={`flex items-center justify-center text-sm transition-all ${h === selHour ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+              style={{ height: ITEM_H, scrollSnapAlign: 'center' }}>{h}時</div>
+          ))}
+          <div style={{ height: PAD }} />
+        </div>
+        <div className="w-px bg-gray-100" />
+        {/* 分 */}
+        <div ref={minuteRef} onScroll={onMinuteScroll} className="drum-col flex-1 overflow-y-scroll" style={{ scrollSnapType: 'y mandatory', zIndex: 1 }}>
+          <div style={{ height: PAD }} />
+          {minuteList.map(m => (
+            <div key={m} className={`flex items-center justify-center text-sm transition-all ${m === selMinute ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+              style={{ height: ITEM_H, scrollSnapAlign: 'center' }}>{String(m).padStart(2, '0')}分</div>
+          ))}
+          <div style={{ height: PAD }} />
+        </div>
       </div>
     </div>
   )
