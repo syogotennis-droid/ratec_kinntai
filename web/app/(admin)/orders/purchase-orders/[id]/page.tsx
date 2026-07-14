@@ -80,7 +80,7 @@ export default function PurchaseOrderDetailPage() {
       supabase.from('purchase_orders')
         .select('*, items:purchase_order_items(*), project:projects(id,name,company_id,companies(name))')
         .eq('id', id).single(),
-      supabase.from('projects').select('*, companies(*)').eq('status', 'active').order('name'),
+      supabase.from('projects').select('*, companies(*)').order('name'),
       supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
       supabase.from('settings').select('*').single(),
     ])

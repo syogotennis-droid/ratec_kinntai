@@ -64,7 +64,7 @@ export default function NewPurchaseOrderPage() {
   useEffect(() => {
     const supabase = createClient()
     Promise.all([
-      supabase.from('projects').select('*, companies(*)').eq('status', 'active').order('name'),
+      supabase.from('projects').select('*, companies(*)').order('name'),
       supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
       supabase.from('settings').select('*').single(),
     ]).then(([p, s, st]) => {
