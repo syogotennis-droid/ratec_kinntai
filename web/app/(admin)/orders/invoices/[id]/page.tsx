@@ -227,7 +227,6 @@ export default function InvoiceDetailPage() {
         )
         if (insertErr) throw new Error(insertErr.message)
       }
-      router.push('/orders/invoices')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '保存に失敗しました')
     } finally {
