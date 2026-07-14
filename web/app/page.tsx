@@ -7,11 +7,5 @@ export default async function Home() {
 
   if (!session) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', session.user.id)
-    .single()
-
   redirect('/schedule')
 }
