@@ -948,18 +948,8 @@ function WorkRecordModal({ workRecord, defaultDate, userId, onClose, onSaved }: 
           </div>
           {!isPaidLeave && (
             <>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">開始時刻 *</label>
-                  <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">終了時刻 *</label>
-                  <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              </div>
+              <TimePicker value={startTime} onChange={setStartTime} label="開始時刻 *" />
+              <TimePicker value={endTime} onChange={setEndTime} label="終了時刻 *" />
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">休憩時間（分）</label>
                 <select value={breakMinutes} onChange={e => setBreakMinutes(e.target.value)}
