@@ -437,9 +437,9 @@ export default function SchedulePage() {
                               {WORK_TYPE_LABEL[wr.work_type]}
                             </div>
                             {wr.work_type !== 'paid_leave' && (
-                              <div style={{ fontSize: 9, color: '#6b7280', lineHeight: '12px', padding: '0 2px', overflow: 'hidden' }}>
-                                <div>{wr.start_time.slice(0, 5)}</div>
-                                <div>{wr.end_time.slice(0, 5)}</div>
+                              <div style={{ fontSize: 10, color: '#374151', lineHeight: '14px', padding: '1px 2px', overflow: 'hidden' }}>
+                                <div><span style={{ color: '#9ca3af', marginRight: 2 }}>出</span>{wr.start_time.slice(0, 5)}</div>
+                                <div><span style={{ color: '#9ca3af', marginRight: 2 }}>退</span>{wr.end_time.slice(0, 5)}</div>
                               </div>
                             )}
                           </>
