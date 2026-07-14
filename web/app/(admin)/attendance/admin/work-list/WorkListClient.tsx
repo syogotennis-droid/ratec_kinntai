@@ -33,6 +33,18 @@ const WORK_TYPE_BADGE: Record<string, string> = {
   paid_leave: 'bg-purple-100 text-purple-700',
 }
 
+const USER_COLORS = [
+  '#2563eb', '#16a34a', '#ea580c', '#9333ea',
+  '#dc2626', '#0891b2', '#b45309', '#db2777',
+]
+
+function userColor(profile: Profile) {
+  if (profile.color) return profile.color
+  let hash = 0
+  for (let i = 0; i < profile.id.length; i++) hash = (hash * 31 + profile.id.charCodeAt(i)) >>> 0
+  return USER_COLORS[hash % USER_COLORS.length]
+}
+
 export interface EmployeeSummary {
   profile: Profile
   totalMinutes: number
@@ -43,12 +55,15 @@ export interface EmployeeSummary {
 interface WorkListClientProps {
   initialYearMonth: string
   initialSummaries: EmployeeSummary[]
+  initialAllRecords: WorkRecord[]
 }
 
-export default function WorkListClient({ initialYearMonth, initialSummaries }: WorkListClientProps) {
+export default function WorkListClient({ initialYearMonth, initialSummaries, initialAllRecords }: WorkListClientProps) {
   const [yearMonth, setYearMonth] = useState(initialYearMonth)
   const [summaries, setSummaries] = useState<EmployeeSummary[]>(initialSummaries)
+  const [allRecords, setAllRecords] = useState<WorkRecord[]>(initialAllRecords)
   const [loading, setLoading] = useState(false)
+  const [view, setView] = useState<'list' | 'calendar'>('list')
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
 
   const fetchSummaries = useCallback(async () => {
@@ -61,13 +76,14 @@ export default function WorkListClient({ initialYearMonth, initialSummaries }: W
 
     const [profilesRes, recordsRes, closingsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('is_active', true).order('employee_id'),
-      supabase.from('work_records').select('user_id,actual_minutes,work_date').gte('work_date', start).lte('work_date', end),
+      supabase.from('work_records').select('*').gte('work_date', start).lte('work_date', end),
       supabase.from('monthly_closings').select('*').eq('year_month', yearMonth),
     ])
 
     const profiles = profilesRes.data ?? []
     const records = recordsRes.data ?? []
     const closings = closingsRes.data ?? []
+    setAllRecords(records)
 
     const result: EmployeeSummary[] = profiles.map(profile => {
       const userRecords = records.filter(r => r.user_id === profile.id)
@@ -85,6 +101,20 @@ export default function WorkListClient({ initialYearMonth, initialSummaries }: W
     if (!didMount.current) { didMount.current = true; return }
     fetchSummaries()
   }, [fetchSummaries])
+
+  const profileMap = Object.fromEntries(summaries.map(s => [s.profile.id, s.profile]))
+
+  const calendarEvents: EventInput[] = allRecords.map(r => {
+    const profile = profileMap[r.user_id]
+    return {
+      id: String(r.id),
+      title: `${profile?.name ?? '?'} ${r.start_time.slice(0, 5)}〜${r.end_time.slice(0, 5)}`,
+      date: r.work_date,
+      backgroundColor: profile ? userColor(profile) : '#6b7280',
+      borderColor: 'transparent',
+      extendedProps: { userId: r.user_id },
+    }
+  })
 
   const prevMonth = () => {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -117,10 +147,42 @@ export default function WorkListClient({ initialYearMonth, initialSummaries }: W
           <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
           <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100 text-lg">›</button>
         </div>
+        <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+          <button
+            onClick={() => setView('list')}
+            className={`px-3 py-1.5 transition-colors ${view === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+          >
+            📋 一覧
+          </button>
+          <button
+            onClick={() => setView('calendar')}
+            className={`px-3 py-1.5 transition-colors ${view === 'calendar' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+          >
+            📅 カレンダー
+          </button>
+        </div>
       </div>
 
       {loading ? (
         <div className="text-sm text-gray-500 py-8 text-center">読み込み中...</div>
+      ) : view === 'calendar' ? (
+        <div>
+          <style>{`
+            .fc-daygrid-day-number { pointer-events: none; }
+            .fc-event { cursor: pointer; font-size: 11px; padding: 1px 4px; border-radius: 4px; }
+            .fc-toolbar { display: none; }
+          `}</style>
+          <FullCalendar
+            key={yearMonth}
+            plugins={[dayGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            initialDate={`${yearMonth}-01`}
+            locale="ja"
+            events={calendarEvents}
+            eventClick={(arg: EventClickArg) => setSelectedUserId(arg.event.extendedProps.userId as string)}
+            height="auto"
+          />
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

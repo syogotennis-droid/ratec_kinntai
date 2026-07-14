@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { Profile, MonthlyClosing } from '@/lib/supabase/types'
+import { Profile, MonthlyClosing, WorkRecord } from '@/lib/supabase/types'
 import WorkListClient, { EmployeeSummary } from './WorkListClient'
 
 export default async function AdminWorkListPage() {
@@ -14,12 +14,12 @@ export default async function AdminWorkListPage() {
 
   const [profilesRes, recordsRes, closingsRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('is_active', true).order('employee_id'),
-    supabase.from('work_records').select('user_id,actual_minutes,work_date').gte('work_date', start).lte('work_date', end),
+    supabase.from('work_records').select('*').gte('work_date', start).lte('work_date', end),
     supabase.from('monthly_closings').select('*').eq('year_month', yearMonth),
   ])
 
   const profiles: Profile[] = profilesRes.data ?? []
-  const records: { user_id: string; actual_minutes: number | null; work_date: string }[] = recordsRes.data ?? []
+  const records: WorkRecord[] = recordsRes.data ?? []
   const closings: MonthlyClosing[] = closingsRes.data ?? []
 
   const summaries: EmployeeSummary[] = profiles.map(profile => {
@@ -30,5 +30,5 @@ export default async function AdminWorkListPage() {
     return { profile, totalMinutes, workDays, isClosed }
   })
 
-  return <WorkListClient initialYearMonth={yearMonth} initialSummaries={summaries} />
+  return <WorkListClient initialYearMonth={yearMonth} initialSummaries={summaries} initialAllRecords={records} />
 }

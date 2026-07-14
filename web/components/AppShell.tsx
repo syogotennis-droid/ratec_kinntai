@@ -26,9 +26,9 @@ const adminNavGroups: NavGroup[] = [
     ],
   },
   {
-    heading: '勤務',
+    heading: '人事労務',
     items: [
-      { to: '/attendance/admin/work-list', label: '勤務管理' },
+      { to: '/attendance/admin/work-list', label: '勤怠管理' },
       { to: '/attendance/admin/payroll', label: '給与計算' },
       { to: '/attendance/admin/bonuses', label: 'ボーナス管理' },
       { to: '/attendance/admin/employees', label: '従業員管理' },
