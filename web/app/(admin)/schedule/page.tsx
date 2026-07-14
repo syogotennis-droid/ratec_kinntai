@@ -675,7 +675,28 @@ function to24h(ampm: string, hour: string, minute: string) {
 }
 
 function TimePicker({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
-  const ITEM_H = 44
+  const [open, setOpen] = useState(false)
+  const display = value ? formatTime(value) : '-- : --'
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+      <button type="button" onClick={() => setOpen(true)}
+        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-left text-gray-900 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        {display || <span className="text-gray-400">タップして選択</span>}
+      </button>
+      {open && (
+        <TimePickerSheet
+          value={value}
+          onSelect={(v) => { onChange(v); setOpen(false) }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function TimePickerSheet({ value, onSelect, onClose }: { value: string; onSelect: (v: string) => void; onClose: () => void }) {
+  const ITEM_H = 48
   const parsed = parseTo12h(value)
   const initAmpm = parsed.ampm === 'AM' ? '午前' : '午後'
   const initHour = parsed.hour ? Number(parsed.hour) : 9
@@ -696,6 +717,7 @@ function TimePicker({ value, onChange, label }: { value: string; onChange: (v: s
   const ampmRef = useRef<HTMLDivElement>(null)
   const hourRef = useRef<HTMLDivElement>(null)
   const minuteRef = useRef<HTMLDivElement>(null)
+  const PAD = ITEM_H * 2
 
   useEffect(() => {
     ampmRef.current?.scrollTo({ top: ampmList.indexOf(initAmpm) * ITEM_H, behavior: 'instant' as ScrollBehavior })
@@ -703,65 +725,69 @@ function TimePicker({ value, onChange, label }: { value: string; onChange: (v: s
     minuteRef.current?.scrollTo({ top: initMinute * ITEM_H, behavior: 'instant' as ScrollBehavior })
   }, [])
 
-  const emit = useCallback((ampm: string, hour: number, minute: number) => {
-    const h24 = ampm === '午前' ? (hour === 12 ? 0 : hour) : (hour === 12 ? 12 : hour + 12)
-    onChange(`${String(h24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
-  }, [onChange])
-
   const onAmpmScroll = () => {
     const idx = Math.round((ampmRef.current?.scrollTop ?? 0) / ITEM_H)
     const val = ampmList[Math.max(0, Math.min(idx, ampmList.length - 1))]
     selAmpmRef.current = val; setSelAmpm(val)
-    emit(val, selHourRef.current, selMinuteRef.current)
   }
   const onHourScroll = () => {
     const idx = Math.round((hourRef.current?.scrollTop ?? 0) / ITEM_H)
     const val = hourList[Math.max(0, Math.min(idx, hourList.length - 1))]
     selHourRef.current = val; setSelHour(val)
-    emit(selAmpmRef.current, val, selMinuteRef.current)
   }
   const onMinuteScroll = () => {
     const idx = Math.round((minuteRef.current?.scrollTop ?? 0) / ITEM_H)
     const val = minuteList[Math.max(0, Math.min(idx, minuteList.length - 1))]
     selMinuteRef.current = val; setSelMinute(val)
-    emit(selAmpmRef.current, selHourRef.current, val)
   }
 
-  const PAD = ITEM_H
+  const handleConfirm = () => {
+    const ampm = selAmpmRef.current
+    const hour = selHourRef.current
+    const minute = selMinuteRef.current
+    const h24 = ampm === '午前' ? (hour === 12 ? 0 : hour) : (hour === 12 ? 12 : hour + 12)
+    onSelect(`${String(h24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
+  }
 
   return (
-    <div>
-      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
-      <div className="relative flex border border-gray-200 rounded-xl overflow-hidden bg-white" style={{ height: ITEM_H * 3 }}>
-        <div className="absolute inset-x-0 bg-gray-100 pointer-events-none" style={{ top: ITEM_H, height: ITEM_H, zIndex: 0 }} />
-        {/* 午前/午後 */}
-        <div ref={ampmRef} onScroll={onAmpmScroll} className="drum-col flex-1 overflow-y-scroll" style={{ scrollSnapType: 'y mandatory', zIndex: 1 }}>
-          <div style={{ height: PAD }} />
-          {ampmList.map(a => (
-            <div key={a} className={`flex items-center justify-center text-sm transition-all ${a === selAmpm ? 'font-bold text-gray-900' : 'text-gray-400'}`}
-              style={{ height: ITEM_H, scrollSnapAlign: 'center' }}>{a}</div>
-          ))}
-          <div style={{ height: PAD }} />
+    <div className="fixed inset-0 z-[70]" onClick={onClose}>
+      <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
-        <div className="w-px bg-gray-100" />
-        {/* 時 */}
-        <div ref={hourRef} onScroll={onHourScroll} className="drum-col flex-1 overflow-y-scroll" style={{ scrollSnapType: 'y mandatory', zIndex: 1 }}>
-          <div style={{ height: PAD }} />
-          {hourList.map(h => (
-            <div key={h} className={`flex items-center justify-center text-sm transition-all ${h === selHour ? 'font-bold text-gray-900' : 'text-gray-400'}`}
-              style={{ height: ITEM_H, scrollSnapAlign: 'center' }}>{h}時</div>
-          ))}
-          <div style={{ height: PAD }} />
+        <div className="relative flex mx-4 my-3" style={{ height: ITEM_H * 5 }}>
+          <div className="absolute inset-x-0 rounded-xl bg-gray-100 pointer-events-none" style={{ top: ITEM_H * 2, height: ITEM_H }} />
+          {/* 午前/午後 */}
+          <div ref={ampmRef} onScroll={onAmpmScroll} className="drum-col flex-1 overflow-y-scroll" style={{ scrollSnapType: 'y mandatory', zIndex: 1 }}>
+            <div style={{ height: PAD }} />
+            {ampmList.map(a => (
+              <div key={a} className={`flex items-center justify-center text-base transition-all ${a === selAmpm ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+                style={{ height: ITEM_H, scrollSnapAlign: 'center' }}>{a}</div>
+            ))}
+            <div style={{ height: PAD }} />
+          </div>
+          {/* 時 */}
+          <div ref={hourRef} onScroll={onHourScroll} className="drum-col flex-1 overflow-y-scroll" style={{ scrollSnapType: 'y mandatory', zIndex: 1 }}>
+            <div style={{ height: PAD }} />
+            {hourList.map(h => (
+              <div key={h} className={`flex items-center justify-center text-base transition-all ${h === selHour ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+                style={{ height: ITEM_H, scrollSnapAlign: 'center' }}>{h}時</div>
+            ))}
+            <div style={{ height: PAD }} />
+          </div>
+          {/* 分 */}
+          <div ref={minuteRef} onScroll={onMinuteScroll} className="drum-col flex-1 overflow-y-scroll" style={{ scrollSnapType: 'y mandatory', zIndex: 1 }}>
+            <div style={{ height: PAD }} />
+            {minuteList.map(m => (
+              <div key={m} className={`flex items-center justify-center text-base transition-all ${m === selMinute ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+                style={{ height: ITEM_H, scrollSnapAlign: 'center' }}>{String(m).padStart(2, '0')}分</div>
+            ))}
+            <div style={{ height: PAD }} />
+          </div>
         </div>
-        <div className="w-px bg-gray-100" />
-        {/* 分 */}
-        <div ref={minuteRef} onScroll={onMinuteScroll} className="drum-col flex-1 overflow-y-scroll" style={{ scrollSnapType: 'y mandatory', zIndex: 1 }}>
-          <div style={{ height: PAD }} />
-          {minuteList.map(m => (
-            <div key={m} className={`flex items-center justify-center text-sm transition-all ${m === selMinute ? 'font-bold text-gray-900' : 'text-gray-400'}`}
-              style={{ height: ITEM_H, scrollSnapAlign: 'center' }}>{String(m).padStart(2, '0')}分</div>
-          ))}
-          <div style={{ height: PAD }} />
+        <div className="flex border-t border-gray-100">
+          <button onClick={onClose} className="flex-1 py-3 text-sm text-gray-500 hover:bg-gray-50">キャンセル</button>
+          <button onClick={handleConfirm} className="flex-1 py-3 text-sm font-bold text-blue-600 hover:bg-blue-50 border-l border-gray-100">確定</button>
         </div>
       </div>
     </div>
