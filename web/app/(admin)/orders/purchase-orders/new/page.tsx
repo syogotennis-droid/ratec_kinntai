@@ -108,6 +108,9 @@ export default function NewPurchaseOrderPage() {
           const latest = qs[0]
           setQuotationId(latest.id)
           importFromQuotation(latest)
+        } else {
+          setQuotationId(null)
+          setItems([{ sort_order: 0, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])
         }
       })
   }, [projectId])

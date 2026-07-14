@@ -86,6 +86,9 @@ export default function NewInvoicePage() {
             sort_order: item.sort_order, name: item.name, spec: item.spec ?? '',
             qty: item.qty, unit: item.unit, unit_price: item.unit_price, amount: item.amount,
           })))
+        } else {
+          setQuotationId(0)
+          setItems([{ sort_order: 0, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])
         }
       })
   }, [projectId])
