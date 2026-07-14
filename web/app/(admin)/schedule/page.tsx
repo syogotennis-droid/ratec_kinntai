@@ -69,6 +69,12 @@ function userColor(userId: string | null) {
 }
 
 
+function actualMinutes(start: string, end: string, breakMin: number): number {
+  const [sh, sm] = start.slice(0, 5).split(':').map(Number)
+  const [eh, em] = end.slice(0, 5).split(':').map(Number)
+  return (eh * 60 + em) - (sh * 60 + sm) - breakMin
+}
+
 function formatTime(t: string | null) {
   if (!t) return ''
   const [h, m] = t.slice(0, 5).split(':').map(Number)
@@ -431,10 +437,14 @@ export default function SchedulePage() {
                         <div style={{ fontSize: 10, padding: '1px 2px', lineHeight: '14px', color: numColor || '#374151', fontWeight: isToday ? 700 : 400 }}>
                           {dayNum}
                         </div>
-                        {wr && (
+                        {wr && (() => {
+                          const isOvertime = wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
+                          const chipLabel = isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]
+                          const chipColor = isOvertime ? '#ea580c' : WORK_TYPE_COLOR[wr.work_type]
+                          return (
                           <>
-                            <div style={{ backgroundColor: WORK_TYPE_COLOR[wr.work_type], color: '#ffffff', fontSize: 10, fontWeight: 600, lineHeight: '15px', padding: '0 2px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', marginBottom: 1 }}>
-                              {WORK_TYPE_LABEL[wr.work_type]}
+                            <div style={{ backgroundColor: chipColor, color: '#ffffff', fontSize: 10, fontWeight: 600, lineHeight: '15px', padding: '0 2px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', marginBottom: 1 }}>
+                              {chipLabel}
                             </div>
                             {wr.work_type !== 'paid_leave' && (
                               <div style={{ fontSize: 12, color: '#374151', lineHeight: '17px', padding: '1px 2px', overflow: 'hidden' }}>
@@ -443,7 +453,8 @@ export default function SchedulePage() {
                               </div>
                             )}
                           </>
-                        )}
+                          )
+                        })()}
                       </div>
                     )
                   })}
