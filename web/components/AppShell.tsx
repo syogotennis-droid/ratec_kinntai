@@ -15,15 +15,14 @@ interface NavItem {
 }
 
 interface NavGroup {
-  heading: string
+  heading?: string
   items: NavItem[]
 }
 
 const adminNavGroups: NavGroup[] = [
   {
-    heading: '共有',
     items: [
-      { to: '/schedule', label: 'スケジュール', icon: '🗓️' },
+      { to: '/schedule', label: '勤怠/予定', icon: '🗓️' },
       { to: '/attendance/admin/sales', label: '売上管理', icon: '💰' },
     ],
   },
@@ -52,16 +51,9 @@ const adminNavGroups: NavGroup[] = [
 
 const employeeNavGroups: NavGroup[] = [
   {
-    heading: '共有',
     items: [
-      { to: '/schedule', label: 'スケジュール', icon: '🗓️' },
+      { to: '/schedule', label: '勤怠/予定', icon: '🗓️' },
       { to: '/attendance/sales', label: '売上管理', icon: '💰' },
-    ],
-  },
-  {
-    heading: '勤務',
-    items: [
-      { to: '/attendance/calendar', label: '勤務記録', icon: '📅' },
     ],
   },
   {
@@ -98,8 +90,8 @@ export default function AppShell({ profile, children }: Props) {
   const NavLinks = () => (
     <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
       {navGroups.map((group) => (
-        <div key={group.heading}>
-          <p className="px-3 mb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{group.heading}</p>
+        <div key={group.heading ?? group.items[0]?.to}>
+          {group.heading && <p className="px-3 mb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{group.heading}</p>}
           <div className="space-y-0.5">
             {group.items.map((item) => {
               const isActive = pathname.startsWith(item.to)
