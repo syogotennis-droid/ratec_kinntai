@@ -57,7 +57,7 @@ export default function ProjectsPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="案件名・会社名で検索"
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="工事名・会社名で検索"
           className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <button onClick={() => setShowAdd(true)}
           className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg whitespace-nowrap">
@@ -79,7 +79,7 @@ export default function ProjectsPage() {
       {loading ? (
         <div className="text-sm text-gray-500 py-8 text-center">読み込み中...</div>
       ) : displayed.length === 0 ? (
-        <div className="text-sm text-gray-500 py-8 text-center">案件がありません</div>
+        <div className="text-sm text-gray-500 py-8 text-center">工事名がありません</div>
       ) : (
         <div className="space-y-2">
           {displayed.map(p => (
@@ -156,7 +156,7 @@ function ProjectModal({ project, companies, onClose, onSaved }: ProjectModalProp
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
-        <h2 className="text-base font-bold text-gray-900 mb-4">{project ? '案件を編集' : '案件を追加'}</h2>
+        <h2 className="text-base font-bold text-gray-900 mb-4">{project ? '工事名を編集' : '工事名を追加'}</h2>
         <div className="space-y-3">
           <div className="relative">
             <label className="block text-xs font-medium text-gray-700 mb-1">取引先 *</label>
@@ -186,7 +186,7 @@ function ProjectModal({ project, companies, onClose, onSaved }: ProjectModalProp
             )}
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">案件名 *</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">工事名 *</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>

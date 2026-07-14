@@ -50,7 +50,7 @@ export default function InvoicesPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="番号・案件名で検索"
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="番号・工事名で検索"
           className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <Link href="/orders/invoices/new"
           className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg whitespace-nowrap">

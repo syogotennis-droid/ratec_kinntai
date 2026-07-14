@@ -63,7 +63,7 @@ export default function NewPurchaseOrderPage() {
   }
 
   const handleSave = async () => {
-    if (!projectId || !docNo || !supplierId) { setError('案件・発注書番号・仕入先を入力してください'); return }
+    if (!projectId || !docNo || !supplierId) { setError('工事名・発注書番号・仕入先を入力してください'); return }
     setError(null)
     setSaving(true)
     try {
@@ -109,7 +109,7 @@ export default function NewPurchaseOrderPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">案件 *</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">工事名 *</label>
             <select value={projectId} onChange={e => setProjectId(Number(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value={0}>選択してください</option>

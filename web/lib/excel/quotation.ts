@@ -15,8 +15,22 @@ interface QuotationExcelData {
   settings: Settings | null
 }
 
-const ITEM_START_ROW = 15
-const ITEM_END_ROW = 28
+const ITEM_START_ROW = 12
+const MAX_ITEMS = 13
+
+function toJapaneseDate(dateStr: string): string {
+  const parts = dateStr.split('-').map(Number)
+  const reiwaYear = parts[0] - 2018
+  return `令和${reiwaYear}年${parts[1]}月${parts[2]}日`
+}
+
+function expiryDateStr(dateStr: string): string {
+  const parts = dateStr.split('-').map(Number)
+  // last day of the month 3 months after issue date
+  const expiry = new Date(parts[0], parts[1] + 3, 0)
+  const reiwaYear = expiry.getFullYear() - 2018
+  return `※本見積書有効期限　令和${reiwaYear}年${expiry.getMonth() + 1}月末日迄`
+}
 
 export async function downloadQuotationExcel(data: QuotationExcelData) {
   const ExcelJSModule = await import('exceljs')
@@ -27,59 +41,55 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
   await wb.xlsx.load(bytes.buffer)
 
-  const ws = wb.getWorksheet('テンプレート')
+  const ws = wb.getWorksheet('見積り')
   if (!ws) {
     const names = wb.worksheets.map(s => s.name).join(', ')
     throw new Error(`シートが見つかりません。存在するシート: ${names}`)
   }
 
-  // 宛先 (A2:D3 merged の左上セル)
-  ws.getCell('A2').value = data.customerName ? `${data.customerName}　御中` : ''
+  // 宛先 (A1 master of A1:C2 merge)
+  ws.getCell('A1').value = data.customerName ? `${data.customerName}　御中` : ''
 
-  // 日付 (G3)
-  const [y, m, d] = data.issueDate.split('-')
-  ws.getCell('G3').value = data.issueDate ? `${y}年${m}月${d}日` : ''
+  // 担当者 (A3 master of A3:C4 merge)
+  ws.getCell('A3').value = data.contactPerson ? `ご担当　　　${data.contactPerson}　　　様` : ''
 
-  // 担当者行 (A4) - データがあれば表示、なければ空欄
-  ws.getCell('A4').value = data.contactPerson ? `ご担当：${data.contactPerson} 様` : ''
+  // 日付 (G3) - 令和年月日
+  ws.getCell('G3').value = data.issueDate ? toJapaneseDate(data.issueDate) : ''
 
-  // 件名 (B7)
-  ws.getCell('B7').value = data.projectName ?? ''
+  // 工事名 (A9)
+  ws.getCell('A9').value = `【工事名】　${data.projectName ?? ''}`
 
-  // 明細行クリア → 入力
-  for (let row = ITEM_START_ROW; row <= ITEM_END_ROW; row++) {
-    const itemIdx = row - ITEM_START_ROW
-    const item = data.items[itemIdx]
-
-    // A列 (A:C merged) = 品名 [仕様]
-    const nameCell = ws.getCell(`A${row}`)
-    nameCell.value = item ? (item.spec ? `${item.name}　${item.spec}` : item.name) : ''
-
-    // D = 数量
-    const qtyCell = ws.getCell(`D${row}`)
-    qtyCell.value = item ? item.qty : null
-
-    // E = 単位
-    const unitCell = ws.getCell(`E${row}`)
-    unitCell.value = item ? item.unit : ''
-
-    // F = 単価
-    const priceCell = ws.getCell(`F${row}`)
-    priceCell.value = item ? item.unit_price : null
-
-    // G = 金額（formulaの結果として設定）
-    const amountCell = ws.getCell(`G${row}`)
-    if (item) {
-      amountCell.value = { formula: `D${row}*F${row}`, result: item.amount }
-    } else {
-      amountCell.value = null
-    }
+  // 明細行クリア (A-F columns, rows 12-37)
+  // Even rows: A, C, D, E, F are masters of 2-row merges
+  // Odd rows: A is master of 1-row A:B merge
+  for (let row = ITEM_START_ROW; row <= 37; row++) {
+    ws.getCell(`A${row}`).value = null
+    ws.getCell(`C${row}`).value = null
+    ws.getCell(`D${row}`).value = null
+    ws.getCell(`E${row}`).value = null
+    ws.getCell(`F${row}`).value = null
+    ws.getCell(`G${row}`).value = null
   }
 
-  // 備考欄のサンプルテキストをクリア（テンプレートに入っているデフォルト文言を削除）
-  for (let row = 34; row <= 38; row++) {
-    ws.getCell(`A${row}`).value = ''
+  // 明細入力 (each item occupies one pair of rows: even=data, odd=empty)
+  const maxItems = Math.min(data.items.length, MAX_ITEMS)
+  for (let i = 0; i < maxItems; i++) {
+    const item = data.items[i]
+    const masterRow = ITEM_START_ROW + i * 2
+
+    ws.getCell(`A${masterRow}`).value = item.spec ? `${item.name}　${item.spec}` : item.name
+    ws.getCell(`D${masterRow}`).value = item.unit_price
+    ws.getCell(`E${masterRow}`).value = item.qty
+    ws.getCell(`F${masterRow}`).value = { formula: `D${masterRow}*E${masterRow}`, result: item.amount }
   }
+
+  // 小計・消費税・合計 (preserve formulas, update cached results)
+  ws.getCell('F38').value = { formula: 'SUM(F12:F37)', result: data.subtotal }
+  ws.getCell('F39').value = { formula: 'F38*0.1', result: data.taxAmount }
+  ws.getCell('F40').value = { formula: 'SUM(F38:F39)', result: data.totalAmount }
+
+  // 有効期限 (A41)
+  ws.getCell('A41').value = data.issueDate ? expiryDateStr(data.issueDate) : ''
 
   const buffer = await wb.xlsx.writeBuffer()
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })

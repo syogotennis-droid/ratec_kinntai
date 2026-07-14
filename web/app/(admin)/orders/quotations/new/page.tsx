@@ -54,7 +54,7 @@ export default function NewQuotationPage() {
   }
 
   const handleSave = async () => {
-    if (!projectId) { setError('案件を選択してください'); return }
+    if (!projectId) { setError('工事名を選択してください'); return }
     setError(null)
     setSaving(true)
     try {
@@ -99,7 +99,7 @@ export default function NewQuotationPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">案件 *</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">工事名 *</label>
             <select value={projectId} onChange={e => setProjectId(Number(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value={0}>選択してください</option>
