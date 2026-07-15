@@ -26,7 +26,7 @@ const ACCENT = {
 
 interface Props {
   makers: Maker[]
-  onSelect: (result: Win2kResult) => void
+  onSelect: (result: Win2kResult, maker: Maker) => void
 }
 
 export default function ProductModelSearch({ makers, onSelect }: Props) {
@@ -111,7 +111,7 @@ export default function ProductModelSearch({ makers, onSelect }: Props) {
   }
 
   const select = (r: Win2kResult) => {
-    onSelect(r)
+    onSelect(r, maker)
     setQuery('')
     setResults([])
     setOpen(false)

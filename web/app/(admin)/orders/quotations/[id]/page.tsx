@@ -121,11 +121,13 @@ export default function QuotationDetailPage() {
     }
   }
 
-  const applyWin2kResult = (idx: number, result: Win2kResult) => {
+  const applyWin2kResult = (idx: number, result: Win2kResult, maker: Maker) => {
+    const productLine = result.category ? `${maker.label}　${result.category}` : maker.label
+    const name = `${productLine}\n型番：${result.code}`
     setItems(prev => {
       const next = [...prev]
       const unitPrice = result.price ?? next[idx].unit_price
-      next[idx] = { ...next[idx], name: result.code, unit_price: unitPrice, amount: next[idx].qty * unitPrice }
+      next[idx] = { ...next[idx], name, unit_price: unitPrice, amount: next[idx].qty * unitPrice }
       return next
     })
     setItemLinks(prev => {
@@ -276,10 +278,10 @@ export default function QuotationDetailPage() {
             <tbody>
               {items.map((item, idx) => (
                 <tr key={idx} className="border-b border-gray-100">
-                  <td className="py-1 px-1"><ProductModelSearch makers={MAKERS} onSelect={r => applyWin2kResult(idx, r)} /></td>
+                  <td className="py-1 px-1"><ProductModelSearch makers={MAKERS} onSelect={(r, m) => applyWin2kResult(idx, r, m)} /></td>
                   <td className="py-1 px-1">
-                    <div className="flex items-center gap-1">
-                      <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="w-24 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    <div className="flex items-start gap-1">
+                      <textarea value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} rows={2} className="w-48 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" />
                       {itemLinks[idx] && (
                         <a href={itemLinks[idx]!} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
                           className="shrink-0 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">

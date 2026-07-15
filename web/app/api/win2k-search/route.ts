@@ -28,7 +28,10 @@ export async function GET(request: NextRequest) {
     const code = $el.find('.r-box .title a').text().replace(/\s+/g, ' ').trim()
     if (!code) return
 
-    const category = $el.find('.r-box .subTitle').text().replace(/\s+/g, ' ').replace(/\s*＞\s*/g, ' > ').trim()
+    // パンくず（例: LED照明器具 ＞ LEDライトユニット形ベースライト(Myシリーズ) ＞ ライトユニット）から
+    // 先頭の大分類を除いた部分を商品名代わりに使う（三菱の検索結果には型番以外の商品名が無いため）
+    const breadcrumb = $el.find('.r-box .subTitle').text().replace(/\s+/g, ' ').trim().split('＞').map(s => s.trim()).filter(Boolean)
+    const category = (breadcrumb.length > 1 ? breadcrumb.slice(1) : breadcrumb).join(' ')
 
     const specText = $el.find('.b-box .spec').text()
     const priceMatch = specText.match(/価格[：:]\s*([\d,]+)\s*円/)
