@@ -133,11 +133,10 @@ function CardExpenseModal({ row, yearMonth, onClose, onSaved }: CardExpenseModal
         amount: Number(amount) || 0,
         notes: notes || null,
       }
-      if (row.expense) {
-        await supabase.from('card_expenses').update(payload).eq('id', row.expense.id)
-      } else {
-        await supabase.from('card_expenses').insert(payload)
-      }
+      const { error: saveError } = row.expense
+        ? await supabase.from('card_expenses').update(payload).eq('id', row.expense.id)
+        : await supabase.from('card_expenses').insert(payload)
+      if (saveError) throw new Error(saveError.message)
       onSaved()
       onClose()
     } catch (e: unknown) {
