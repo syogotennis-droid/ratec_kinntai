@@ -96,7 +96,7 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
 
     // 品名・単価・数量・小計 (偶数行マスターのみ)
     if (item) {
-      ws.getCell(`A${evenRow}`).value = item.spec ? `${item.name}　${item.spec}` : item.name
+      ws.getCell(`A${evenRow}`).value = item.name
       ws.getCell(`D${evenRow}`).value = item.unit_price
       ws.getCell(`E${evenRow}`).value = item.qty
       ws.getCell(`F${evenRow}`).value = { formula: `D${evenRow}*E${evenRow}`, result: item.amount }

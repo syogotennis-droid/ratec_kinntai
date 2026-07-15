@@ -60,7 +60,7 @@ export async function downloadPurchaseOrderExcel(data: PurchaseOrderExcelData) {
     const row = ITEM_START_ROW + i
     const item = limited[i]
     ws.getCell(`A${row}`).value = i + 1
-    ws.getCell(`B${row}`).value = item.spec ? item.name + '　' + item.spec : item.name
+    ws.getCell(`B${row}`).value = item.name
     ws.getCell(`H${row}`).value = item.qty
     if (item.unit_price !== 0) {
       ws.getCell(`I${row}`).value = item.unit_price

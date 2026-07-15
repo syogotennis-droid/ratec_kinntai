@@ -64,7 +64,7 @@ function fillSheet(
     const evenRow = ITEM_START_ROW + i * 2
     const oddRow = evenRow + 1
     const item = limitedItems[i]
-    ws.getCell(`A${evenRow}`).value = item.spec ? `${item.name}　${item.spec}` : item.name
+    ws.getCell(`A${evenRow}`).value = item.name
     ws.getCell(`I${evenRow}`).value = item.qty
     ws.getCell(`K${evenRow}`).value = item.unit_price
     ws.getCell(`M${evenRow}`).value = { formula: `K${evenRow}*I${evenRow}`, result: item.amount }
