@@ -114,6 +114,18 @@ CREATE TABLE bonuses (
   UNIQUE(year_month, user_id)
 );
 
+-- カード経費（従業員ごとに会社支給クレカ1枚、月次合計を管理者が入力）
+CREATE TABLE card_expenses (
+  id SERIAL PRIMARY KEY,
+  year_month TEXT NOT NULL,
+  user_id UUID NOT NULL REFERENCES profiles(id),
+  amount INTEGER DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(year_month, user_id)
+);
+
 -- ================================================
 -- 受注管理
 -- ================================================
@@ -289,6 +301,7 @@ ALTER TABLE payroll_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales_photos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bonuses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE card_expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE company_offices ENABLE ROW LEVEL SECURITY;
@@ -309,6 +322,7 @@ CREATE POLICY "authenticated_all" ON payroll_records FOR ALL TO authenticated US
 CREATE POLICY "authenticated_all" ON sales_records FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON sales_photos FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON bonuses FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_all" ON card_expenses FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON companies FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON company_offices FOR ALL TO authenticated USING (true) WITH CHECK (true);

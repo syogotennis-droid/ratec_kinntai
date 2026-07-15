@@ -99,6 +99,14 @@ export interface Bonus {
   notes: string | null
 }
 
+export interface CardExpense {
+  id: number
+  year_month: string
+  user_id: string
+  amount: number
+  notes: string | null
+}
+
 export interface Settings {
   id: number
   company_name: string

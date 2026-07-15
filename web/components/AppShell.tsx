@@ -31,6 +31,7 @@ const adminNavGroups: NavGroup[] = [
       { to: '/attendance/admin/work-list', label: '勤怠管理' },
       { to: '/attendance/admin/payroll', label: '給与計算' },
       { to: '/attendance/admin/bonuses', label: 'ボーナス管理' },
+      { to: '/attendance/admin/card-expenses', label: 'カード経費' },
       { to: '/attendance/admin/employees', label: '従業員管理' },
     ],
   },
