@@ -170,9 +170,13 @@ export default function ProductModelSearch({ makers, onSelect }: Props) {
           rel="noreferrer noopener"
           title={`${maker.label}公式サイトでこの型式を検索`}
           onClick={e => { if (!query) e.preventDefault() }}
-          className={`shrink-0 text-xs px-1 py-1 rounded border border-gray-200 hover:bg-gray-50 ${query ? 'text-gray-500' : 'text-gray-300 cursor-not-allowed'}`}
+          className={`shrink-0 p-1 rounded-full transition-colors ${query ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100' : 'text-gray-200 cursor-not-allowed'}`}
         >
-          ↗
+          <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 4H4.5A1.5 1.5 0 0 0 3 5.5v10A1.5 1.5 0 0 0 4.5 17h10a1.5 1.5 0 0 0 1.5-1.5V12" />
+            <path d="M11 3h6v6" />
+            <path d="M9 11 17 3" />
+          </svg>
         </a>
       </div>
       {loading && <span className="absolute right-7 top-1.5 text-gray-400 text-xs">...</span>}
@@ -207,9 +211,13 @@ export default function ProductModelSearch({ makers, onSelect }: Props) {
                     rel="noreferrer noopener"
                     title="公式サイトの商品ページを開く"
                     onClick={e => e.stopPropagation()}
-                    className="shrink-0 text-gray-400 hover:text-gray-600 px-1"
+                    className="shrink-0 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                   >
-                    ↗
+                    <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 4H4.5A1.5 1.5 0 0 0 3 5.5v10A1.5 1.5 0 0 0 4.5 17h10a1.5 1.5 0 0 0 1.5-1.5V12" />
+                      <path d="M11 3h6v6" />
+                      <path d="M9 11 17 3" />
+                    </svg>
                   </a>
                 )}
               </div>
