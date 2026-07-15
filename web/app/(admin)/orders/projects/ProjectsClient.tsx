@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Project, Company, ProjectStatus } from '@/lib/supabase/types'
+import { Project, Company, CompanyOffice, ProjectStatus } from '@/lib/supabase/types'
 import { useSidebar } from '@/lib/sidebar-context'
 
 export interface ProjectWithCompany extends Project {
   companies?: { name: string } | null
+  company_offices?: { name: string } | null
 }
 
 const STATUS_COLORS: Record<ProjectStatus, string> = {
@@ -21,10 +22,11 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
   cancelled: 'キャンセル',
 }
 
-export default function ProjectsClient({ initialProjects, initialCompanies }: { initialProjects: ProjectWithCompany[]; initialCompanies: Company[] }) {
+export default function ProjectsClient({ initialProjects, initialCompanies, initialOffices }: { initialProjects: ProjectWithCompany[]; initialCompanies: Company[]; initialOffices: CompanyOffice[] }) {
   const openSidebar = useSidebar()
   const [projects, setProjects] = useState<ProjectWithCompany[]>(initialProjects)
   const [companies, setCompanies] = useState<Company[]>(initialCompanies)
+  const [offices, setOffices] = useState<CompanyOffice[]>(initialOffices)
   const [loading, setLoading] = useState(false)
   const [editProject, setEditProject] = useState<ProjectWithCompany | null>(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -34,12 +36,14 @@ export default function ProjectsClient({ initialProjects, initialCompanies }: { 
   const fetchData = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
-    const [projectsRes, companiesRes] = await Promise.all([
-      supabase.from('projects').select('*, companies(name)').order('name'),
+    const [projectsRes, companiesRes, officesRes] = await Promise.all([
+      supabase.from('projects').select('*, companies(name), company_offices(name)').order('name'),
       supabase.from('companies').select('*').eq('is_active', true).order('name'),
+      supabase.from('company_offices').select('*').order('name'),
     ])
     setProjects(projectsRes.data ?? [])
     setCompanies(companiesRes.data ?? [])
+    setOffices(officesRes.data ?? [])
     setLoading(false)
   }, [])
 
@@ -51,7 +55,7 @@ export default function ProjectsClient({ initialProjects, initialCompanies }: { 
 
   const displayed = projects
     .filter(p => filterStatus === 'all' || p.status === filterStatus)
-    .filter(p => !search || p.name.includes(search) || p.companies?.name.includes(search))
+    .filter(p => !search || p.name.includes(search) || p.companies?.name.includes(search) || p.company_offices?.name.includes(search))
 
   return (
     <div className="p-4">
@@ -91,7 +95,9 @@ export default function ProjectsClient({ initialProjects, initialCompanies }: { 
               className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                <p className="text-xs text-gray-400">{p.companies?.name}</p>
+                <p className="text-xs text-gray-400">
+                  {p.companies?.name}{p.company_offices?.name ? `（${p.company_offices.name}）` : ''}
+                </p>
               </div>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${STATUS_COLORS[p.status as ProjectStatus] ?? 'bg-gray-100 text-gray-600'}`}>
                 {STATUS_LABELS[p.status as ProjectStatus] ?? p.status}
@@ -105,6 +111,7 @@ export default function ProjectsClient({ initialProjects, initialCompanies }: { 
         <ProjectModal
           project={editProject}
           companies={companies}
+          offices={offices}
           onClose={() => { setShowAdd(false); setEditProject(null) }}
           onSaved={fetchData}
         />
@@ -116,33 +123,46 @@ export default function ProjectsClient({ initialProjects, initialCompanies }: { 
 interface ProjectModalProps {
   project?: ProjectWithCompany | null
   companies: Company[]
+  offices: CompanyOffice[]
   onClose: () => void
   onSaved: () => void
 }
 
-function ProjectModal({ project, companies, onClose, onSaved }: ProjectModalProps) {
+function ProjectModal({ project, companies, offices, onClose, onSaved }: ProjectModalProps) {
   const [name, setName] = useState(project?.name ?? '')
   const [companyId, setCompanyId] = useState(project?.company_id ?? 0)
   const [companySearch, setCompanySearch] = useState(
     project ? (companies.find(c => c.id === project.company_id)?.name ?? '') : ''
   )
   const [companyOpen, setCompanyOpen] = useState(false)
+  const [officeId, setOfficeId] = useState(project?.office_id ?? 0)
   const [status, setStatus] = useState<ProjectStatus>(project?.status as ProjectStatus ?? 'active')
   const [notes, setNotes] = useState(project?.notes ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const filteredCompanies = companies.filter(c =>
-    !companySearch || c.name.includes(companySearch)
+    !companySearch || c.name.includes(companySearch) || offices.some(o => o.company_id === c.id && o.name.includes(companySearch))
   )
+
+  const companyOffices = offices.filter(o => o.company_id === companyId)
+  const needsOffice = companyOffices.length > 0
+
+  const handleSelectCompany = (c: Company) => {
+    setCompanyId(c.id)
+    setCompanySearch(c.name)
+    setCompanyOpen(false)
+    if (c.id !== companyId) setOfficeId(0)
+  }
 
   const handleSave = async () => {
     if (!name || !companyId) return
+    if (needsOffice && !officeId) return
     setError(null)
     setSaving(true)
     try {
       const supabase = createClient()
-      const payload = { name, company_id: companyId, status, notes: notes || null }
+      const payload = { name, company_id: companyId, office_id: needsOffice ? officeId : null, status, notes: notes || null }
       if (project) {
         await supabase.from('projects').update(payload).eq('id', project.id)
       } else {
@@ -181,7 +201,7 @@ function ProjectModal({ project, companies, onClose, onSaved }: ProjectModalProp
               <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {filteredCompanies.map(c => (
                   <button key={c.id} type="button"
-                    onClick={() => { setCompanyId(c.id); setCompanySearch(c.name); setCompanyOpen(false) }}
+                    onClick={() => handleSelectCompany(c)}
                     className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-gray-50 last:border-0 ${companyId === c.id ? 'bg-blue-50 text-blue-700' : 'text-gray-900'}`}>
                     {c.name}
                   </button>
@@ -189,6 +209,19 @@ function ProjectModal({ project, companies, onClose, onSaved }: ProjectModalProp
               </div>
             )}
           </div>
+          {needsOffice && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">事業所 *</label>
+              <select value={officeId} onChange={e => setOfficeId(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value={0}>選択してください</option>
+                {companyOffices.map(o => (
+                  <option key={o.id} value={o.id}>{o.name}（{o.address}）</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">住所が事業所ごとに異なるため、選択が必要です</p>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">工事名 *</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)}
@@ -213,7 +246,7 @@ function ProjectModal({ project, companies, onClose, onSaved }: ProjectModalProp
         <div className="mt-5 flex gap-2">
           <div className="flex-1" />
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">キャンセル</button>
-          <button onClick={handleSave} disabled={saving || !name || !companyId}
+          <button onClick={handleSave} disabled={saving || !name || !companyId || (needsOffice && !officeId)}
             className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
             {saving ? '保存中...' : '保存'}
           </button>

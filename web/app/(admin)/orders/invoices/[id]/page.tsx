@@ -12,7 +12,11 @@ const STATUSES: InvoiceStatus[] = ['下書き', '発行済', '送付済', '入�
 
 interface FullInvoice extends Invoice {
   items: DocumentItem[]
-  project?: { id: number; name: string; company_id: number; companies?: { name: string; postal: string; address: string } | null } | null
+  project?: {
+    id: number; name: string; company_id: number; office_id: number | null
+    companies?: { name: string; postal: string; address: string } | null
+    company_offices?: { postal: string; address: string } | null
+  } | null
 }
 
 interface QuotationWithItems extends Quotation {
@@ -54,7 +58,7 @@ export default function InvoiceDetailPage() {
     setLoading(true)
     const supabase = createClient()
     const [invRes, companiesRes, projectsRes, settingsRes] = await Promise.all([
-      supabase.from('invoices').select('*, items:invoice_items(*), project:projects(id,name,company_id,companies(name,postal,address))').eq('id', id).single(),
+      supabase.from('invoices').select('*, items:invoice_items(*), project:projects(id,name,company_id,office_id,companies(name,postal,address),company_offices(postal,address))').eq('id', id).single(),
       supabase.from('companies').select('*').eq('is_active', true).order('name'),
       supabase.from('projects').select('*').order('name'),
       supabase.from('settings').select('*').single(),
@@ -159,12 +163,13 @@ export default function InvoiceDetailPage() {
       const proj = invoice?.project
       const company = companies.find(c => c.id === (selectedProject?.company_id ?? proj?.company_id)) ?? null
       const companyInfo = proj?.companies as { name?: string; postal?: string; address?: string } | null | undefined
+      const officeInfo = proj?.company_offices as { postal?: string; address?: string } | null | undefined
       await downloadInvoiceExcel({
         docNo,
         issueDate,
         customerName: companyInfo?.name ?? company?.name ?? '',
-        customerPostal: companyInfo?.postal ?? company?.postal ?? '',
-        customerAddress: companyInfo?.address ?? company?.address ?? '',
+        customerPostal: officeInfo?.postal ?? companyInfo?.postal ?? company?.postal ?? '',
+        customerAddress: officeInfo?.address ?? companyInfo?.address ?? company?.address ?? '',
         notes,
         items,
         discountDigits,

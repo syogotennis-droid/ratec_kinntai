@@ -137,9 +137,19 @@ export interface CompanyContact {
 export interface Project {
   id: number
   company_id: number
+  office_id: number | null
   name: string
   status: ProjectStatus
   notes: string | null
+  created_at: string
+}
+
+export interface CompanyOffice {
+  id: number
+  company_id: number
+  name: string
+  postal: string
+  address: string
   created_at: string
 }
 

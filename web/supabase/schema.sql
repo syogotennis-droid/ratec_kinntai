@@ -152,10 +152,22 @@ CREATE TABLE companies (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 取引先の事業所（同じ会社でも住所が異なる拠点）
+CREATE TABLE company_offices (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  postal TEXT DEFAULT '',
+  address TEXT DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- 案件
 CREATE TABLE projects (
   id SERIAL PRIMARY KEY,
   company_id INTEGER NOT NULL REFERENCES companies(id),
+  office_id INTEGER REFERENCES company_offices(id),
   name TEXT NOT NULL,
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
   notes TEXT,
@@ -279,6 +291,7 @@ ALTER TABLE sales_photos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bonuses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE company_offices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quotations ENABLE ROW LEVEL SECURITY;
@@ -298,6 +311,7 @@ CREATE POLICY "authenticated_all" ON sales_photos FOR ALL TO authenticated USING
 CREATE POLICY "authenticated_all" ON bonuses FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON companies FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_all" ON company_offices FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON projects FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON suppliers FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON quotations FOR ALL TO authenticated USING (true) WITH CHECK (true);
