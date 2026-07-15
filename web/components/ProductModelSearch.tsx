@@ -9,8 +9,6 @@ export interface Maker {
   label: string
   endpoint: string
   accent: 'red' | 'blue'
-  /** そのメーカーの公式検索ページのURLを組み立てる（型式で検索した状態のページを開くため） */
-  siteSearchUrl: (kwd: string) => string
 }
 
 const ACCENT = {
@@ -42,7 +40,7 @@ export default function ProductModelSearch({ makers, onSelect }: Props) {
   const [highlightIndex, setHighlightIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([])
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const accent = ACCENT[maker.accent]
@@ -154,32 +152,16 @@ export default function ProductModelSearch({ makers, onSelect }: Props) {
           ))}
         </div>
       )}
-      <div className="flex items-center gap-1">
-        <input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={e => search(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={`${maker.label}型式検索...`}
-          className={`w-24 px-2 py-1 border ${accent.border} rounded text-xs focus:outline-none focus:ring-1 ${accent.ring} ${accent.bg}`}
-        />
-        <a
-          href={maker.siteSearchUrl(query)}
-          target="_blank"
-          rel="noreferrer noopener"
-          title={`${maker.label}公式サイトでこの型式を検索`}
-          onClick={e => { if (!query) e.preventDefault() }}
-          className={`shrink-0 p-1 rounded-full transition-colors ${query ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100' : 'text-gray-200 cursor-not-allowed'}`}
-        >
-          <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M8 4H4.5A1.5 1.5 0 0 0 3 5.5v10A1.5 1.5 0 0 0 4.5 17h10a1.5 1.5 0 0 0 1.5-1.5V12" />
-            <path d="M11 3h6v6" />
-            <path d="M9 11 17 3" />
-          </svg>
-        </a>
-      </div>
-      {loading && <span className="absolute right-7 top-1.5 text-gray-400 text-xs">...</span>}
+      <input
+        ref={inputRef}
+        type="text"
+        value={query}
+        onChange={e => search(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={`${maker.label}型式検索...`}
+        className={`w-24 px-2 py-1 border ${accent.border} rounded text-xs focus:outline-none focus:ring-1 ${accent.ring} ${accent.bg}`}
+      />
+      {loading && <span className="absolute right-2 top-1.5 text-gray-400 text-xs">...</span>}
       {open && typeof document !== 'undefined' && createPortal(
         <div
           ref={dropdownRef}
@@ -188,39 +170,19 @@ export default function ProductModelSearch({ makers, onSelect }: Props) {
         >
           {results.length > 0 ? (
             results.map((r, i) => (
-              <div
+              <button
                 key={i}
                 ref={el => { itemRefs.current[i] = el }}
-                role="button"
-                tabIndex={-1}
                 onClick={() => select(r)}
                 onMouseEnter={() => setHighlightIndex(i)}
-                className={`w-full flex items-start gap-1 text-left px-3 py-2 border-b border-gray-100 last:border-0 cursor-pointer ${
+                className={`w-full text-left px-3 py-2 border-b border-gray-100 last:border-0 ${
                   i === highlightIndex ? accent.hi : accent.hover
                 }`}
               >
-                <div className="flex-1 min-w-0">
-                  <div className={`text-xs font-mono ${accent.code}`}>{r.code}</div>
-                  <div className="text-xs text-gray-400">{r.category}</div>
-                  {r.price != null && <div className="text-xs text-gray-600 mt-0.5">¥{r.price.toLocaleString()}（税別）</div>}
-                </div>
-                {r.detailUrl && (
-                  <a
-                    href={r.detailUrl}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    title="公式サイトの商品ページを開く"
-                    onClick={e => e.stopPropagation()}
-                    className="shrink-0 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                  >
-                    <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 4H4.5A1.5 1.5 0 0 0 3 5.5v10A1.5 1.5 0 0 0 4.5 17h10a1.5 1.5 0 0 0 1.5-1.5V12" />
-                      <path d="M11 3h6v6" />
-                      <path d="M9 11 17 3" />
-                    </svg>
-                  </a>
-                )}
-              </div>
+                <div className={`text-xs font-mono ${accent.code}`}>{r.code}</div>
+                <div className="text-xs text-gray-400">{r.category}</div>
+                {r.price != null && <div className="text-xs text-gray-600 mt-0.5">¥{r.price.toLocaleString()}（税別）</div>}
+              </button>
             ))
           ) : query && !loading ? (
             <div className="px-3 py-2 text-xs text-gray-400">{error ? '取得に失敗しました' : '該当なし'}</div>

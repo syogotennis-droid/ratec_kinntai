@@ -10,14 +10,8 @@ import ProductModelSearch, { Maker } from '@/components/ProductModelSearch'
 import { Win2kResult } from '@/lib/win2k'
 
 const MAKERS: Maker[] = [
-  {
-    key: 'mitsubishi', label: '三菱', endpoint: '/api/win2k-search', accent: 'red',
-    siteSearchUrl: kwd => `https://www.mitsubishielectric.co.jp/ldg/wink/ssl/sp/searchProduct.do?kwd=${encodeURIComponent(kwd)}`,
-  },
-  {
-    key: 'toshiba', label: '東芝', endpoint: '/api/toshiba-search', accent: 'blue',
-    siteSearchUrl: kwd => `https://saturn.tlt.co.jp/pdocs/product.html?page=0&rows=20&sort=-recommend&anc=res&rsF=0&iesFlug=0&f=kw&st=&katamei=${encodeURIComponent(kwd)}&newF=0&enProdF=1&pubF=0&greenF=0&searchView=list`,
-  },
+  { key: 'mitsubishi', label: '三菱', endpoint: '/api/win2k-search', accent: 'red' },
+  { key: 'toshiba', label: '東芝', endpoint: '/api/toshiba-search', accent: 'blue' },
 ]
 import { useProfile } from '@/lib/profile-context'
 
@@ -51,6 +45,7 @@ export default function QuotationDetailPage() {
   const [contactPerson, setContactPerson] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([])
+  const [itemLinks, setItemLinks] = useState<(string | null)[]>([])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -76,6 +71,7 @@ export default function QuotationDetailPage() {
       setNotes(q.notes ?? '')
       const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
       setItems(sorted.map(({ id: _id, ...rest }) => rest))
+      setItemLinks(sorted.map(() => null))
       // 顧客名を取得
       const proj = (projectsRes.data ?? []).find(p => p.id === q.project_id)
       setCustomerName((proj as { companies?: { name: string } | null } | undefined)?.companies?.name ?? '')
@@ -129,7 +125,12 @@ export default function QuotationDetailPage() {
     setItems(prev => {
       const next = [...prev]
       const unitPrice = result.price ?? next[idx].unit_price
-      next[idx] = { ...next[idx], name: result.code, spec: result.category, unit_price: unitPrice, amount: next[idx].qty * unitPrice }
+      next[idx] = { ...next[idx], name: result.code, unit_price: unitPrice, amount: next[idx].qty * unitPrice }
+      return next
+    })
+    setItemLinks(prev => {
+      const next = [...prev]
+      next[idx] = result.detailUrl
       return next
     })
   }
@@ -261,13 +262,13 @@ export default function QuotationDetailPage() {
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-bold text-gray-700">明細</h2>
-          <button onClick={() => setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
+          <button onClick={() => { setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }]); setItemLinks(prev => [...prev, null]) }} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[500px]">
             <thead>
               <tr className="border-b border-gray-200">
-                {['型式検索', '品名', '仕様', '数量', '単位', '単価', '金額', ''].map(h => (
+                {['型式検索', '品名', '数量', '単位', '単価', '金額', ''].map(h => (
                   <th key={h} className="text-left py-1.5 px-2 font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -276,13 +277,26 @@ export default function QuotationDetailPage() {
               {items.map((item, idx) => (
                 <tr key={idx} className="border-b border-gray-100">
                   <td className="py-1 px-1"><ProductModelSearch makers={MAKERS} onSelect={r => applyWin2kResult(idx, r)} /></td>
-                  <td className="py-1 px-1"><input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="w-24 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
-                  <td className="py-1 px-1"><input value={item.spec} onChange={e => updateItem(idx, 'spec', e.target.value)} className="w-24 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                  <td className="py-1 px-1">
+                    <div className="flex items-center gap-1">
+                      <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="w-24 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      {itemLinks[idx] && (
+                        <a href={itemLinks[idx]!} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
+                          className="shrink-0 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                          <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M8 4H4.5A1.5 1.5 0 0 0 3 5.5v10A1.5 1.5 0 0 0 4.5 17h10a1.5 1.5 0 0 0 1.5-1.5V12" />
+                            <path d="M11 3h6v6" />
+                            <path d="M9 11 17 3" />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
+                  </td>
                   <td className="py-1 px-1"><input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0} className="w-14 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                   <td className="py-1 px-1"><input value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)} className="w-12 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                   <td className="py-1 px-1"><input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0} className="w-20 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                   <td className="py-1 px-2 text-right font-medium">¥{item.amount.toLocaleString()}</td>
-                  <td className="py-1 px-1"><button onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600">×</button></td>
+                  <td className="py-1 px-1"><button onClick={() => { setItems(prev => prev.filter((_, i) => i !== idx)); setItemLinks(prev => prev.filter((_, i) => i !== idx)) }} className="text-red-400 hover:text-red-600">×</button></td>
                 </tr>
               ))}
             </tbody>
