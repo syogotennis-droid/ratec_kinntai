@@ -9,20 +9,24 @@ import { useSidebar } from '@/lib/sidebar-context'
 interface SalesClientProps {
   initialYearMonth: string
   initialRecords: SalesRecord[]
+  initialProfiles: { id: string; name: string }[]
   initialPhotoCounts: Record<number, number>
   initialPhotoThumbs: Record<number, string>
 }
 
-export default function SalesClient({ initialYearMonth, initialRecords, initialPhotoCounts, initialPhotoThumbs }: SalesClientProps) {
+export default function SalesClient({ initialYearMonth, initialRecords, initialProfiles, initialPhotoCounts, initialPhotoThumbs }: SalesClientProps) {
   const profile = useProfile()
   const openSidebar = useSidebar()
   const userId = profile.id
   const [yearMonth, setYearMonth] = useState(initialYearMonth)
   const [records, setRecords] = useState<SalesRecord[]>(initialRecords)
+  const [profiles] = useState<{ id: string; name: string }[]>(initialProfiles)
   const [photoCounts, setPhotoCounts] = useState<Record<number, number>>(initialPhotoCounts)
   const [photoThumbs, setPhotoThumbs] = useState<Record<number, string>>(initialPhotoThumbs)
   const [loading, setLoading] = useState(false)
   const [modal, setModal] = useState<{ record?: SalesRecord | null; date?: string } | null>(null)
+
+  const nameById = (id: string) => profiles.find(p => p.id === id)?.name ?? '—'
 
   const fetchRecords = useCallback(async () => {
     setLoading(true)
@@ -32,7 +36,6 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
     const { data } = await supabase
       .from('sales_records')
       .select('*')
-      .eq('user_id', userId)
       .gte('record_date', `${yearMonth}-01`)
       .lte('record_date', `${yearMonth}-${String(lastDay).padStart(2, '0')}`)
       .order('record_date', { ascending: false })
@@ -61,7 +64,7 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
     const thumbs: Record<number, string> = {}
     signed?.forEach((s, i) => { if (s.signedUrl) thumbs[Number(entries[i][0])] = s.signedUrl })
     setPhotoThumbs(thumbs)
-  }, [userId, yearMonth])
+  }, [yearMonth])
 
   const didMount = useRef(false)
   useEffect(() => {
@@ -143,6 +146,10 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
                 {r.record_date.slice(5).replace('-', '/')}
               </div>
               <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs md:text-sm font-medium text-gray-600 shrink-0">{nameById(r.user_id)}</span>
+                  {r.user_id !== userId && <span className="text-[10px] text-gray-400 shrink-0">閲覧のみ</span>}
+                </div>
                 <div className="text-sm md:text-base text-gray-900 truncate">{r.description || '—'}</div>
                 {(r.cost ?? 0) > 0 && (
                   <div className="text-xs md:text-sm text-gray-400">原価 ¥{(r.cost ?? 0).toLocaleString()}</div>
@@ -159,6 +166,8 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
           userId={userId}
           record={modal.record}
           defaultDate={modal.date}
+          readOnly={!!modal.record && modal.record.user_id !== userId}
+          ownerName={modal.record ? nameById(modal.record.user_id) : ''}
           onClose={() => setModal(null)}
           onSaved={fetchRecords}
         />
@@ -172,11 +181,13 @@ interface SalesModalProps {
   userId: string
   record?: SalesRecord | null
   defaultDate?: string
+  readOnly?: boolean
+  ownerName?: string
   onClose: () => void
   onSaved: () => void
 }
 
-function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModalProps) {
+function SalesModal({ userId, record, defaultDate, readOnly = false, ownerName, onClose, onSaved }: SalesModalProps) {
   const [date, setDate] = useState(record?.record_date ?? defaultDate ?? '')
   const [amount, setAmount] = useState(String(record?.amount ?? ''))
   const [cost, setCost] = useState(String(record?.cost ?? ''))
@@ -294,24 +305,24 @@ function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModa
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6 my-auto" onClick={e => e.stopPropagation()}>
         <h2 className="text-base font-bold text-gray-900 mb-4">
-          {record ? '売上記録を編集' : '売上記録を追加'}
+          {readOnly ? `${ownerName}さんの売上記録` : record ? '売上記録を編集' : '売上記録を追加'}
         </h2>
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">日付</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} disabled={readOnly}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">売上（円）</label>
-              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} min={0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} min={0} disabled={readOnly}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">原価（円）</label>
-              <input type="number" value={cost} onChange={e => setCost(e.target.value)} min={0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="number" value={cost} onChange={e => setCost(e.target.value)} min={0} disabled={readOnly}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500" />
             </div>
           </div>
           {(amountNum > 0 || costNum > 0) && (
@@ -321,13 +332,13 @@ function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModa
           )}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">内容</label>
-            <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="text" value={description} onChange={e => setDescription(e.target.value)} disabled={readOnly}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">メモ</label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} disabled={readOnly}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:bg-gray-50 disabled:text-gray-500" />
           </div>
 
           <div>
@@ -339,38 +350,49 @@ function SalesModal({ userId, record, defaultDate, onClose, onSaved }: SalesModa
                     ? <img src={photoUrls[p.id]} alt={p.original_name} className="w-full h-full object-cover" />
                     : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">読込中</div>
                   }
-                  <button onClick={() => deleteExistingPhoto(p)}
-                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center">×</button>
+                  {!readOnly && (
+                    <button onClick={() => deleteExistingPhoto(p)}
+                      className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center">×</button>
+                  )}
                 </div>
               ))}
-              {newPreviews.map((url, i) => (
+              {!readOnly && newPreviews.map((url, i) => (
                 <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-blue-200 bg-gray-50">
                   <img src={url} alt="" className="w-full h-full object-cover" />
                   <button onClick={() => removeNewFile(i)}
                     className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center">×</button>
                 </div>
               ))}
-              <button onClick={() => fileInputRef.current?.click()}
-                className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 transition-colors">
-                <span className="text-2xl leading-none">+</span>
-                <span className="text-xs mt-1">写真追加</span>
-              </button>
+              {!readOnly && (
+                <button onClick={() => fileInputRef.current?.click()}
+                  className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 transition-colors">
+                  <span className="text-2xl leading-none">+</span>
+                  <span className="text-xs mt-1">写真追加</span>
+                </button>
+              )}
+              {readOnly && existingPhotos.length === 0 && (
+                <div className="text-xs text-gray-400 py-2">写真なし</div>
+              )}
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
           </div>
         </div>
         {error && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
         <div className="mt-5 flex gap-2">
-          {record && (
+          {record && !readOnly && (
             <button onClick={handleDelete} disabled={saving}
               className="px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg">削除</button>
           )}
           <div className="flex-1" />
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">キャンセル</button>
-          <button onClick={handleSave} disabled={saving || !date}
-            className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
-            {saving ? '保存中...' : '保存'}
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">
+            {readOnly ? '閉じる' : 'キャンセル'}
           </button>
+          {!readOnly && (
+            <button onClick={handleSave} disabled={saving || !date}
+              className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
+              {saving ? '保存中...' : '保存'}
+            </button>
+          )}
         </div>
       </div>
     </div>
