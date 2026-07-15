@@ -148,6 +148,9 @@ function ProjectModal({ project, companies, offices, onClose, onSaved }: Project
   const companyOffices = offices.filter(o => o.company_id === companyId)
   const needsOffice = companyOffices.length > 0
 
+  // eslint-disable-next-line no-console
+  console.log('[debug] companyId:', companyId, typeof companyId, 'offices:', offices, 'companyOffices:', companyOffices)
+
   const handleSelectCompany = (c: Company) => {
     setCompanyId(c.id)
     setCompanySearch(c.name)
