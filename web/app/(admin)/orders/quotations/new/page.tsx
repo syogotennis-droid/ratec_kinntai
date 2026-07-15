@@ -9,8 +9,14 @@ import ProductModelSearch, { Maker } from '@/components/ProductModelSearch'
 import { Win2kResult } from '@/lib/win2k'
 
 const MAKERS: Maker[] = [
-  { key: 'mitsubishi', label: '三菱', endpoint: '/api/win2k-search', accent: 'red' },
-  { key: 'toshiba', label: '東芝', endpoint: '/api/toshiba-search', accent: 'blue' },
+  {
+    key: 'mitsubishi', label: '三菱', endpoint: '/api/win2k-search', accent: 'red',
+    siteSearchUrl: kwd => `https://www.mitsubishielectric.co.jp/ldg/wink/ssl/sp/searchProduct.do?kwd=${encodeURIComponent(kwd)}`,
+  },
+  {
+    key: 'toshiba', label: '東芝', endpoint: '/api/toshiba-search', accent: 'blue',
+    siteSearchUrl: kwd => `https://saturn.tlt.co.jp/pdocs/product.html?page=0&rows=20&sort=-recommend&anc=res&rsF=0&iesFlug=0&f=kw&st=&katamei=${encodeURIComponent(kwd)}&newF=0&enProdF=1&pubF=0&greenF=0&searchView=list`,
+  },
 ]
 
 const TAX_RATE = 0.1
