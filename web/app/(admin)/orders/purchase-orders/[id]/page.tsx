@@ -305,7 +305,7 @@ export default function PurchaseOrderDetailPage() {
               onChange={e => { setSearchText(e.target.value); setDropdownOpen(true); setHighlightIndex(-1); if (!e.target.value) { setProjectId(0); setProjectName('') } }}
               onFocus={() => setDropdownOpen(true)}
               onKeyDown={handleSearchKeyDown}
-              placeholder="会社名・工事名で検索"
+              placeholder="会社名・案件名で検索"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {dropdownOpen && Object.keys(grouped).length > 0 && (

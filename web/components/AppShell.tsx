@@ -37,7 +37,7 @@ const adminNavGroups: NavGroup[] = [
   {
     heading: '書類',
     items: [
-      { to: '/orders/projects', label: '工事管理' },
+      { to: '/orders/projects', label: '案件管理' },
       { to: '/orders/quotations', label: '見積書' },
       { to: '/orders/invoices', label: '請求書/納品書' },
       { to: '/orders/purchase-orders', label: '注文書' },
@@ -57,7 +57,7 @@ const employeeNavGroups: NavGroup[] = [
   {
     heading: '書類',
     items: [
-      { to: '/orders/projects', label: '工事管理' },
+      { to: '/orders/projects', label: '案件管理' },
       { to: '/orders/quotations', label: '見積書' },
       { to: '/orders/invoices', label: '請求書/納品書' },
       { to: '/orders/purchase-orders', label: '注文書' },

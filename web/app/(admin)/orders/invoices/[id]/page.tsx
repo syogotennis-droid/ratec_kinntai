@@ -298,7 +298,7 @@ export default function InvoiceDetailPage() {
         {/* Project search */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">工事名</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">案件名</label>
             <div className="relative" ref={searchRef}>
               {selectedProject ? (
                 <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white">
@@ -314,7 +314,7 @@ export default function InvoiceDetailPage() {
                   onChange={e => { setSearch(e.target.value); setShowResults(true); setHighlightIndex(-1) }}
                   onFocus={() => setShowResults(true)}
                   onKeyDown={handleSearchKeyDown}
-                  placeholder="会社名・工事名で検索"
+                  placeholder="会社名・案件名で検索"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               )}
