@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Company, Project, Supplier, DocumentItem } from '@/lib/supabase/types'
+import { Company, CompanyOffice, Project, DocumentItem } from '@/lib/supabase/types'
 import Link from 'next/link'
 import MitsubishiSearch from '@/components/MitsubishiSearch'
 import { Win2kResult } from '@/lib/win2k'
@@ -19,13 +19,11 @@ export default function NewQuotationPage() {
   const searchRef = useRef<HTMLDivElement>(null)
   const [companies, setCompanies] = useState<Company[]>([])
   const [projects, setProjects] = useState<Project[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [offices, setOffices] = useState<CompanyOffice[]>([])
   const [search, setSearch] = useState('')
   const [showResults, setShowResults] = useState(false)
   const [selectedProject, setSelectedProject] = useState<ProjectWithCompany | null>(null)
   const [projectId, setProjectId] = useState<number>(0)
-  const [supplierId, setSupplierId] = useState<number>(0)
-  const [docNo, setDocNo] = useState('')
   const [issueDate, setIssueDate] = useState(new Date().toLocaleDateString('sv-SE'))
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([
@@ -39,13 +37,27 @@ export default function NewQuotationPage() {
     Promise.all([
       supabase.from('companies').select('*').eq('is_active', true).order('name'),
       supabase.from('projects').select('*').order('name'),
-      supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
-    ]).then(([c, p, s]) => {
+      supabase.from('company_offices').select('*'),
+    ]).then(([c, p, o]) => {
       setCompanies(c.data ?? [])
       setProjects(p.data ?? [])
-      setSuppliers(s.data ?? [])
+      setOffices(o.data ?? [])
     })
   }, [])
+
+  const generateDocNo = async () => {
+    const today = new Date().toLocaleDateString('sv-SE')
+    const mmdd = today.slice(5, 7) + today.slice(8, 10)
+    const { data } = await createClient()
+      .from('quotations')
+      .select('doc_no')
+      .like('doc_no', `${mmdd}-%`)
+    const maxN = (data ?? []).reduce((max, q) => {
+      const n = parseInt(q.doc_no.split('-')[1] ?? '0')
+      return Math.max(max, isNaN(n) ? 0 : n)
+    }, 0)
+    return `${mmdd}-${maxN + 1}`
+  }
 
   // Click outside to close results
   useEffect(() => {
@@ -79,6 +91,10 @@ export default function NewQuotationPage() {
     setShowResults(false)
   }
 
+  const office = selectedProject?.office_id ? offices.find(o => o.id === selectedProject.office_id) : null
+  const resolvedPostal = office?.postal ?? selectedProject?.companyData.postal ?? ''
+  const resolvedAddress = office?.address ?? selectedProject?.companyData.address ?? ''
+
   const subtotal = items.reduce((s, i) => s + i.amount, 0)
   const taxAmount = Math.floor(subtotal * TAX_RATE)
   const totalAmount = subtotal + taxAmount
@@ -107,10 +123,10 @@ export default function NewQuotationPage() {
     setError(null)
     setSaving(true)
     try {
+      const docNo = await generateDocNo()
       const supabase = createClient()
       const { data: q, error: qErr } = await supabase.from('quotations').insert({
         project_id: projectId,
-        supplier_id: supplierId || null,
         doc_no: docNo,
         issue_date: issueDate,
         status: '作成中',
@@ -186,23 +202,18 @@ export default function NewQuotationPage() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">見積書番号（任意）</label>
-            <input type="text" value={docNo} onChange={e => setDocNo(e.target.value)} placeholder="Q-2026-001"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className="block text-xs font-medium text-gray-700 mb-1">住所</label>
+            <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 bg-gray-50 min-h-[38px]">
+              {selectedProject ? (
+                <>{resolvedPostal && `〒${resolvedPostal} `}{resolvedAddress || '—'}</>
+              ) : '—'}
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">発行日</label>
             <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">仕入先（任意）</label>
-          <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value={0}>なし</option>
-            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">備考</label>
