@@ -72,6 +72,8 @@ export default function PurchaseOrderDetailPage() {
 
   const [searchText, setSearchText] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [highlightIndex, setHighlightIndex] = useState(-1)
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const searchRef = useRef<HTMLDivElement>(null)
 
   const fetchData = useCallback(async () => {
@@ -167,12 +169,38 @@ export default function PurchaseOrderDetailPage() {
     return acc
   }, {})
 
+  const flatResults = Object.values(grouped).flatMap(g => g.projs)
+
   const selectProject = (p: ProjectWithCompany) => {
     setProjectId(p.id)
     setProjectName(p.name)
     setSearchText(p.name)
     setDropdownOpen(false)
+    setHighlightIndex(-1)
     setQuotationId(null)
+  }
+
+  useEffect(() => {
+    if (highlightIndex < 0) return
+    itemRefs.current[highlightIndex]?.scrollIntoView({ block: 'nearest' })
+  }, [highlightIndex])
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!dropdownOpen || flatResults.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlightIndex(i => (i + 1) % flatResults.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlightIndex(i => (i <= 0 ? flatResults.length - 1 : i - 1))
+    } else if (e.key === 'Enter') {
+      if (highlightIndex >= 0) {
+        e.preventDefault()
+        selectProject(flatResults[highlightIndex])
+      }
+    } else if (e.key === 'Escape') {
+      setDropdownOpen(false)
+    }
   }
 
   const subtotal = items.reduce((s, i) => s + i.amount, 0)
@@ -274,8 +302,9 @@ export default function PurchaseOrderDetailPage() {
             <input
               type="text"
               value={searchText}
-              onChange={e => { setSearchText(e.target.value); setDropdownOpen(true); if (!e.target.value) { setProjectId(0); setProjectName('') } }}
+              onChange={e => { setSearchText(e.target.value); setDropdownOpen(true); setHighlightIndex(-1); if (!e.target.value) { setProjectId(0); setProjectName('') } }}
               onFocus={() => setDropdownOpen(true)}
+              onKeyDown={handleSearchKeyDown}
               placeholder="会社名・工事名で検索"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -284,12 +313,20 @@ export default function PurchaseOrderDetailPage() {
                 {Object.values(grouped).map(({ company, projs }) => (
                   <div key={company?.id ?? 0}>
                     <div className="px-3 py-1 text-xs font-semibold text-gray-400 bg-gray-50 sticky top-0">{company?.name ?? '不明'}</div>
-                    {projs.map(p => (
-                      <button key={p.id} onMouseDown={() => selectProject(p)}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 ${projectId === p.id ? 'text-blue-600 font-medium' : 'text-gray-800'}`}>
-                        {p.name}
-                      </button>
-                    ))}
+                    {projs.map(p => {
+                      const flatIndex = flatResults.indexOf(p)
+                      return (
+                        <button key={p.id}
+                          ref={el => { itemRefs.current[flatIndex] = el }}
+                          onMouseDown={() => selectProject(p)}
+                          onMouseEnter={() => setHighlightIndex(flatIndex)}
+                          className={`w-full text-left px-4 py-2 text-sm ${
+                            flatIndex === highlightIndex ? 'bg-blue-50 text-blue-600 font-medium' : projectId === p.id ? 'text-blue-600 font-medium' : 'text-gray-800 hover:bg-blue-50'
+                          }`}>
+                          {p.name}
+                        </button>
+                      )
+                    })}
                   </div>
                 ))}
               </div>

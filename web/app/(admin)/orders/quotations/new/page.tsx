@@ -22,6 +22,8 @@ export default function NewQuotationPage() {
   const [offices, setOffices] = useState<CompanyOffice[]>([])
   const [search, setSearch] = useState('')
   const [showResults, setShowResults] = useState(false)
+  const [highlightIndex, setHighlightIndex] = useState(-1)
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const [selectedProject, setSelectedProject] = useState<ProjectWithCompany | null>(null)
   const [projectId, setProjectId] = useState<number>(0)
   const [issueDate, setIssueDate] = useState(new Date().toLocaleDateString('sv-SE'))
@@ -84,11 +86,37 @@ export default function NewQuotationPage() {
     return acc
   }, {})
 
+  const flatResults = Object.values(grouped).flatMap(g => g.projs)
+
   const selectProject = (p: ProjectWithCompany) => {
     setSelectedProject(p)
     setProjectId(p.id)
     setSearch('')
     setShowResults(false)
+    setHighlightIndex(-1)
+  }
+
+  useEffect(() => {
+    if (highlightIndex < 0) return
+    itemRefs.current[highlightIndex]?.scrollIntoView({ block: 'nearest' })
+  }, [highlightIndex])
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showResults || flatResults.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlightIndex(i => (i + 1) % flatResults.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlightIndex(i => (i <= 0 ? flatResults.length - 1 : i - 1))
+    } else if (e.key === 'Enter') {
+      if (highlightIndex >= 0) {
+        e.preventDefault()
+        selectProject(flatResults[highlightIndex])
+      }
+    } else if (e.key === 'Escape') {
+      setShowResults(false)
+    }
   }
 
   const office = selectedProject?.office_id ? offices.find(o => o.id === selectedProject.office_id) : null
@@ -168,8 +196,9 @@ export default function NewQuotationPage() {
               <input
                 type="text"
                 value={search}
-                onChange={e => { setSearch(e.target.value); setShowResults(true) }}
+                onChange={e => { setSearch(e.target.value); setShowResults(true); setHighlightIndex(-1) }}
                 onFocus={() => setShowResults(true)}
+                onKeyDown={handleSearchKeyDown}
                 placeholder="会社名・工事名で検索"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -184,15 +213,22 @@ export default function NewQuotationPage() {
                       <div className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-gray-50 sticky top-0">
                         {company.name}
                       </div>
-                      {projs.map(p => (
-                        <button
-                          key={p.id}
-                          onMouseDown={() => selectProject(p)}
-                          className="w-full text-left px-5 py-2 text-sm text-gray-800 hover:bg-blue-50 transition-colors"
-                        >
-                          {p.name}
-                        </button>
-                      ))}
+                      {projs.map(p => {
+                        const flatIndex = flatResults.indexOf(p)
+                        return (
+                          <button
+                            key={p.id}
+                            ref={el => { itemRefs.current[flatIndex] = el }}
+                            onMouseDown={() => selectProject(p)}
+                            onMouseEnter={() => setHighlightIndex(flatIndex)}
+                            className={`w-full text-left px-5 py-2 text-sm transition-colors ${
+                              flatIndex === highlightIndex ? 'bg-blue-50 text-blue-700' : 'text-gray-800 hover:bg-blue-50'
+                            }`}
+                          >
+                            {p.name}
+                          </button>
+                        )
+                      })}
                     </div>
                   ))
                 )}
