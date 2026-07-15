@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Company, Project, Supplier, DocumentItem } from '@/lib/supabase/types'
@@ -10,12 +10,19 @@ import { Win2kResult } from '@/lib/win2k'
 
 const TAX_RATE = 0.1
 
+interface ProjectWithCompany extends Project {
+  companyData: Company
+}
+
 export default function NewQuotationPage() {
   const router = useRouter()
+  const searchRef = useRef<HTMLDivElement>(null)
   const [companies, setCompanies] = useState<Company[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [companyId, setCompanyId] = useState<number>(0)
+  const [search, setSearch] = useState('')
+  const [showResults, setShowResults] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<ProjectWithCompany | null>(null)
   const [projectId, setProjectId] = useState<number>(0)
   const [supplierId, setSupplierId] = useState<number>(0)
   const [docNo, setDocNo] = useState('')
@@ -40,7 +47,38 @@ export default function NewQuotationPage() {
     })
   }, [])
 
-  const filteredProjects = companyId ? projects.filter(p => p.company_id === companyId) : projects
+  // Click outside to close results
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowResults(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const projectsWithCompany: ProjectWithCompany[] = projects
+    .map(p => ({ ...p, companyData: companies.find(c => c.id === p.company_id)! }))
+    .filter(p => p.companyData)
+
+  const filtered = search
+    ? projectsWithCompany.filter(p => p.name.includes(search) || p.companyData.name.includes(search))
+    : projectsWithCompany
+
+  const grouped = filtered.reduce<Record<number, { company: Company; projs: ProjectWithCompany[] }>>((acc, p) => {
+    if (!acc[p.company_id]) acc[p.company_id] = { company: p.companyData, projs: [] }
+    acc[p.company_id].projs.push(p)
+    return acc
+  }, {})
+
+  const selectProject = (p: ProjectWithCompany) => {
+    setSelectedProject(p)
+    setProjectId(p.id)
+    setSearch('')
+    setShowResults(false)
+  }
+
   const subtotal = items.reduce((s, i) => s + i.amount, 0)
   const taxAmount = Math.floor(subtotal * TAX_RATE)
   const totalAmount = subtotal + taxAmount
@@ -100,22 +138,50 @@ export default function NewQuotationPage() {
         <h1 className="text-sm font-bold text-gray-900">新規見積書</h1>
       </div>
       <div className="space-y-3 mb-6">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">取引先</label>
-            <select value={companyId} onChange={e => { setCompanyId(Number(e.target.value)); setProjectId(0) }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value={0}>選択してください</option>
-              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">工事名 *</label>
-            <select value={projectId} onChange={e => setProjectId(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value={0}>選択してください</option>
-              {filteredProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">工事名 *</label>
+          <div className="relative" ref={searchRef}>
+            {selectedProject ? (
+              <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                <span className="text-xs text-gray-500">{selectedProject.companyData.name}</span>
+                <span className="text-sm text-gray-900 flex-1">{selectedProject.name}</span>
+                <button onClick={() => { setSelectedProject(null); setProjectId(0) }}
+                  className="text-gray-400 hover:text-gray-600 text-xs">×</button>
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setShowResults(true) }}
+                onFocus={() => setShowResults(true)}
+                placeholder="会社名・工事名で検索"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            )}
+            {showResults && !selectedProject && (
+              <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-auto">
+                {Object.values(grouped).length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-gray-400">該当なし</div>
+                ) : (
+                  Object.values(grouped).map(({ company, projs }) => (
+                    <div key={company.id}>
+                      <div className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-gray-50 sticky top-0">
+                        {company.name}
+                      </div>
+                      {projs.map(p => (
+                        <button
+                          key={p.id}
+                          onMouseDown={() => selectProject(p)}
+                          className="w-full text-left px-5 py-2 text-sm text-gray-800 hover:bg-blue-50 transition-colors"
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
