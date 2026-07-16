@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, EmploymentType } from '@/lib/supabase/types'
 import { createEmployee } from './actions'
+import MobileMenuButton from '@/components/ui/MobileMenuButton'
 
 const EMPLOYMENT_LABELS: Record<EmploymentType, string> = {
   hourly: '時給',
@@ -43,10 +44,13 @@ export default function EmployeesClient({ initialProfiles }: EmployeesClientProp
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
-          退職者を表示
-        </label>
+        <div className="flex items-center gap-2">
+          <MobileMenuButton />
+          <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+            <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
+            退職者を表示
+          </label>
+        </div>
         <button
           onClick={() => setShowAdd(true)}
           className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg"

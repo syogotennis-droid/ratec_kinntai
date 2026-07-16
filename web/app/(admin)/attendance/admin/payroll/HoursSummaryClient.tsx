@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, WorkRecord } from '@/lib/supabase/types'
 import { calcDailyHours, sumHours, formatHours, weekendOrHolidayKind } from './hours'
+import MobileMenuButton from '@/components/ui/MobileMenuButton'
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -83,6 +84,7 @@ export default function HoursSummaryClient({ profiles, initialUserId, initialYea
   return (
     <div className="px-4 pt-2 pb-4">
       <div className="flex flex-wrap items-center gap-2 mb-2">
+        <MobileMenuButton />
         <select value={userId ?? ''} onChange={e => setUserId(e.target.value || null)}
           className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}

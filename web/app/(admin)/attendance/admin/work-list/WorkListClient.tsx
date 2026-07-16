@@ -8,6 +8,7 @@ import { EventClickArg, EventInput } from '@fullcalendar/core'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, WorkRecord } from '@/lib/supabase/types'
 import WorkRecordModal from '@/components/WorkRecordModal'
+import MobileMenuButton from '@/components/ui/MobileMenuButton'
 
 const WORK_TYPE_COLORS: Record<string, string> = {
   normal: '#3b82f6',
@@ -141,8 +142,9 @@ export default function WorkListClient({ initialYearMonth, initialSummaries, ini
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
+          <MobileMenuButton />
           <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100 text-lg">‹</button>
           <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
           <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100 text-lg">›</button>

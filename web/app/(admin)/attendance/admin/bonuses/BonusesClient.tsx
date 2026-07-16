@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, Bonus } from '@/lib/supabase/types'
+import MobileMenuButton from '@/components/ui/MobileMenuButton'
 
 export interface BonusRow {
   profile: Profile
@@ -74,6 +75,7 @@ export default function BonusesClient({ initialYearMonth, initialRows }: Bonuses
   return (
     <div className="p-4">
       <div className="flex items-center gap-2 mb-1">
+        <MobileMenuButton />
         <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100 text-lg">‹</button>
         <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
         <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100 text-lg">›</button>

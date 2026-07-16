@@ -290,22 +290,18 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
       {view === 'schedule' ? (
         <>
           {/* Header */}
-          <div className="relative flex items-center px-1 mb-1" style={{ height: 44 }}>
+          <div className="flex flex-wrap items-center gap-1 px-1 mb-1" style={{ minHeight: 44 }}>
             <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="pointer-events-auto flex items-center gap-1">
-                <button onClick={goPrev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
-                <button onClick={() => setShowMonthPicker(true)}
-                  className="text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
-                  {displayYear}年{displayMonth}月
-                </button>
-                <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
-              </div>
-            </div>
+            <button onClick={goPrev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
+            <button onClick={() => setShowMonthPicker(true)}
+              className="text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
+              {displayYear}年{displayMonth}月
+            </button>
+            <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
             {!profile.is_admin && <div className="ml-auto">{viewToggle}</div>}
           </div>
           {/* Swipe wrapper */}
@@ -380,22 +376,18 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
       ) : (
         <>
           {/* Attendance calendar header */}
-          <div className="relative flex items-center px-1 mb-1" style={{ height: 44 }}>
+          <div className="flex flex-wrap items-center gap-1 px-1 mb-1" style={{ minHeight: 44 }}>
             <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="pointer-events-auto flex items-center gap-1">
-                <button onClick={goPrev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
-                <button onClick={() => setShowMonthPicker(true)}
-                  className="text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
-                  {displayYear}年{displayMonth}月
-                </button>
-                <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
-              </div>
-            </div>
+            <button onClick={goPrev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
+            <button onClick={() => setShowMonthPicker(true)}
+              className="text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
+              {displayYear}年{displayMonth}月
+            </button>
+            <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
             {!profile.is_admin && <div className="ml-auto">{viewToggle}</div>}
           </div>
           {/* Attendance calendar grid */}

@@ -244,10 +244,10 @@ export default function NewInvoicePage() {
           <div className="relative" ref={searchRef}>
             {selectedProject ? (
               <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white">
-                <span className="text-xs text-gray-500">{selectedProject.companyData.name}</span>
-                <span className="text-sm text-gray-900 flex-1">{selectedProject.name}</span>
+                <span className="text-xs text-gray-500 shrink-0 max-w-[40%] truncate" title={selectedProject.companyData.name}>{selectedProject.companyData.name}</span>
+                <span className="text-sm text-gray-900 flex-1 min-w-0 truncate" title={selectedProject.name}>{selectedProject.name}</span>
                 <button onClick={() => { setSelectedProject(null); setProjectId(0); setQuotations([]) }}
-                  className="text-gray-400 hover:text-gray-600 text-xs">×</button>
+                  className="text-gray-400 hover:text-gray-600 text-xs shrink-0">×</button>
               </div>
             ) : (
               <input
