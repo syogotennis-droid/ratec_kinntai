@@ -353,8 +353,8 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   )
 
   const header = (
-    <div className="px-1 mb-1 shrink-0">
-      <div className="flex flex-wrap items-center gap-1" style={{ minHeight: 32 }}>
+    <div className="px-1 mb-0.5 shrink-0">
+      <div className="flex flex-wrap items-center gap-1" style={{ minHeight: 28 }}>
         <button onClick={openSidebar} className="p-1.5 -ml-1 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -371,7 +371,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
         {!profile.is_admin && <div className="ml-auto">{viewToggle}</div>}
       </div>
       {view === 'attendance' && (
-        <div className="flex items-center gap-2.5 flex-wrap px-1 mt-1">
+        <div className="flex items-center gap-2.5 flex-wrap px-1 mt-0.5">
           {LEGEND_ITEMS.map(item => (
             <span key={item.key} className="inline-flex items-center gap-1 text-[11px] text-gray-500">
               <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: WORK_TYPE_LIGHT[item.key].bg, border: `1px solid ${WORK_TYPE_LIGHT[item.key].border}` }} />
@@ -381,7 +381,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
         </div>
       )}
       {view === 'schedule' && (
-        <div className="flex items-center gap-1 px-1 mt-1 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+        <div className="flex items-center gap-1 px-1 mt-0.5 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
           <button onClick={() => setVisibleUserIds(null)}
             className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border font-medium transition-colors whitespace-nowrap"
             style={visibleUserIds === null
@@ -404,11 +404,11 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               <button key={p.id} onClick={() => toggleUser(p.id)}
                 className="shrink-0 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-medium transition-colors whitespace-nowrap"
                 style={{
-                  backgroundColor: isVisible ? hexToRgba(color, 0.12) : '#f3f4f6',
+                  backgroundColor: isVisible ? hexToRgba(color, 0.14) : '#ffffff',
                   borderColor: isVisible ? color : '#e5e7eb',
-                  color: isVisible ? color : '#9ca3af',
+                  color: isVisible ? color : '#374151',
                 }}>
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: isVisible ? color : '#d1d5db' }} />
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
                 {p.name}
               </button>
             )
@@ -428,6 +428,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
         .cal-cell:hover .cal-hint { opacity: 1; }
         .cal-cell:hover { background-color: #f9fafb; }
         .cal-chip:hover { filter: brightness(0.97); }
+        .cal-more:hover { text-decoration: underline; }
       `}</style>
       {header}
 
@@ -447,7 +448,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                 {/* Day-of-week header */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #d1d5db' }}>
                   {['日','月','火','水','木','金','土'].map((d, i) => (
-                    <div key={d} style={{ textAlign: 'center', padding: '4px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                    <div key={d} style={{ textAlign: 'center', padding: '2px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
                   ))}
                 </div>
                 {/* Day cells */}
@@ -477,7 +478,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                           padding: 2,
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1px 2px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             width: 20, height: 20, borderRadius: isToday ? 9999 : 0,
@@ -491,9 +492,9 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                             <span className="cal-hint" style={{ fontSize: 13, color: '#9ca3af', paddingRight: 2 }}>＋</span>
                           )}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden', marginTop: 1 }}>
                           {dayEvts.map((e, i) => (
-                            <div key={`h${i}`} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 10, fontWeight: 600, lineHeight: '15px', padding: '0 3px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0, marginBottom: 1 }} title={e.title}>
+                            <div key={`h${i}`} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 10, fontWeight: 600, lineHeight: '15px', padding: '0 3px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0 }} title={e.title}>
                               {e.title}
                             </div>
                           ))}
@@ -501,14 +502,14 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                             const label = `${c.employeeName}${c.timeStr ? ' ' + c.timeStr : ''} / ${c.schedule.title}`
                             return (
                               <div key={c.schedule.id} className="cal-chip" title={label}
-                                style={{ backgroundColor: hexToRgba(c.color, 0.14), borderLeft: `3px solid ${c.color}`, borderRadius: 2, padding: '0 3px', lineHeight: '15px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0, marginBottom: 1 }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: c.color }}>{familyName(c.employeeName)}</span>
-                                <span style={{ fontSize: 10, color: '#374151' }}>｜{c.schedule.title}</span>
+                                style={{ display: 'flex', alignItems: 'center', gap: 3, backgroundColor: hexToRgba(c.color, 0.22), borderLeft: `3px solid ${c.color}`, borderRadius: 2, padding: '1px 3px', lineHeight: '14px', overflow: 'hidden', flexShrink: 0 }}>
+                                <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#ffffff', backgroundColor: c.color, borderRadius: 2, padding: '0 3px', lineHeight: '13px' }}>{familyName(c.employeeName)}</span>
+                                <span style={{ flex: 1, minWidth: 0, fontSize: 10, color: '#1f2937', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{c.schedule.title}</span>
                               </div>
                             )
                           })}
                           {extra > 0 && (
-                            <div style={{ fontSize: 10, color: '#6b7280', lineHeight: '14px', paddingLeft: 2, fontWeight: 500, flexShrink: 0 }}>＋{extra}件</div>
+                            <div className="cal-more" style={{ fontSize: 10, color: '#2563eb', lineHeight: '14px', paddingLeft: 2, fontWeight: 700, flexShrink: 0 }}>＋{extra}件</div>
                           )}
                         </div>
                       </div>
@@ -556,17 +557,17 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                           <span className="text-xs text-gray-300">予定なし</span>
                         ) : (
                           shownChips.map(c => (
-                            <div key={c.schedule.id} className="text-xs rounded px-1.5 py-1 truncate"
-                              style={{ backgroundColor: hexToRgba(c.color, 0.14), borderLeft: `2px solid ${c.color}` }}
+                            <div key={c.schedule.id} className="flex items-center gap-1.5 text-xs rounded px-1.5 py-1"
+                              style={{ backgroundColor: hexToRgba(c.color, 0.22), borderLeft: `2px solid ${c.color}` }}
                               title={`${c.employeeName}${c.timeStr ? ' ' + c.timeStr : ''} / ${c.schedule.title}`}>
-                              <span style={{ fontWeight: 700, color: c.color }}>{familyName(c.employeeName)}</span>
-                              <span className="text-gray-700">｜{c.schedule.title}</span>
-                              {c.timeStr && <span className="text-gray-400 ml-1">{c.timeStr}</span>}
+                              <span className="shrink-0 font-bold rounded px-1.5" style={{ color: '#ffffff', backgroundColor: c.color, lineHeight: '16px' }}>{familyName(c.employeeName)}</span>
+                              <span className="flex-1 min-w-0 truncate" style={{ color: '#1f2937' }}>{c.schedule.title}</span>
+                              {c.timeStr && <span className="shrink-0 text-gray-400">{c.timeStr}</span>}
                             </div>
                           ))
                         )}
                         {extra > 0 && (
-                          <div className="text-[11px] text-gray-400 pl-1">＋{extra}件</div>
+                          <div className="cal-more text-[11px] pl-1 font-bold" style={{ color: '#2563eb' }}>＋{extra}件</div>
                         )}
                       </div>
                     </div>
@@ -598,7 +599,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               <div className="hidden md:flex md:flex-1 md:min-h-0" style={{ flexDirection: 'column' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #d1d5db' }}>
                   {['日','月','火','水','木','金','土'].map((d, i) => (
-                    <div key={d} style={{ textAlign: 'center', padding: '4px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                    <div key={d} style={{ textAlign: 'center', padding: '2px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
                   ))}
                 </div>
                 <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, 1fr)` }}>
