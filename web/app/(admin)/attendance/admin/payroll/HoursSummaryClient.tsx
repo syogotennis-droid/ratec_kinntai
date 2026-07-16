@@ -100,44 +100,53 @@ export default function HoursSummaryClient({ profiles, initialUserId, initialYea
         <div className="text-sm text-gray-500 py-8 text-center">読み込み中...</div>
       ) : (
         <>
-          <div className="overflow-x-auto mb-4">
+          <div className="overflow-x-auto mb-3">
             <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left py-2 px-3 font-medium text-gray-500 text-xs">区分</th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">残業<span className="block font-normal">（休日は出勤・うち残業）</span></th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">深夜<span className="block font-normal">（残業含まない）</span></th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">深夜<span className="block font-normal">（残業含む）</span></th>
+                  <th className="text-left py-1.5 px-2 font-medium text-gray-500 text-xs whitespace-nowrap">区分</th>
+                  <th className="text-right py-1.5 px-2 font-medium text-gray-500 text-xs">残業<span className="block font-normal text-[10px]">休は出勤</span></th>
+                  <th className="text-right py-1.5 px-2 font-medium text-gray-500 text-xs">深夜<span className="block font-normal text-[10px]">基本/残業込</span></th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="py-2 px-3 font-medium text-gray-700">平日</td>
-                  <td className="py-2 px-3 text-right font-bold text-orange-600">{formatHours(totals.overtimeMin)}h</td>
-                  <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightWeekdayBaseMin)}h</td>
-                  <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightWeekdayOvertimeMin)}h</td>
+                  <td className="py-1.5 px-2 font-medium text-gray-700 whitespace-nowrap">平日</td>
+                  <td className="py-1.5 px-2 text-right font-bold text-orange-600">{formatHours(totals.overtimeMin)}h</td>
+                  <td className="py-1.5 px-2 text-right font-bold text-indigo-600">
+                    {formatHours(totals.nightWeekdayBaseMin)}h<span className="text-gray-400 font-normal">/</span>{formatHours(totals.nightWeekdayOvertimeMin)}h
+                  </td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 font-medium text-gray-700">休日</td>
-                  <td className="py-2 px-3 text-right font-bold text-red-600">
+                  <td className="py-1.5 px-2 font-medium text-gray-700 whitespace-nowrap">休日</td>
+                  <td className="py-1.5 px-2 text-right font-bold text-red-600">
                     {formatHours(totals.holidayMin)}h
-                    <span className="block text-[10px] text-gray-400 font-normal">（{formatHours(totals.holidayOvertimeMin)}h）</span>
+                    <span className="block text-[10px] text-gray-400 font-normal">内残業{formatHours(totals.holidayOvertimeMin)}h</span>
                   </td>
-                  <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightHolidayBaseMin)}h</td>
-                  <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightHolidayOvertimeMin)}h</td>
+                  <td className="py-1.5 px-2 text-right font-bold text-indigo-600">
+                    {formatHours(totals.nightHolidayBaseMin)}h<span className="text-gray-400 font-normal">/</span>{formatHours(totals.nightHolidayOvertimeMin)}h
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 mb-1">
+          <p className="text-[11px] text-gray-400 mb-2 leading-snug">
+            <span className="text-orange-600 font-medium">残</span>＝残業
+            <span className="text-red-600 font-medium">休</span>＝休日出勤
+            <span className="text-red-500 font-medium">休残</span>＝休日残業
+            <span className="text-indigo-600 font-medium">深</span>＝深夜
+            <span className="text-indigo-500 font-medium">深残</span>＝深夜(残業込)
+          </p>
+
+          <div className="grid grid-cols-7 gap-0.5 mb-1">
             {WEEKDAYS.map((w, i) => (
               <div key={w} className={`text-center text-xs font-medium py-1 ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-500'}`}>
                 {w}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-0.5">
             {calendarDays.map(day => {
               const h = dailyHours[day.date]
               const kind = weekendOrHolidayKind(day.date)
@@ -147,18 +156,18 @@ export default function HoursSummaryClient({ profiles, initialUserId, initialYea
               return (
                 <div
                   key={day.date}
-                  className={`min-h-[120px] rounded-lg border p-1.5 ${
+                  className={`min-h-[44px] rounded border p-0.5 ${
                     day.isCurrentMonth ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100'
                   }`}
                 >
-                  <div className={`text-sm font-medium mb-1 ${dayNumColor}`}>{day.dayNum}</div>
+                  <div className={`text-[11px] font-medium ${dayNumColor}`}>{day.dayNum}</div>
                   {h && day.isCurrentMonth && (
-                    <div className="space-y-0.5 leading-tight">
-                      {h.overtimeMin > 0 && <div className="text-xs text-orange-600">残業 {formatHours(h.overtimeMin)}h</div>}
-                      {h.holidayMin > 0 && <div className="text-xs text-red-600">休日出勤 {formatHours(h.holidayMin)}h</div>}
-                      {h.holidayOvertimeMin > 0 && <div className="text-xs text-red-500">休日残業 {formatHours(h.holidayOvertimeMin)}h</div>}
-                      {h.nightBaseMin > 0 && <div className="text-xs text-indigo-600">深夜 {formatHours(h.nightBaseMin)}h</div>}
-                      {h.nightOvertimeMin > 0 && <div className="text-xs text-indigo-500">深夜（残業含む） {formatHours(h.nightOvertimeMin)}h</div>}
+                    <div className="flex flex-wrap gap-0.5 mt-0.5">
+                      {h.overtimeMin > 0 && <span className="text-[10px] leading-tight text-orange-600 font-medium">残{formatHours(h.overtimeMin)}</span>}
+                      {h.holidayMin > 0 && <span className="text-[10px] leading-tight text-red-600 font-medium">休{formatHours(h.holidayMin)}</span>}
+                      {h.holidayOvertimeMin > 0 && <span className="text-[10px] leading-tight text-red-500 font-medium">休残{formatHours(h.holidayOvertimeMin)}</span>}
+                      {h.nightBaseMin > 0 && <span className="text-[10px] leading-tight text-indigo-600 font-medium">深{formatHours(h.nightBaseMin)}</span>}
+                      {h.nightOvertimeMin > 0 && <span className="text-[10px] leading-tight text-indigo-500 font-medium">深残{formatHours(h.nightOvertimeMin)}</span>}
                     </div>
                   )}
                 </div>
