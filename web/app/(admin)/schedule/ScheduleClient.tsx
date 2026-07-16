@@ -70,9 +70,17 @@ const LEGEND_ITEMS: Array<{ key: 'normal' | 'overtime' | WorkType; label: string
   { key: 'hourly_leave', label: '時間休' },
 ]
 
+// 従業員ごとの色（profile.colorが未設定な場合のフォールバック）。
+// 隣り合う従業員が似た色にならないよう、赤系（祝日カラーと混同するため除外）を避けつつ色相を大きく離して並べている。
 const USER_COLORS = [
-  '#2563eb', '#16a34a', '#ea580c', '#9333ea',
-  '#dc2626', '#0891b2', '#b45309', '#db2777',
+  '#2563eb', // 青
+  '#ea580c', // オレンジ
+  '#16a34a', // 緑
+  '#7c3aed', // 紫
+  '#0891b2', // シアン
+  '#65a30d', // 黄緑
+  '#c026d3', // マゼンタ
+  '#0d9488', // 深緑・ティール
 ]
 
 function userColor(userId: string | null) {
@@ -345,25 +353,25 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   )
 
   const header = (
-    <div className="px-1 mb-1.5">
-      <div className="flex flex-wrap items-center gap-1" style={{ minHeight: 40 }}>
-        <button onClick={openSidebar} className="p-2 -ml-1 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
+    <div className="px-1 mb-1 shrink-0">
+      <div className="flex flex-wrap items-center gap-1" style={{ minHeight: 32 }}>
+        <button onClick={openSidebar} className="p-1.5 -ml-1 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <h1 className="text-base font-bold text-gray-900 mr-1 hidden sm:block">勤怠・予定</h1>
-        <button onClick={goPrev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
+        <h1 className="text-sm font-bold text-gray-900 mr-1 hidden sm:block">勤怠・予定</h1>
+        <button onClick={goPrev} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-base leading-none">‹</button>
         <button onClick={() => setShowMonthPicker(true)}
-          className="text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
+          className="text-sm font-bold text-gray-900 px-1.5 py-1 rounded-lg hover:bg-gray-100">
           {displayYear}年{displayMonth}月
         </button>
-        <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
-        <button onClick={goToday} className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">今日</button>
+        <button onClick={goNext} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-base leading-none">›</button>
+        <button onClick={goToday} className="px-2 py-0.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">今日</button>
         {!profile.is_admin && <div className="ml-auto">{viewToggle}</div>}
       </div>
       {view === 'attendance' && (
-        <div className="flex items-center gap-2.5 flex-wrap px-1 mt-1.5">
+        <div className="flex items-center gap-2.5 flex-wrap px-1 mt-1">
           {LEGEND_ITEMS.map(item => (
             <span key={item.key} className="inline-flex items-center gap-1 text-[11px] text-gray-500">
               <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: WORK_TYPE_LIGHT[item.key].bg, border: `1px solid ${WORK_TYPE_LIGHT[item.key].border}` }} />
@@ -373,28 +381,28 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
         </div>
       )}
       {view === 'schedule' && (
-        <div className="flex items-center gap-1.5 px-1 mt-1.5 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+        <div className="flex items-center gap-1 px-1 mt-1 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
           <button onClick={() => setVisibleUserIds(null)}
-            className="shrink-0 text-[11px] px-2 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
+            className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border font-medium transition-colors whitespace-nowrap"
             style={visibleUserIds === null
               ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
               : { backgroundColor: '#fff', color: '#4b5563', borderColor: '#e5e7eb' }}>
             全員表示
           </button>
           <button onClick={() => setVisibleUserIds(new Set([profile.id]))}
-            className="shrink-0 text-[11px] px-2 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
+            className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border font-medium transition-colors whitespace-nowrap"
             style={visibleUserIds?.size === 1 && visibleUserIds.has(profile.id)
               ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
               : { backgroundColor: '#fff', color: '#4b5563', borderColor: '#e5e7eb' }}>
             自分のみ
           </button>
-          <span className="shrink-0 w-px h-4 bg-gray-200 mx-0.5" />
+          <span className="shrink-0 w-px h-3.5 bg-gray-200 mx-0.5" />
           {profiles.map(p => {
             const isVisible = visibleUserIds === null || visibleUserIds.has(p.id)
             const color = p.color || userColor(p.id)
             return (
               <button key={p.id} onClick={() => toggleUser(p.id)}
-                className="shrink-0 inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
+                className="shrink-0 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-medium transition-colors whitespace-nowrap"
                 style={{
                   backgroundColor: isVisible ? hexToRgba(color, 0.12) : '#f3f4f6',
                   borderColor: isVisible ? color : '#e5e7eb',
@@ -411,7 +419,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   )
 
   return (
-    <div className="pt-1 pb-0">
+    <div className="flex flex-col pt-1 pb-0 md:h-screen md:overflow-hidden">
       <style>{`
         .drum-col { scrollbar-width: none; -ms-overflow-style: none; }
         .drum-col::-webkit-scrollbar { display: none; }
@@ -424,17 +432,18 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
       {header}
 
       {view === 'schedule' ? (
-        <>
+        <div className="flex flex-col md:flex-1 md:min-h-0 md:overflow-hidden">
           {/* Swipe wrapper */}
-          <div style={{ overflow: 'hidden' }}>
+          <div className="md:flex-1 md:min-h-0 flex flex-col" style={{ overflow: 'hidden' }}>
             <div
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
+              className="md:flex-1 md:min-h-0 flex flex-col"
               style={{ transform: `translateX(${dragX}px)`, transition: sliding ? 'transform 220ms ease-out' : 'none', willChange: 'transform' }}
             >
               {/* Calendar grid: PC/タブレット */}
-              <div className="hidden md:flex" style={{ height: 'calc(100vh - 96px)', flexDirection: 'column' }}>
+              <div className="hidden md:flex md:flex-1 md:min-h-0" style={{ flexDirection: 'column' }}>
                 {/* Day-of-week header */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #d1d5db' }}>
                   {['日','月','火','水','木','金','土'].map((d, i) => (
@@ -442,7 +451,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                   ))}
                 </div>
                 {/* Day cells */}
-                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, 1fr)` }}>
+                <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, 1fr)` }}>
                   {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
                     const dayEvts = eventsByDate[date] ?? []
                     const dayChips = scheduleChipsByDate[date] ?? []
@@ -574,24 +583,25 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               onClose={() => setShowMonthPicker(false)}
             />
           )}
-        </>
+        </div>
       ) : (
-        <>
+        <div className="flex flex-col md:flex-1 md:min-h-0 md:overflow-hidden">
           {/* Attendance calendar grid */}
-          <div style={{ overflow: 'hidden' }}>
+          <div className="md:flex-1 md:min-h-0 flex flex-col" style={{ overflow: 'hidden' }}>
             <div
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
+              className="md:flex-1 md:min-h-0 flex flex-col"
               style={{ transform: `translateX(${dragX}px)`, transition: sliding ? 'transform 220ms ease-out' : 'none', willChange: 'transform' }}
             >
-              <div className="hidden md:flex" style={{ height: 'calc(100vh - 96px)', flexDirection: 'column' }}>
+              <div className="hidden md:flex md:flex-1 md:min-h-0" style={{ flexDirection: 'column' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #d1d5db' }}>
                   {['日','月','火','水','木','金','土'].map((d, i) => (
                     <div key={d} style={{ textAlign: 'center', padding: '4px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
                   ))}
                 </div>
-                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, 1fr)` }}>
+                <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, 1fr)` }}>
                   {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
                     const wr = workRecordsByDate[date]
                     const isToday = date === todayStr
@@ -746,7 +756,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               onSaved={fetchWorkRecords}
             />
           )}
-        </>
+        </div>
       )}
 
       {/* Day sheet */}
