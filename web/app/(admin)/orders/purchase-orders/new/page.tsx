@@ -33,6 +33,16 @@ async function generateDocNo() {
   return `${mmdd}-${maxN + 1}`
 }
 
+const ITEM_GRID_COLS = '[grid-template-columns:2fr_1.1fr_60px_56px_112px_128px_40px]'
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0-.6 12.2A2 2 0 0114.4 21H9.6a2 2 0 01-2-1.8L7 7h10z" />
+    </svg>
+  )
+}
+
 export default function NewPurchaseOrderPage() {
   const router = useRouter()
   const [allProjects, setAllProjects] = useState<ProjectWithCompany[]>([])
@@ -150,6 +160,7 @@ export default function NewPurchaseOrderPage() {
     setSearchText(p.name)
     setDropdownOpen(false)
     setHighlightIndex(-1)
+    setError(null)
   }
 
   useEffect(() => {
@@ -188,6 +199,11 @@ export default function NewPurchaseOrderPage() {
       return next
     })
   }
+
+  const addItem = () => setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])
+  const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx))
+
+  const projectError = error === '案件名を選択してください' ? error : null
 
   const handleSave = async () => {
     if (!projectId) { setError('案件名を選択してください'); return }
@@ -234,169 +250,230 @@ export default function NewPurchaseOrderPage() {
   }
 
   return (
-    <div className="p-4 max-w-2xl">
-      <div className="flex items-center gap-3 mb-4">
-        <Link href="/orders/purchase-orders" className="text-sm text-blue-600 hover:underline">← 一覧</Link>
-        <h1 className="text-sm font-bold text-gray-900">新規注文書</h1>
-      </div>
-      <div className="space-y-3 mb-6 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">案件名 *</label>
-          <div ref={searchRef} className="relative">
-            <input
-              type="text"
-              value={searchText}
-              onChange={e => { setSearchText(e.target.value); setDropdownOpen(true); setHighlightIndex(-1); if (!e.target.value) { setProjectId(0); setProjectName('') } }}
-              onFocus={() => setDropdownOpen(true)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder="会社名・案件名で検索"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {dropdownOpen && Object.keys(grouped).length > 0 && (
-              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {Object.values(grouped).map(({ company, projs }) => (
-                  <div key={company?.id ?? 0}>
-                    <div className="px-3 py-1 text-xs font-semibold text-gray-400 bg-gray-50 sticky top-0">{company?.name ?? '不明'}</div>
-                    {projs.map(p => {
-                      const flatIndex = flatResults.indexOf(p)
-                      return (
-                        <button key={p.id}
-                          ref={el => { itemRefs.current[flatIndex] = el }}
-                          onMouseDown={() => selectProject(p)}
-                          onMouseEnter={() => setHighlightIndex(flatIndex)}
-                          className={`w-full text-left px-4 py-2 text-sm ${
-                            flatIndex === highlightIndex ? 'bg-blue-50 text-blue-600 font-medium' : projectId === p.id ? 'text-blue-600 font-medium' : 'text-gray-800 hover:bg-blue-50'
-                          }`}>
-                          {p.name}
-                        </button>
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        {quotations.length > 1 && (
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">見積書</label>
-            <select value={quotationId ?? ''} onChange={e => {
-              const id = Number(e.target.value)
-              setQuotationId(id)
-              const q = quotations.find(q => q.id === id)
-              if (q) importFromQuotation(q)
-            }} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              {quotations.map(q => <option key={q.id} value={q.id}>{q.doc_no} ({q.issue_date})</option>)}
-            </select>
-          </div>
-        )}
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">仕入先</label>
-          <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value={0}>なし</option>
-            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">発注日</label>
-            <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">備考</label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+    <div className="p-4 max-w-[1180px] mx-auto">
+      <div className="flex items-center gap-3 mb-3">
+        <Link href="/orders/purchase-orders" className="text-sm text-blue-600 hover:underline shrink-0">← 一覧へ戻る</Link>
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold text-gray-900 leading-tight">新規注文書</h1>
+          <p className="text-xs text-gray-500 leading-tight mt-0.5">仕入先への注文書を作成します</p>
         </div>
       </div>
-      <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
+
+      {/* 基本情報 */}
+      <div className="max-w-[1000px] mx-auto mb-3">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 md:p-4 space-y-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-0.5">案件名 *</label>
+            <div ref={searchRef} className="relative">
+              <input
+                type="text"
+                value={searchText}
+                onChange={e => { setSearchText(e.target.value); setDropdownOpen(true); setHighlightIndex(-1); if (!e.target.value) { setProjectId(0); setProjectName('') } }}
+                onFocus={() => setDropdownOpen(true)}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="会社名・案件名で検索"
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${projectError ? 'border-red-400' : 'border-gray-300'}`}
+              />
+              {dropdownOpen && Object.keys(grouped).length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {Object.values(grouped).map(({ company, projs }) => (
+                    <div key={company?.id ?? 0}>
+                      <div className="px-3 py-1 text-xs font-semibold text-gray-400 bg-gray-50 sticky top-0">{company?.name ?? '不明'}</div>
+                      {projs.map(p => {
+                        const flatIndex = flatResults.indexOf(p)
+                        return (
+                          <button key={p.id}
+                            ref={el => { itemRefs.current[flatIndex] = el }}
+                            onMouseDown={() => selectProject(p)}
+                            onMouseEnter={() => setHighlightIndex(flatIndex)}
+                            className={`w-full text-left px-4 py-2 text-sm ${
+                              flatIndex === highlightIndex ? 'bg-blue-50 text-blue-600 font-medium' : projectId === p.id ? 'text-blue-600 font-medium' : 'text-gray-800 hover:bg-blue-50'
+                            }`}>
+                            {p.name}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {projectError && <p className="mt-1 text-xs text-red-600">{projectError}</p>}
+          </div>
+
+          {quotations.length > 1 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-0.5">見積書</label>
+              <select value={quotationId ?? ''} onChange={e => {
+                const id = Number(e.target.value)
+                setQuotationId(id)
+                const q = quotations.find(q => q.id === id)
+                if (q) importFromQuotation(q)
+              }} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {quotations.map(q => <option key={q.id} value={q.id}>{q.doc_no} ({q.issue_date})</option>)}
+              </select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-0.5">仕入先</label>
+              <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value={0}>未選択</option>
+                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-0.5">発注日</label>
+              <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-0.5">備考</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          </div>
+        </div>
+      </div>
+
+      {/* 明細 */}
+      <div className="mb-3 bg-white border border-gray-200 rounded-lg shadow-sm p-3 md:p-4">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs font-bold text-gray-700">明細</h2>
-          <button onClick={() => setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])}
-            className="text-xs text-blue-600 hover:underline">+ 行追加</button>
+          <h2 className="text-sm font-bold text-gray-700">明細</h2>
+          <button onClick={addItem}
+            className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+            + 行追加
+          </button>
         </div>
-        {/* PC: テーブル表示 */}
+
+        {/* PC: 一覧表示 */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-xs min-w-[500px]">
-            <thead>
-              <tr className="border-b border-gray-200">
-                {['品名', '仕様', '数量', '単位', '単価', '金額', ''].map(h => (
-                  <th key={h} className="text-left py-1.5 px-2 font-medium text-gray-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
+          <div className="min-w-[900px]">
+            <div className={`grid ${ITEM_GRID_COLS} gap-2 border-b border-gray-200 pb-2 text-xs font-medium text-gray-500`}>
+              <div>品名</div>
+              <div>仕様・型番</div>
+              <div>数量</div>
+              <div>単位</div>
+              <div className="text-right">単価</div>
+              <div className="text-right">金額</div>
+              <div />
+            </div>
+            <div className="divide-y divide-gray-100">
               {items.map((item, idx) => (
-                <tr key={idx} className="border-b border-gray-100">
-                  <td className="py-1 px-1"><input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="w-24 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
-                  <td className="py-1 px-1"><input value={item.spec} onChange={e => updateItem(idx, 'spec', e.target.value)} className="w-24 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
-                  <td className="py-1 px-1"><input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0} className="w-14 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
-                  <td className="py-1 px-1"><input value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)} className="w-12 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
-                  <td className="py-1 px-1"><input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0} className="w-20 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
-                  <td className="py-1 px-2 text-right font-medium">¥{item.amount.toLocaleString()}</td>
-                  <td className="py-1 px-1"><button onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600">×</button></td>
-                </tr>
+                <div key={idx} className={`grid ${ITEM_GRID_COLS} gap-2 items-center py-2`}>
+                  <div>
+                    <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)}
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <input value={item.spec} onChange={e => updateItem(idx, 'spec', e.target.value)}
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0}
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <input value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)}
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    <p className="text-[11px] text-gray-400 text-right mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</p>
+                  </div>
+                  <div className="text-right text-sm font-semibold text-gray-900 tabular-nums py-1.5">¥{item.amount.toLocaleString()}</div>
+                  <div className="flex justify-center pt-1.5">
+                    <button onClick={() => removeItem(idx)} title="この行を削除"
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
 
         {/* スマホ: カード表示 */}
         <div className="md:hidden space-y-2">
           {items.map((item, idx) => (
             <div key={idx} className="border border-gray-200 rounded-lg p-3">
-              <div className="flex items-start gap-2 mb-2">
-                <div className="flex-1 space-y-2">
-                  <div>
-                    <label className="block text-[11px] text-gray-500 mb-0.5">品名</label>
-                    <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)}
-                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-gray-500 mb-0.5">仕様</label>
-                    <input value={item.spec} onChange={e => updateItem(idx, 'spec', e.target.value)}
-                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                </div>
-                <button onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))} className="shrink-0 text-red-400 hover:text-red-600 mt-5 px-1" aria-label="この行を削除">×</button>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-gray-500">明細 {idx + 1}</span>
+                <button onClick={() => removeItem(idx)} title="この行を削除"
+                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" aria-label="この行を削除">
+                  <TrashIcon className="w-4 h-4" />
+                </button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="mb-2">
+                <label className="block text-[11px] text-gray-500 mb-0.5">品名</label>
+                <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)}
+                  className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              </div>
+              <div className="mb-2">
+                <label className="block text-[11px] text-gray-500 mb-0.5">仕様・型番</label>
+                <input value={item.spec} onChange={e => updateItem(idx, 'spec', e.target.value)}
+                  className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-2">
                 <div>
                   <label className="block text-[11px] text-gray-500 mb-0.5">数量</label>
                   <input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label className="block text-[11px] text-gray-500 mb-0.5">単位</label>
                   <input value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500" />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[11px] text-gray-500 mb-0.5">単価</label>
                   <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  <p className="text-[11px] text-gray-400 text-right mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</p>
                 </div>
-              </div>
-              <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
-                <span className="text-xs text-gray-500">金額</span>
-                <span className="text-sm font-bold text-gray-900">¥{item.amount.toLocaleString()}</span>
+                <div>
+                  <label className="block text-[11px] text-gray-500 mb-0.5">金額</label>
+                  <div className="px-2 py-1.5 text-sm font-semibold text-right text-gray-900 tabular-nums">¥{item.amount.toLocaleString()}</div>
+                </div>
               </div>
             </div>
           ))}
         </div>
-        <div className="mt-3 border-t border-gray-200 pt-3 space-y-1 text-sm">
-          <div className="flex justify-between"><span className="text-gray-600">小計</span><span>¥{subtotal.toLocaleString()}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">消費税（10%）</span><span>¥{taxAmount.toLocaleString()}</span></div>
-          <div className="flex justify-between font-bold text-base"><span>合計</span><span>¥{totalAmount.toLocaleString()}</span></div>
+      </div>
+
+      {/* 金額集計・作成操作 */}
+      <div className="ml-auto w-full sm:max-w-[460px] bg-white border border-gray-200 rounded-lg shadow-sm p-3 md:p-4">
+        <div className="space-y-1">
+          <div className="flex justify-between items-baseline text-sm text-gray-500">
+            <span>小計</span><span className="tabular-nums">¥{subtotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between items-baseline text-sm text-gray-500">
+            <span>消費税（10%）</span><span className="tabular-nums">¥{taxAmount.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between items-baseline text-lg font-bold text-gray-900 pt-1.5 mt-1 border-t border-gray-200">
+            <span>合計</span><span className="tabular-nums">¥{totalAmount.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {error && !projectError && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+
+        <div className="flex items-center justify-end gap-2 mt-3">
+          <Link href="/orders/purchase-orders"
+            className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">
+            キャンセル
+          </Link>
+          <button onClick={handleSave} disabled={saving}
+            className="px-5 py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg shadow-sm">
+            {saving ? '作成中...' : '注文書を作成'}
+          </button>
         </div>
       </div>
-      {error && <p className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-      <button onClick={handleSave} disabled={saving}
-        className="w-full py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
-        {saving ? '保存中...' : '作成'}
-      </button>
     </div>
   )
 }
