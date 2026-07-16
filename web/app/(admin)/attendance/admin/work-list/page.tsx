@@ -13,7 +13,7 @@ export default async function AdminWorkListPage() {
   const end = `${yearMonth}-${String(lastDay).padStart(2, '0')}`
 
   const [profilesRes, recordsRes, closingsRes] = await Promise.all([
-    supabase.from('profiles').select('*').eq('is_active', true).order('employee_id'),
+    supabase.from('profiles').select('*').eq('is_active', true).eq('is_admin', false).order('employee_id'),
     supabase.from('work_records').select('*').gte('work_date', start).lte('work_date', end),
     supabase.from('monthly_closings').select('*').eq('year_month', yearMonth),
   ])

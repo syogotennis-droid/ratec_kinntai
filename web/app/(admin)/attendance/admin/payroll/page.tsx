@@ -8,7 +8,7 @@ export default async function HoursSummaryPage() {
   const now = new Date()
   const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
-  const profilesRes = await supabase.from('profiles').select('*').eq('is_active', true).order('employee_id')
+  const profilesRes = await supabase.from('profiles').select('*').eq('is_active', true).eq('is_admin', false).order('employee_id')
   const profiles: Profile[] = profilesRes.data ?? []
   const initialUserId = profiles[0]?.id ?? null
 
