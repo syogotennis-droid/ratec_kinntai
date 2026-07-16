@@ -225,62 +225,62 @@ export default function QuotationDetailPage() {
     }
   }
 
-  if (loading) return <div className="p-6 text-sm text-gray-500">読み込み中...</div>
-  if (!quotation) return <div className="p-6 text-sm text-gray-500">見つかりません</div>
+  if (loading) return <div className="p-6 text-base text-gray-500">読み込み中...</div>
+  if (!quotation) return <div className="p-6 text-base text-gray-500">見つかりません</div>
 
   return (
     <div className="p-4 max-w-2xl lg:max-w-6xl">
       <div className="flex items-center gap-3 mb-4">
-        <Link href="/orders/quotations" className="text-sm text-blue-600 hover:underline">← 一覧</Link>
-        <h1 className="text-sm font-bold text-gray-900 flex-1">見積書</h1>
+        <Link href="/orders/quotations" className="text-base text-blue-600 hover:underline">← 一覧</Link>
+        <h1 className="text-base font-bold text-gray-900 flex-1">見積書</h1>
         <button onClick={handleExport} disabled={exporting || saving}
-          className="px-3 py-1.5 text-xs font-medium bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white rounded-lg">
+          className="px-3 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white rounded-lg">
           {exporting ? '出力中...' : 'Excel出力'}
         </button>
-        <button onClick={handleDelete} disabled={saving} className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg">削除</button>
+        <button onClick={handleDelete} disabled={saving} className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg">削除</button>
       </div>
       <div className="space-y-3 mb-6">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">案件名</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">案件名</label>
             <select value={projectId} onChange={e => setProjectId(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
               {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">ステータス</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">ステータス</label>
             <select value={status} onChange={e => setStatus(e.target.value as QuotationStatus)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
               {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">見積書番号（任意）</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">見積書番号（任意）</label>
             <input type="text" value={docNo} onChange={e => setDocNo(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">発行日</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">発行日</label>
             <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">仕入先（任意）</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">仕入先（任意）</label>
           <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value={0}>なし</option>
             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">担当者（任意）</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">担当者（任意）</label>
           {contacts.length > 0 ? (
             <select value={contactPerson} onChange={e => setContactPerson(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">なし</option>
               {contacts.map(c => (
                 <option key={c.id} value={c.name}>{c.name}{c.position ? `（${c.position}）` : ''}</option>
@@ -289,22 +289,22 @@ export default function QuotationDetailPage() {
           ) : (
             <input type="text" value={contactPerson} onChange={e => setContactPerson(e.target.value)}
               placeholder="例：山田 太郎"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
           )}
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">備考</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">備考</label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
       </div>
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs font-bold text-gray-700">明細</h2>
-          <button onClick={() => { setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product' }]); setItemLinks(prev => [...prev, null]) }} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
+          <h2 className="text-sm font-bold text-gray-700">明細</h2>
+          <button onClick={() => { setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product' }]); setItemLinks(prev => [...prev, null]) }} className="text-sm text-blue-600 hover:underline">+ 行追加</button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs min-w-[500px]">
+          <table className="w-full text-sm min-w-[500px]">
             <thead>
               <tr className="border-b border-gray-200">
                 {['種別', '型式検索', '品名', '数量', 'メーカー希望小売価格', '仕切掛け率', '仕切り価格', '金額', ''].map(h => (
@@ -319,7 +319,7 @@ export default function QuotationDetailPage() {
                 <tr key={idx} className="border-b border-gray-100">
                   <td className="py-1 px-1">
                     <select value={item.item_type} onChange={e => updateItem(idx, 'item_type', e.target.value)}
-                      className="px-1 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
+                      className="px-1 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                       <option value="product">商品</option>
                       <option value="labor">作業</option>
                     </select>
@@ -329,14 +329,14 @@ export default function QuotationDetailPage() {
                   </td>
                   <td className="py-1 px-1">
                     {isLabor ? (
-                      <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="w-48 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="w-56 px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
                     ) : (
                       <div className="flex items-start gap-1">
-                        <div className="flex flex-col gap-0.5 w-48">
+                        <div className="flex flex-col gap-0.5 w-56">
                           <input value={splitName(item.name)[0]} onChange={e => updateItem(idx, 'name', joinName(e.target.value, splitName(item.name)[1]))}
-                            placeholder="品名" className="px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                            placeholder="品名" className="px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
                           <input value={splitName(item.name)[1]} onChange={e => updateItem(idx, 'name', joinName(splitName(item.name)[0], e.target.value))}
-                            placeholder="型番" className="px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                            placeholder="型番" className="px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
                         </div>
                         {itemLinks[idx] && (
                           <a href={itemLinks[idx]!} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
@@ -351,20 +351,20 @@ export default function QuotationDetailPage() {
                       </div>
                     )}
                   </td>
-                  <td className="py-1 px-1"><input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0} className="w-14 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                  <td className="py-1 px-1"><input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0} className="w-24 px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                   <td className="py-1 px-1">
                     {isLabor ? <span className="text-gray-300">—</span> : (
-                      <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0} className="w-20 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0} className="w-24 px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
                     )}
                   </td>
                   <td className="py-1 px-1">
                     {isLabor ? <span className="text-gray-300">—</span> : (
-                      <input type="number" step="0.01" value={item.markup_rate} onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value))} min={0} className="w-16 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      <input type="number" step="0.01" value={item.markup_rate} onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value))} min={0} className="w-24 px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
                     )}
                   </td>
                   <td className="py-1 px-1">
                     {isLabor ? (
-                      <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0} className="w-20 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0} className="w-24 px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
                     ) : `¥${Math.round(item.unit_price * item.markup_rate).toLocaleString()}`}
                   </td>
                   <td className="py-1 px-2 text-right font-medium">¥{item.amount.toLocaleString()}</td>
@@ -374,15 +374,15 @@ export default function QuotationDetailPage() {
             </tbody>
           </table>
         </div>
-        <div className="mt-3 border-t border-gray-200 pt-3 space-y-1 text-sm">
+        <div className="mt-3 border-t border-gray-200 pt-3 space-y-1 text-base">
           <div className="flex justify-between"><span className="text-gray-600">小計</span><span>¥{subtotal.toLocaleString()}</span></div>
           <div className="flex justify-between"><span className="text-gray-600">消費税（10%）</span><span>¥{taxAmount.toLocaleString()}</span></div>
           <div className="flex justify-between font-bold text-base"><span>合計</span><span>¥{totalAmount.toLocaleString()}</span></div>
         </div>
       </div>
-      {error && <p className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+      {error && <p className="mb-3 text-base text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
       <button onClick={handleSave} disabled={saving}
-        className="w-full py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
+        className="w-full py-2.5 text-base font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
         {saving ? '保存中...' : '保存'}
       </button>
     </div>
