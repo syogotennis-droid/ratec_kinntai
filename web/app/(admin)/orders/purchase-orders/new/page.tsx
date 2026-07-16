@@ -260,10 +260,11 @@ export default function NewPurchaseOrderPage() {
       </div>
 
       {/* 基本情報 */}
-      <div className="max-w-[1000px] mx-auto mb-3">
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 md:p-4 space-y-2">
+      <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
+        <h2 className="text-sm font-bold text-gray-700 mb-3">基本情報</h2>
+        <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-0.5">案件名 *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">案件名 *</label>
             <div ref={searchRef} className="relative">
               <input
                 type="text"
@@ -303,7 +304,7 @@ export default function NewPurchaseOrderPage() {
 
           {quotations.length > 1 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-0.5">見積書</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">見積書</label>
               <select value={quotationId ?? ''} onChange={e => {
                 const id = Number(e.target.value)
                 setQuotationId(id)
@@ -315,9 +316,9 @@ export default function NewPurchaseOrderPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-0.5">仕入先</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">仕入先</label>
               <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value={0}>未選択</option>
@@ -325,22 +326,22 @@ export default function NewPurchaseOrderPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-0.5">発注日</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">発注日</label>
               <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-0.5">備考</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">備考</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
         </div>
       </div>
 
-      {/* 明細 */}
-      <div className="mb-3 bg-white border border-gray-200 rounded-lg shadow-sm p-3 md:p-4">
-        <div className="flex items-center justify-between mb-2">
+      {/* 明細・金額集計・作成操作（1つのカードにまとめる） */}
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-bold text-gray-700">明細</h2>
           <button onClick={addItem}
             className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
@@ -445,33 +446,35 @@ export default function NewPurchaseOrderPage() {
             </div>
           ))}
         </div>
-      </div>
 
-      {/* 金額集計・作成操作 */}
-      <div className="ml-auto w-full sm:max-w-[460px] bg-white border border-gray-200 rounded-lg shadow-sm p-3 md:p-4">
-        <div className="space-y-1">
-          <div className="flex justify-between items-baseline text-sm text-gray-500">
-            <span>小計</span><span className="tabular-nums">¥{subtotal.toLocaleString()}</span>
+        {/* 金額集計・作成操作（明細の続きとして同一カード内に配置） */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex justify-end">
+            <div className="w-full sm:max-w-[460px] space-y-1">
+              <div className="flex justify-between items-baseline text-sm text-gray-500">
+                <span>小計</span><span className="tabular-nums">¥{subtotal.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-baseline text-sm text-gray-500">
+                <span>消費税（10%）</span><span className="tabular-nums">¥{taxAmount.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-baseline text-lg font-bold text-gray-900 pt-1.5 mt-1 border-t border-gray-200">
+                <span>合計</span><span className="tabular-nums">¥{totalAmount.toLocaleString()}</span>
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between items-baseline text-sm text-gray-500">
-            <span>消費税（10%）</span><span className="tabular-nums">¥{taxAmount.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between items-baseline text-lg font-bold text-gray-900 pt-1.5 mt-1 border-t border-gray-200">
-            <span>合計</span><span className="tabular-nums">¥{totalAmount.toLocaleString()}</span>
-          </div>
-        </div>
 
-        {error && !projectError && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+          {error && !projectError && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
 
-        <div className="flex items-center justify-end gap-2 mt-3">
-          <Link href="/orders/purchase-orders"
-            className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">
-            キャンセル
-          </Link>
-          <button onClick={handleSave} disabled={saving}
-            className="px-5 py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg shadow-sm">
-            {saving ? '作成中...' : '注文書を作成'}
-          </button>
+          <div className="flex items-center justify-end gap-2 mt-3">
+            <Link href="/orders/purchase-orders"
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">
+              キャンセル
+            </Link>
+            <button onClick={handleSave} disabled={saving}
+              className="px-5 py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg shadow-sm">
+              {saving ? '作成中...' : '注文書を作成'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
