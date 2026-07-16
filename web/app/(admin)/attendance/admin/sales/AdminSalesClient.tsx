@@ -423,6 +423,18 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
   const [lightboxPhotoId, setLightboxPhotoId] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [projects, setProjects] = useState<{ id: number; name: string }[]>([])
+  const [showProjectResults, setShowProjectResults] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from('projects').select('id, name').order('name').then(({ data }) => setProjects(data ?? []))
+  }, [])
+
+  const filteredProjects = description.trim()
+    ? projects.filter(p => p.name.includes(description.trim())).slice(0, 8)
+    : []
+
   useEffect(() => {
     if (!record) return
     const supabase = createClient()
@@ -551,11 +563,29 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
-          <div>
+          <div className="relative">
             <label className="block text-xs font-medium text-gray-700 mb-1">案件名・現場名</label>
-            <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-              placeholder="例：兵庫病院 LED更新工事"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input
+              type="text"
+              value={description}
+              onChange={e => { setDescription(e.target.value); setShowProjectResults(true) }}
+              onFocus={() => setShowProjectResults(true)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {showProjectResults && filteredProjects.length > 0 && (
+              <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-auto">
+                {filteredProjects.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onMouseDown={() => { setDescription(p.name); setShowProjectResults(false) }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-800 hover:bg-blue-50"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">メモ</label>
