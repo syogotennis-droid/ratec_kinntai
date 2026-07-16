@@ -150,39 +150,41 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
         <div className="text-sm text-gray-500 py-8 text-center">記録がありません</div>
       ) : (
         <>
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {pagedFiltered.map(r => (
             <div
               key={r.id}
               onClick={() => setModal({ record: r })}
-              className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all"
+              className="flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all overflow-hidden"
             >
               {photoThumbs[r.id] ? (
                 <div
-                  className="relative w-10 h-10 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100"
+                  className="relative w-full aspect-square bg-gray-100"
                   onClick={e => { e.stopPropagation(); setLightboxUrl(photoThumbs[r.id]) }}
                 >
                   <img src={photoThumbs[r.id]} alt="" className="w-full h-full object-cover" />
                   {photoCounts[r.id] > 1 && (
-                    <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] md:text-xs leading-none px-1 py-0.5 rounded-tl">
+                    <span className="absolute bottom-0 right-0 bg-black/60 text-white text-xs leading-none px-1.5 py-1 rounded-tl">
                       {photoCounts[r.id]}
                     </span>
                   )}
                 </div>
               ) : (
-                <div className="w-10 md:w-20 shrink-0" />
+                <div className="w-full aspect-square bg-gray-50 flex items-center justify-center text-gray-300 text-xs">写真なし</div>
               )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs md:text-sm text-gray-500 shrink-0">{r.record_date.slice(5).replace('-', '/')}</span>
-                  <span className="text-xs md:text-sm font-medium text-gray-700 shrink-0">{r.profile?.name ?? '—'}</span>
+              <div className="p-2.5 md:p-3">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs text-gray-500">{r.record_date.slice(5).replace('-', '/')}</span>
+                  <span className="text-xs font-medium text-gray-700 truncate">{r.profile?.name ?? '—'}</span>
                 </div>
-                <div className="text-sm md:text-base text-gray-900 truncate">{r.description || '—'}</div>
-                {(r.cost ?? 0) > 0 && (
-                  <div className="text-xs md:text-sm text-gray-400">原価 ¥{(r.cost ?? 0).toLocaleString()}</div>
-                )}
+                <div className="text-sm md:text-base text-gray-900 truncate mt-0.5">{r.description || '—'}</div>
+                <div className="flex items-center justify-between mt-1">
+                  <div className="text-sm md:text-base font-medium text-gray-900">¥{r.amount.toLocaleString()}</div>
+                  {(r.cost ?? 0) > 0 && (
+                    <div className="text-xs text-gray-400">原価 ¥{(r.cost ?? 0).toLocaleString()}</div>
+                  )}
+                </div>
               </div>
-              <div className="text-sm md:text-lg font-medium text-gray-900 shrink-0">¥{r.amount.toLocaleString()}</div>
             </div>
           ))}
         </div>
@@ -247,7 +249,7 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
   const [photoUrls, setPhotoUrls] = useState<Record<number, string>>({})
   const [newFiles, setNewFiles] = useState<File[]>([])
   const [newPreviews, setNewPreviews] = useState<string[]>([])
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const [lightboxPhotoId, setLightboxPhotoId] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -396,11 +398,9 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
                 <div key={p.id} className="relative w-20 h-20 md:w-28 md:h-28 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
                   {photoUrls[p.id]
                     ? <img src={photoUrls[p.id]} alt={p.original_name} className="w-full h-full object-cover cursor-pointer"
-                        onClick={() => setLightboxUrl(photoUrls[p.id])} />
+                        onClick={() => setLightboxPhotoId(p.id)} />
                     : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">読込中</div>
                   }
-                  <button onClick={() => deleteExistingPhoto(p)}
-                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center">×</button>
                 </div>
               ))}
               {newPreviews.map((url, i) => (
@@ -430,8 +430,16 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
           </button>
         </div>
       </div>
-      {lightboxUrl && (
-        <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+      {lightboxPhotoId !== null && photoUrls[lightboxPhotoId] && (
+        <PhotoLightbox
+          url={photoUrls[lightboxPhotoId]}
+          onClose={() => setLightboxPhotoId(null)}
+          onDelete={() => {
+            const photo = existingPhotos.find(p => p.id === lightboxPhotoId)
+            setLightboxPhotoId(null)
+            if (photo) deleteExistingPhoto(photo)
+          }}
+        />
       )}
     </div>
   )

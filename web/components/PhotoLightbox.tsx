@@ -6,6 +6,7 @@ interface PhotoLightboxProps {
   url: string
   filename?: string
   onClose: () => void
+  onDelete?: () => void
 }
 
 async function downloadImage(url: string, filename: string) {
@@ -19,7 +20,7 @@ async function downloadImage(url: string, filename: string) {
   URL.revokeObjectURL(blobUrl)
 }
 
-export default function PhotoLightbox({ url, filename, onClose }: PhotoLightboxProps) {
+export default function PhotoLightbox({ url, filename, onClose, onDelete }: PhotoLightboxProps) {
   const [downloading, setDownloading] = useState(false)
 
   const handleDownload = async () => {
@@ -43,6 +44,14 @@ export default function PhotoLightbox({ url, filename, onClose }: PhotoLightboxP
           >
             {downloading ? '保存中...' : '画像を保存'}
           </button>
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700"
+            >
+              削除
+            </button>
+          )}
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium bg-white/10 text-white border border-white/30 rounded-lg hover:bg-white/20"
