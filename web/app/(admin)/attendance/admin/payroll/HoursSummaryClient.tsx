@@ -83,8 +83,11 @@ export default function HoursSummaryClient({ profiles, initialUserId, initialYea
 
   return (
     <div className="px-4 pt-2 pb-4">
-      <div className="flex flex-wrap items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-3">
         <MobileMenuButton />
+        <h1 className="text-base font-bold text-gray-900">残業時間集計</h1>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 mb-2">
         <select value={userId ?? ''} onChange={e => setUserId(e.target.value || null)}
           className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}

@@ -142,9 +142,12 @@ export default function WorkListClient({ initialYearMonth, initialSummaries, ini
 
   return (
     <div className="p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <MobileMenuButton />
+        <h1 className="text-base font-bold text-gray-900">勤怠管理</h1>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
-          <MobileMenuButton />
           <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100 text-lg">‹</button>
           <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
           <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100 text-lg">›</button>

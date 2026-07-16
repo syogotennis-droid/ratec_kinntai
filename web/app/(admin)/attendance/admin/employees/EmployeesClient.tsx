@@ -43,9 +43,12 @@ export default function EmployeesClient({ initialProfiles }: EmployeesClientProp
 
   return (
     <div className="p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <MobileMenuButton />
+        <h1 className="text-base font-bold text-gray-900">従業員管理</h1>
+      </div>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <MobileMenuButton />
           <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
             <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
             退職者を表示

@@ -74,8 +74,11 @@ export default function BonusesClient({ initialYearMonth, initialRows }: Bonuses
 
   return (
     <div className="p-4">
-      <div className="flex items-center gap-2 mb-1">
+      <div className="flex items-center gap-2 mb-3">
         <MobileMenuButton />
+        <h1 className="text-base font-bold text-gray-900">給与・賞与管理</h1>
+      </div>
+      <div className="flex items-center gap-2 mb-1">
         <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100 text-lg">‹</button>
         <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
         <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100 text-lg">›</button>

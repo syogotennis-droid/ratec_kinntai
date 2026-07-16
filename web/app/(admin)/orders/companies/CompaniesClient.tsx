@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Company, CompanyContact } from '@/lib/supabase/types'
-import { useSidebar } from '@/lib/sidebar-context'
+import MobileMenuButton from '@/components/ui/MobileMenuButton'
 
 export default function CompaniesClient({ initialCompanies }: { initialCompanies: Company[] }) {
-  const openSidebar = useSidebar()
   const [companies, setCompanies] = useState<Company[]>(initialCompanies)
   const [loading, setLoading] = useState(false)
   const [editCompany, setEditCompany] = useState<Company | null>(null)
@@ -33,12 +32,11 @@ export default function CompaniesClient({ initialCompanies }: { initialCompanies
 
   return (
     <div className="p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <MobileMenuButton />
+        <h1 className="text-base font-bold text-gray-900">取引先管理</h1>
+      </div>
       <div className="flex items-center gap-2 mb-4">
-        <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
         <input
           type="text"
           value={search}

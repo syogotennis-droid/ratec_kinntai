@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, CardExpense } from '@/lib/supabase/types'
-import { useSidebar } from '@/lib/sidebar-context'
+import MobileMenuButton from '@/components/ui/MobileMenuButton'
 
 export interface CardExpenseRow {
   profile: Profile
@@ -16,7 +16,6 @@ interface CardExpensesClientProps {
 }
 
 export default function CardExpensesClient({ initialYearMonth, initialRows }: CardExpensesClientProps) {
-  const openSidebar = useSidebar()
   const [yearMonth, setYearMonth] = useState(initialYearMonth)
   const [rows, setRows] = useState<CardExpenseRow[]>(initialRows)
   const [loading, setLoading] = useState(false)
@@ -59,12 +58,11 @@ export default function CardExpensesClient({ initialYearMonth, initialRows }: Ca
 
   return (
     <div className="p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <MobileMenuButton />
+        <h1 className="text-base font-bold text-gray-900">カード経費</h1>
+      </div>
       <div className="flex items-center gap-2 mb-4">
-        <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
         <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100 text-lg">‹</button>
         <span className="text-sm font-bold text-gray-900">{yearMonth.replace('-', '年')}月</span>
         <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100 text-lg">›</button>
