@@ -279,6 +279,7 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
   }
 
   const deleteExistingPhoto = async (photo: SalesPhoto) => {
+    if (!confirm('この写真を削除しますか？')) return
     const supabase = createClient()
     await supabase.storage.from('sales-photos').remove([photo.storage_path])
     await supabase.from('sales_photos').delete().eq('id', photo.id)
@@ -348,7 +349,7 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6 my-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-sm md:max-w-2xl lg:max-w-4xl mx-4 p-6 md:p-8 my-auto" onClick={e => e.stopPropagation()}>
         <h2 className="text-base font-bold text-gray-900 mb-4">
           {record ? '売上記録を編集' : '売上記録を追加'}
         </h2>
@@ -392,7 +393,7 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
             <label className="block text-xs font-medium text-gray-700 mb-2">写真</label>
             <div className="flex flex-wrap gap-2">
               {existingPhotos.map(p => (
-                <div key={p.id} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                <div key={p.id} className="relative w-20 h-20 md:w-28 md:h-28 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
                   {photoUrls[p.id]
                     ? <img src={photoUrls[p.id]} alt={p.original_name} className="w-full h-full object-cover cursor-pointer"
                         onClick={() => setLightboxUrl(photoUrls[p.id])} />
@@ -403,14 +404,14 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
                 </div>
               ))}
               {newPreviews.map((url, i) => (
-                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-blue-200 bg-gray-50">
+                <div key={i} className="relative w-20 h-20 md:w-28 md:h-28 rounded-lg overflow-hidden border border-blue-200 bg-gray-50">
                   <img src={url} alt="" className="w-full h-full object-cover" />
                   <button onClick={() => removeNewFile(i)}
                     className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center">×</button>
                 </div>
               ))}
               <button onClick={() => fileInputRef.current?.click()}
-                className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 transition-colors">
+                className="w-20 h-20 md:w-28 md:h-28 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 transition-colors">
                 <span className="text-2xl leading-none">+</span>
                 <span className="text-xs mt-1">写真追加</span>
               </button>
