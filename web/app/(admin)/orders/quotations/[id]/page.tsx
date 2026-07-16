@@ -29,7 +29,9 @@ const STATUS_SELECT_STYLES: Record<QuotationStatus, string> = {
   '失注': 'bg-red-50 text-red-600 border-red-200',
 }
 
-const ITEM_GRID_COLS = '[grid-template-columns:76px_170px_1fr_72px_112px_76px_112px_120px_40px]'
+const ITEM_GRID_COLS = '[grid-template-columns:64px_140px_1fr_56px_100px_72px_110px_120px_40px]'
+// 狭い列で数値入力のスピンナー矢印が桁を隠してしまうのを防ぐ
+const NO_SPINNER = '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
 
 // 品名はExcel上は1セル(改行区切り2行)だが、システム上は品名・型番を分けて入力できるようにする
 function splitName(name: string): [string, string] {
@@ -38,6 +40,15 @@ function splitName(name: string): [string, string] {
 }
 function joinName(line1: string, line2: string): string {
   return line2 ? `${line1}\n${line2}` : line1
+}
+
+// 数量・価格系の数値を「19,800」のようにカンマ区切りで表示・入力できるようにする補助
+function formatYen(n: number): string {
+  return n ? n.toLocaleString() : ''
+}
+function parseYenInput(v: string): number {
+  const n = Number(v.replace(/[^\d]/g, ''))
+  return Number.isNaN(n) ? 0 : n
 }
 
 interface FullQuotation extends Quotation {
@@ -336,25 +347,23 @@ export default function QuotationDetailPage() {
         {/* PC: 一覧表示 */}
         <div className="hidden md:block overflow-x-auto">
           <div className="min-w-[1080px]">
-            <div className={`grid ${ITEM_GRID_COLS} gap-2 border-b border-gray-200 pb-2 text-xs font-medium text-gray-500`}>
+            <div className={`grid ${ITEM_GRID_COLS} gap-3 px-3 pb-2 text-xs font-medium text-gray-500`}>
               <div>種別</div>
-              <div>
-                <div>メーカー</div>
-                <div className="text-gray-400 font-normal">型式検索</div>
-              </div>
+              <div>メーカー・型式検索</div>
               <div>品名・型番</div>
-              <div>数量</div>
-              <div className="text-right">メーカー希望小売価格</div>
-              <div>掛率</div>
+              <div className="pl-3 border-l border-gray-200">数量</div>
+              <div className="text-right">希望小売価格</div>
+              <div className="text-right">掛率</div>
               <div className="text-right">仕切り価格</div>
               <div className="text-right">金額</div>
               <div />
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="space-y-2">
               {items.map((item, idx) => {
                 const isLabor = item.item_type === 'labor'
+                const shikiriPrice = Math.round(item.unit_price * item.markup_rate)
                 return (
-                  <div key={idx} className={`grid ${ITEM_GRID_COLS} gap-2 items-start py-2`}>
+                  <div key={idx} className={`grid ${ITEM_GRID_COLS} gap-3 items-center px-3 py-2.5 bg-white border border-gray-200 rounded-lg`}>
                     <div>
                       <select value={item.item_type} onChange={e => updateItem(idx, 'item_type', e.target.value)}
                         className="w-full px-1.5 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
@@ -375,7 +384,7 @@ export default function QuotationDetailPage() {
                             <input value={splitName(item.name)[0]} onChange={e => updateItem(idx, 'name', joinName(e.target.value, splitName(item.name)[1]))}
                               placeholder="品名" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                             <input value={splitName(item.name)[1]} onChange={e => updateItem(idx, 'name', joinName(splitName(item.name)[0], e.target.value))}
-                              placeholder="型番" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                              placeholder="型番" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                           </div>
                           {itemLinks[idx] && (
                             <a href={itemLinks[idx]!} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
@@ -390,17 +399,18 @@ export default function QuotationDetailPage() {
                         </div>
                       )}
                     </div>
-                    <div>
+                    <div className="pl-3 border-l border-gray-100">
                       <input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0}
-                        className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        className={`w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500 ${NO_SPINNER}`} />
                     </div>
                     <div>
                       {isLabor ? <span className="block text-right text-gray-300 text-sm py-1.5">—</span> : (
-                        <>
-                          <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
-                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                          <div className="text-right text-[11px] text-gray-400 mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</div>
-                        </>
+                        <div className="relative">
+                          <input type="text" inputMode="numeric" value={formatYen(item.unit_price)}
+                            onChange={e => updateItem(idx, 'unit_price', parseYenInput(e.target.value))}
+                            className="w-full pl-2 pr-6 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">円</span>
+                        </div>
                       )}
                     </div>
                     <div>
@@ -408,24 +418,25 @@ export default function QuotationDetailPage() {
                         <div className="relative">
                           <input type="number" step="1" value={Math.round(item.markup_rate * 100)}
                             onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value) / 100)} min={0}
-                            className="w-full pl-2 pr-5 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                            className={`w-full pl-2 pr-5 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500 ${NO_SPINNER}`} />
                           <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
                         </div>
                       )}
                     </div>
                     <div>
                       {isLabor ? (
-                        <>
-                          <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
-                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                          <div className="text-right text-[11px] text-gray-400 mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</div>
-                        </>
+                        <div className="relative">
+                          <input type="text" inputMode="numeric" value={formatYen(item.unit_price)}
+                            onChange={e => updateItem(idx, 'unit_price', parseYenInput(e.target.value))}
+                            className="w-full pl-2 pr-6 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">円</span>
+                        </div>
                       ) : (
-                        <div className="text-right text-sm text-gray-700 tabular-nums py-1.5">¥{Math.round(item.unit_price * item.markup_rate).toLocaleString()}</div>
+                        <div className="text-right text-sm text-gray-500 tabular-nums py-1.5 px-2 bg-gray-50 rounded">¥{shikiriPrice.toLocaleString()}</div>
                       )}
                     </div>
-                    <div className="text-right text-sm font-semibold text-gray-900 tabular-nums py-1.5">¥{item.amount.toLocaleString()}</div>
-                    <div className="flex justify-center pt-1">
+                    <div className="text-right text-base font-bold text-gray-900 tabular-nums py-1.5">¥{item.amount.toLocaleString()}</div>
+                    <div className="flex justify-center">
                       <button onClick={() => removeItem(idx)} title="この行を削除"
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                         <TrashIcon className="w-4 h-4" />
@@ -442,18 +453,16 @@ export default function QuotationDetailPage() {
         <div className="md:hidden space-y-3">
           {items.map((item, idx) => {
             const isLabor = item.item_type === 'labor'
+            const shikiriPrice = Math.round(item.unit_price * item.markup_rate)
             return (
               <div key={idx} className="border border-gray-200 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
+                <div className="mb-2">
+                  <label className="block text-[11px] text-gray-500 mb-0.5">種別</label>
                   <select value={item.item_type} onChange={e => updateItem(idx, 'item_type', e.target.value)}
-                    className="px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                     <option value="product">商品</option>
                     <option value="labor">作業</option>
                   </select>
-                  <button onClick={() => removeItem(idx)} title="この行を削除"
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" aria-label="この行を削除">
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
                 </div>
 
                 {!isLabor && (
@@ -471,15 +480,8 @@ export default function QuotationDetailPage() {
                       className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                   ) : (
                     <div className="flex items-start gap-1">
-                      <div className="flex-1 space-y-2">
-                        <input value={splitName(item.name)[0]} onChange={e => updateItem(idx, 'name', joinName(e.target.value, splitName(item.name)[1]))}
-                          placeholder="品名" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                        <div>
-                          <label className="block text-[11px] text-gray-500 mb-0.5">型番</label>
-                          <input value={splitName(item.name)[1]} onChange={e => updateItem(idx, 'name', joinName(splitName(item.name)[0], e.target.value))}
-                            placeholder="型番" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                        </div>
-                      </div>
+                      <input value={splitName(item.name)[0]} onChange={e => updateItem(idx, 'name', joinName(e.target.value, splitName(item.name)[1]))}
+                        placeholder="品名" className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                       {itemLinks[idx] && (
                         <a href={itemLinks[idx]!} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
                           className="shrink-0 p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
@@ -494,52 +496,69 @@ export default function QuotationDetailPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <div>
-                    <label className="block text-[11px] text-gray-500 mb-0.5">数量</label>
-                    <input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0}
-                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                {!isLabor && (
+                  <div className="mb-2">
+                    <label className="block text-[11px] text-gray-500 mb-0.5">型番</label>
+                    <input value={splitName(item.name)[1]} onChange={e => updateItem(idx, 'name', joinName(splitName(item.name)[0], e.target.value))}
+                      placeholder="型番" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                   </div>
-                  {!isLabor && (
-                    <div>
-                      <label className="block text-[11px] text-gray-500 mb-0.5">メーカー希望小売価格</label>
-                      <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
-                        className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                      <div className="text-right text-[11px] text-gray-400 mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</div>
-                    </div>
-                  )}
+                )}
+
+                <div className="mb-2">
+                  <label className="block text-[11px] text-gray-500 mb-0.5">数量</label>
+                  <input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0}
+                    className={`w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500 ${NO_SPINNER}`} />
                 </div>
 
                 {!isLabor && (
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <div>
-                      <label className="block text-[11px] text-gray-500 mb-0.5">掛率</label>
-                      <div className="relative">
-                        <input type="number" step="1" value={Math.round(item.markup_rate * 100)}
-                          onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value) / 100)} min={0}
-                          className="w-full pl-2 pr-5 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] text-gray-500 mb-0.5">仕切り価格</label>
-                      <div className="px-2 py-1.5 text-sm text-right text-gray-700 tabular-nums">¥{Math.round(item.unit_price * item.markup_rate).toLocaleString()}</div>
+                  <div className="mb-2">
+                    <label className="block text-[11px] text-gray-500 mb-0.5">希望小売価格</label>
+                    <div className="relative">
+                      <input type="text" inputMode="numeric" value={formatYen(item.unit_price)}
+                        onChange={e => updateItem(idx, 'unit_price', parseYenInput(e.target.value))}
+                        className="w-full pl-2 pr-6 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">円</span>
                     </div>
                   </div>
                 )}
 
-                {isLabor && (
+                {!isLabor && (
                   <div className="mb-2">
-                    <label className="block text-[11px] text-gray-500 mb-0.5">仕切り価格</label>
-                    <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
-                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                    <div className="text-right text-[11px] text-gray-400 mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</div>
+                    <label className="block text-[11px] text-gray-500 mb-0.5">掛率</label>
+                    <div className="relative">
+                      <input type="number" step="1" value={Math.round(item.markup_rate * 100)}
+                        onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value) / 100)} min={0}
+                        className={`w-full pl-2 pr-5 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500 ${NO_SPINNER}`} />
+                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
+                    </div>
                   </div>
                 )}
+
+                <div className="mb-2">
+                  <label className="block text-[11px] text-gray-500 mb-0.5">仕切り価格</label>
+                  {isLabor ? (
+                    <div className="relative">
+                      <input type="text" inputMode="numeric" value={formatYen(item.unit_price)}
+                        onChange={e => updateItem(idx, 'unit_price', parseYenInput(e.target.value))}
+                        className="w-full pl-2 pr-6 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">円</span>
+                    </div>
+                  ) : (
+                    <div className="px-2 py-1.5 text-sm text-right text-gray-500 tabular-nums bg-gray-50 rounded">¥{shikiriPrice.toLocaleString()}</div>
+                  )}
+                </div>
 
                 <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                   <span className="text-xs text-gray-500">金額</span>
-                  <span className="text-sm font-bold text-gray-900 tabular-nums">¥{item.amount.toLocaleString()}</span>
+                  <span className="text-base font-bold text-gray-900 tabular-nums">¥{item.amount.toLocaleString()}</span>
+                </div>
+
+                <div className="flex justify-end mt-2 pt-2 border-t border-gray-100">
+                  <button onClick={() => removeItem(idx)} title="この行を削除"
+                    className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" aria-label="この行を削除">
+                    <TrashIcon className="w-4 h-4" />
+                    この行を削除
+                  </button>
                 </div>
               </div>
             )
