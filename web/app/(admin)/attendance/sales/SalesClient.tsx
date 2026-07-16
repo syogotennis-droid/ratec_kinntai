@@ -17,6 +17,42 @@ interface SalesClientProps {
   initialPhotoThumbs: Record<number, string>
 }
 
+function getRecordStatus(r: { amount: number; cost: number }) {
+  if (!r.amount) return { label: '売上未入力', cls: 'bg-amber-50 text-amber-700 border border-amber-200' }
+  if (!r.cost) return { label: '原価未入力', cls: 'bg-amber-50 text-amber-700 border border-amber-200' }
+  return { label: '入力済', cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200' }
+}
+
+function CameraIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+      <circle cx="12" cy="13" r="3.25" strokeWidth={1.5} />
+    </svg>
+  )
+}
+
+function PhotoThumb({ url, count, onClick, size = 'w-14 h-14' }: { url?: string; count?: number; onClick?: (e: React.MouseEvent) => void; size?: string }) {
+  if (!url) {
+    return (
+      <div className={`${size} rounded-lg shrink-0 bg-gray-50 border border-gray-100 flex flex-col items-center justify-center text-gray-300`}>
+        <CameraIcon className="w-5 h-5" />
+        <span className="text-[9px] mt-0.5 leading-none">写真なし</span>
+      </div>
+    )
+  }
+  return (
+    <div className={`relative ${size} rounded-lg overflow-hidden shrink-0 bg-gray-100`} onClick={onClick}>
+      <img src={url} alt="" className="w-full h-full object-cover" />
+      {count !== undefined && count > 1 && (
+        <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] leading-none px-1 py-0.5 rounded-tl">
+          {count}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export default function SalesClient({ initialYearMonth, initialRecords, initialProfiles, initialPhotoCounts, initialPhotoThumbs }: SalesClientProps) {
   const profile = useProfile()
   const openSidebar = useSidebar()
@@ -30,6 +66,10 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
   const [modal, setModal] = useState<{ record?: SalesRecord | null; date?: string } | null>(null)
   const [page, setPage] = useState(0)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterUserId, setFilterUserId] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'no_amount' | 'no_cost' | 'complete'>('all')
+  const [filterPhoto, setFilterPhoto] = useState<'all' | 'has' | 'none'>('all')
 
   const nameById = (id: string) => profiles.find(p => p.id === id)?.name ?? '—'
 
@@ -79,8 +119,34 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
 
   const totalAmount = records.reduce((s, r) => s + r.amount, 0)
   const totalCost = records.reduce((s, r) => s + (r.cost ?? 0), 0)
-  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
-  const pagedRecords = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const totalProfit = totalAmount - totalCost
+  const grossMarginRate = totalAmount > 0 ? (totalProfit / totalAmount) * 100 : null
+
+  const filteredRecords = records.filter(r => {
+    if (filterUserId !== 'all' && r.user_id !== filterUserId) return false
+    if (filterStatus !== 'all') {
+      const status = !r.amount ? 'no_amount' : !r.cost ? 'no_cost' : 'complete'
+      if (status !== filterStatus) return false
+    }
+    if (filterPhoto === 'has' && !(photoCounts[r.id] > 0)) return false
+    if (filterPhoto === 'none' && photoCounts[r.id] > 0) return false
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      const desc = (r.description || '').toLowerCase()
+      const name = nameById(r.user_id).toLowerCase()
+      if (!desc.includes(q) && !name.includes(q)) return false
+    }
+    return true
+  })
+
+  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE))
+  const pagedRecords = filteredRecords.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const isFiltered = searchQuery.trim() !== '' || filterUserId !== 'all' || filterStatus !== 'all' || filterPhoto !== 'all'
+
+  const handleFilterChange = (fn: () => void) => {
+    setPage(0)
+    fn()
+  }
 
   const prevMonth = () => {
     setPage(0)
@@ -94,81 +160,206 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
     const d = new Date(y, m, 1)
     setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
-
-
+  const goToday = () => {
+    setPage(0)
+    const d = new Date()
+    setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2 px-1 mb-3">
-        <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
+    <div className="p-4">
+      <div className="flex items-center gap-2 mb-1">
+        <button onClick={openSidebar} className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <div className="flex items-center gap-1">
-          <button onClick={prevMonth} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
-          <span className="text-base font-bold text-gray-900 px-2">{yearMonth.replace('-', '年')}月</span>
-          <button onClick={nextMonth} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
-        </div>
+        <h1 className="text-lg md:text-xl font-bold text-gray-900">売上管理</h1>
         <button
           onClick={() => setModal({ date: new Date().toLocaleDateString('sv-SE') })}
           className="ml-auto px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow transition-shadow"
         >
-          + 追加
+          ＋ 売上報告を追加
         </button>
       </div>
-      <div className="px-4">
 
-      <div className="flex gap-4 mb-4 px-1">
-        <div className="text-xs md:text-sm text-gray-500">売上 <span className="text-gray-900 font-medium">¥{totalAmount.toLocaleString()}</span></div>
-        <div className="text-xs md:text-sm text-gray-500">原価 <span className="text-gray-900 font-medium">¥{totalCost.toLocaleString()}</span></div>
-        <div className="text-xs md:text-sm text-gray-500">粗利 <span className="font-medium text-green-700">¥{(totalAmount - totalCost).toLocaleString()}</span></div>
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <button onClick={prevMonth} className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">‹ 前月</button>
+        <button onClick={goToday} className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">今月</button>
+        <button onClick={nextMonth} className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">次月 ›</button>
+        <span className="text-base md:text-lg font-bold text-gray-900 ml-2">{yearMonth.replace('-', '年')}月</span>
       </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3">
+          <div className="text-xs text-gray-500">売上</div>
+          <div className="text-lg md:text-xl font-bold text-gray-900 mt-0.5">¥{totalAmount.toLocaleString()}</div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3">
+          <div className="text-xs text-gray-500">原価</div>
+          <div className="text-lg md:text-xl font-bold text-gray-900 mt-0.5">¥{totalCost.toLocaleString()}</div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3">
+          <div className="text-xs text-gray-500">粗利</div>
+          <div className="text-lg md:text-xl font-bold text-emerald-700 mt-0.5">¥{totalProfit.toLocaleString()}</div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3">
+          <div className="text-xs text-gray-500">粗利率</div>
+          <div className="text-lg md:text-xl font-bold text-emerald-700 mt-0.5">
+            {grossMarginRate !== null ? `${grossMarginRate.toFixed(1)}%` : '—'}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={e => handleFilterChange(() => setSearchQuery(e.target.value))}
+          placeholder="案件名・現場名・担当者で検索"
+          className="flex-1 min-w-[180px] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <select
+          value={filterUserId}
+          onChange={e => handleFilterChange(() => setFilterUserId(e.target.value))}
+          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">全担当者</option>
+          {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <select
+          value={filterStatus}
+          onChange={e => handleFilterChange(() => setFilterStatus(e.target.value as typeof filterStatus))}
+          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">すべての状態</option>
+          <option value="no_amount">売上未入力</option>
+          <option value="no_cost">原価未入力</option>
+          <option value="complete">入力済</option>
+        </select>
+        <select
+          value={filterPhoto}
+          onChange={e => handleFilterChange(() => setFilterPhoto(e.target.value as typeof filterPhoto))}
+          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">写真: すべて</option>
+          <option value="has">写真あり</option>
+          <option value="none">写真なし</option>
+        </select>
+      </div>
+
+      {isFiltered && (
+        <div className="text-xs text-gray-500 mb-2">{filteredRecords.length}件 / 全{records.length}件</div>
+      )}
 
       {loading ? (
         <div className="text-sm text-gray-500 py-8 text-center">読み込み中...</div>
-      ) : records.length === 0 ? (
-        <div className="text-sm text-gray-500 py-8 text-center">記録がありません</div>
+      ) : filteredRecords.length === 0 ? (
+        <div className="text-sm text-gray-500 py-8 text-center">{isFiltered ? '条件に一致する記録がありません' : '記録がありません'}</div>
       ) : (
         <>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {[pagedRecords.slice(0, Math.ceil(pagedRecords.length / 2)), pagedRecords.slice(Math.ceil(pagedRecords.length / 2))].map((col, ci) => (
-            <div key={ci} className="space-y-2">
-              {col.map(r => (
+        {/* PC: 一覧表示 */}
+        <div className="hidden lg:block border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <div className="grid [grid-template-columns:64px_76px_1fr_112px_112px_112px_112px_100px_28px] gap-2 bg-gray-50 border-b border-gray-200 px-3 py-2 text-xs font-medium text-gray-500">
+            <div>写真</div>
+            <div>日付</div>
+            <div>案件名・現場名</div>
+            <div>担当者</div>
+            <div className="text-right">売上</div>
+            <div className="text-right">原価</div>
+            <div className="text-right">粗利</div>
+            <div>状態</div>
+            <div />
+          </div>
+          <div className="divide-y divide-gray-100">
+            {pagedRecords.map(r => {
+              const status = getRecordStatus(r)
+              const profit = r.amount - (r.cost ?? 0)
+              return (
                 <div
                   key={r.id}
                   onClick={() => setModal({ record: r })}
-                  className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all"
+                  className="grid [grid-template-columns:64px_76px_1fr_112px_112px_112px_112px_100px_28px] gap-2 items-center px-3 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors"
                 >
-                  {photoThumbs[r.id] ? (
-                    <div
-                      className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-gray-100"
-                      onClick={e => { e.stopPropagation(); setLightboxUrl(photoThumbs[r.id]) }}
-                    >
-                      <img src={photoThumbs[r.id]} alt="" className="w-full h-full object-cover" />
-                      {photoCounts[r.id] > 1 && (
-                        <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] leading-none px-1 py-0.5 rounded-tl">
-                          {photoCounts[r.id]}
-                        </span>
-                      )}
+                  <PhotoThumb
+                    url={photoThumbs[r.id]}
+                    count={photoCounts[r.id]}
+                    size="w-12 h-12"
+                    onClick={photoThumbs[r.id] ? (e => { e.stopPropagation(); setLightboxUrl(photoThumbs[r.id]) }) : undefined}
+                  />
+                  <div className="text-xs text-gray-500">{r.record_date.slice(5).replace('-', '/')}</div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-gray-900 truncate" title={r.description || undefined}>
+                      {r.description || '（案件名未設定）'}
                     </div>
-                  ) : (
-                    <div className="w-14 h-14 rounded-lg shrink-0 bg-gray-50" />
-                  )}
-                  <div className="w-12 text-xs text-gray-500 shrink-0">{r.record_date.slice(5).replace('-', '/')}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-gray-600 shrink-0">{nameById(r.user_id)}</span>
-                      {r.user_id !== userId && <span className="text-[10px] text-gray-400 shrink-0">閲覧のみ</span>}
-                    </div>
-                    <div className="text-sm text-gray-900 truncate">{r.description || '—'}</div>
                   </div>
-                  <div className="text-base font-medium text-gray-900 shrink-0">¥{r.amount.toLocaleString()}</div>
+                  <div className="text-xs text-gray-600 truncate flex items-center gap-1">
+                    {nameById(r.user_id)}
+                    {r.user_id !== userId && <span className="text-[10px] text-gray-400 shrink-0">閲覧のみ</span>}
+                  </div>
+                  <div className="text-right text-sm font-medium text-gray-900">{r.amount ? `¥${r.amount.toLocaleString()}` : <span className="text-gray-400 font-normal">—</span>}</div>
+                  <div className="text-right text-sm text-gray-600">{r.cost ? `¥${r.cost.toLocaleString()}` : <span className="text-gray-400">—</span>}</div>
+                  <div className="text-right text-sm font-medium text-emerald-700">{r.amount ? `¥${profit.toLocaleString()}` : <span className="text-gray-400 font-normal">—</span>}</div>
+                  <div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${status.cls}`}>{status.label}</span>
+                  </div>
+                  <div className="text-right text-gray-300">›</div>
                 </div>
-              ))}
-            </div>
-          ))}
+              )
+            })}
+          </div>
         </div>
+
+        {/* スマホ: カード表示 */}
+        <div className="lg:hidden space-y-2">
+          {pagedRecords.map(r => {
+            const status = getRecordStatus(r)
+            const profit = r.amount - (r.cost ?? 0)
+            return (
+              <div
+                key={r.id}
+                onClick={() => setModal({ record: r })}
+                className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 cursor-pointer hover:shadow-md transition-all"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-sm font-semibold text-gray-900 flex-1 min-w-0 truncate" title={r.description || undefined}>
+                    {r.description || '（案件名未設定）'}
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 ${status.cls}`}>{status.label}</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                  <span>{r.record_date.slice(5).replace('-', '/')}</span>
+                  <span>・</span>
+                  <span>{nameById(r.user_id)}</span>
+                  {r.user_id !== userId && <span className="text-gray-400 ml-1">閲覧のみ</span>}
+                </div>
+                <div className="mt-2 flex items-center gap-3">
+                  <PhotoThumb
+                    url={photoThumbs[r.id]}
+                    count={photoCounts[r.id]}
+                    onClick={photoThumbs[r.id] ? (e => { e.stopPropagation(); setLightboxUrl(photoThumbs[r.id]) }) : undefined}
+                  />
+                  <div className="flex-1 grid grid-cols-3 gap-1 text-center">
+                    <div>
+                      <div className="text-[10px] text-gray-400">売上</div>
+                      <div className="text-sm font-medium text-gray-900">{r.amount ? `¥${r.amount.toLocaleString()}` : '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-gray-400">原価</div>
+                      <div className="text-sm text-gray-600">{r.cost ? `¥${r.cost.toLocaleString()}` : '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-gray-400">粗利</div>
+                      <div className="text-sm font-medium text-emerald-700">{r.amount ? `¥${profit.toLocaleString()}` : '—'}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-2 text-right text-xs text-blue-600 font-medium">詳細を見る ›</div>
+              </div>
+            )
+          })}
+        </div>
+
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-3 mt-4">
             <button
@@ -206,7 +397,6 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
           onSaved={fetchRecords}
         />
       )}
-      </div>
     </div>
   )
 }
@@ -404,7 +594,10 @@ function SalesModal({ userId, record, defaultDate, readOnly = false, ownerName, 
                 </button>
               )}
               {readOnly && existingPhotos.length === 0 && (
-                <div className="text-xs text-gray-400 py-2">写真なし</div>
+                <div className="w-20 h-20 md:w-28 md:h-28 rounded-lg border border-gray-200 bg-gray-50 flex flex-col items-center justify-center text-gray-300">
+                  <CameraIcon className="w-6 h-6" />
+                  <span className="text-xs mt-1">写真なし</span>
+                </div>
               )}
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
