@@ -35,7 +35,7 @@ export default function QuotationList({ initialQuotations }: { initialQuotations
         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="番号・案件名で検索"
           className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <Link href="/orders/quotations/new"
-          className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg whitespace-nowrap">
+          className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow transition-shadow whitespace-nowrap">
           + 新規
         </Link>
       </div>
@@ -55,7 +55,7 @@ export default function QuotationList({ initialQuotations }: { initialQuotations
         <div className="space-y-2">
           {displayed.map(q => (
             <Link key={q.id} href={`/orders/quotations/${q.id}`}
-              className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 transition-colors block">
+              className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 transition-all block">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-gray-400 shrink-0">{q.doc_no}</p>
@@ -65,7 +65,7 @@ export default function QuotationList({ initialQuotations }: { initialQuotations
               </div>
               <div className="text-right shrink-0">
                 <p className="text-sm font-medium text-gray-900">¥{q.total_amount.toLocaleString()}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[q.status]}`}>{q.status}</span>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${STATUS_COLORS[q.status]}`}>{q.status}</span>
               </div>
             </Link>
           ))}

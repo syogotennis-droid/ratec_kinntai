@@ -218,7 +218,7 @@ export default function WorkListClient({ initialYearMonth, initialSummaries, ini
                       {h}h{m > 0 ? `${m}m` : ''}
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
+                      <span className={`inline-block text-xs px-2.5 py-1 rounded-full font-semibold ${
                         s.isClosed ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
                       }`}>
                         {s.isClosed ? '締済' : '未締'}
@@ -422,7 +422,7 @@ function EmployeeDetail({ profile, yearMonth, isClosed: initialClosed, onBack }:
             {!isClosed && (
               <button
                 onClick={() => { setEditRecord(null); setModalDate(new Date().toLocaleDateString('sv-SE')) }}
-                className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow transition-shadow"
               >
                 + 追加
               </button>
@@ -447,7 +447,7 @@ function EmployeeDetail({ profile, yearMonth, isClosed: initialClosed, onBack }:
                     <div className="w-16 text-xs text-gray-500 shrink-0">{r.work_date.slice(5).replace('-', '/')}</div>
                     <div className="flex-1 text-sm text-gray-900">{r.start_time}〜{r.end_time}</div>
                     <div className="text-xs text-gray-600 shrink-0">{Math.floor(am / 60)}h{am % 60 > 0 ? `${am % 60}m` : ''}</div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${WORK_TYPE_BADGE[r.work_type] ?? 'bg-gray-100 text-gray-700'}`}>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold shrink-0 ${WORK_TYPE_BADGE[r.work_type] ?? 'bg-gray-100 text-gray-700'}`}>
                       {WORK_TYPE_LABELS[r.work_type] ?? r.work_type}
                     </span>
                   </div>

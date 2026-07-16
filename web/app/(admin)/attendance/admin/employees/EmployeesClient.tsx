@@ -56,7 +56,7 @@ export default function EmployeesClient({ initialProfiles }: EmployeesClientProp
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+          className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow transition-shadow"
         >
           + 追加
         </button>
@@ -72,7 +72,7 @@ export default function EmployeesClient({ initialProfiles }: EmployeesClientProp
             <div
               key={p.id}
               onClick={() => setEditProfile(p)}
-              className={`flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors ${!p.is_active ? 'opacity-50' : ''}`}
+              className={`flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all ${!p.is_active ? 'opacity-50' : ''}`}
             >
               <div className="flex-1">
                 <div className="flex items-center gap-2">

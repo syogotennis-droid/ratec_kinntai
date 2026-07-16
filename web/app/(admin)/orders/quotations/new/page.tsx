@@ -231,7 +231,7 @@ export default function NewQuotationPage() {
         <Link href="/orders/quotations" className="text-base text-blue-600 hover:underline">← 一覧</Link>
         <h1 className="text-base font-bold text-gray-900">新規見積書</h1>
       </div>
-      <div className="space-y-3 mb-6">
+      <div className="space-y-3 mb-6 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">案件名 *</label>
           <div className="relative" ref={searchRef}>
@@ -307,7 +307,7 @@ export default function NewQuotationPage() {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
       </div>
-      <div className="mb-4">
+      <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-bold text-gray-700">明細</h2>
           <button onClick={() => { setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product' }]); setItemLinks(prev => [...prev, null]) }} className="text-sm text-blue-600 hover:underline">+ 行追加</button>

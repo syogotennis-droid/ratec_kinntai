@@ -44,7 +44,7 @@ export default function SuppliersClient({ initialSuppliers }: { initialSuppliers
           非表示含む
         </label>
         <button onClick={() => setShowAdd(true)}
-          className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg whitespace-nowrap">
+          className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow transition-shadow whitespace-nowrap">
           + 追加
         </button>
       </div>
@@ -57,7 +57,7 @@ export default function SuppliersClient({ initialSuppliers }: { initialSuppliers
         <div className="space-y-2">
           {displayed.map(s => (
             <div key={s.id} onClick={() => setEditSupplier(s)}
-              className={`p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors ${!s.is_active ? 'opacity-50' : ''}`}>
+              className={`p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all ${!s.is_active ? 'opacity-50' : ''}`}>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-gray-900 flex-1">{s.name}</p>
                 <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{s.supplier_type}</span>

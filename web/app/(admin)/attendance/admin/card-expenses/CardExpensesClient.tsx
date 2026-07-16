@@ -78,7 +78,7 @@ export default function CardExpensesClient({ initialYearMonth, initialRows }: Ca
             <div
               key={row.profile.id}
               onClick={() => setEditRow(row)}
-              className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
+              className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all"
             >
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900">{row.profile.name}</p>

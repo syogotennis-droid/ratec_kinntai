@@ -117,7 +117,7 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
           </select>
           <button
             onClick={() => setModal({ date: new Date().toLocaleDateString('sv-SE') })}
-            className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+            className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow transition-shadow"
           >
             + 追加
           </button>
@@ -141,7 +141,7 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
             <div
               key={r.id}
               onClick={() => setModal({ record: r })}
-              className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
+              className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all"
             >
               {photoThumbs[r.id] ? (
                 <div className="relative w-10 h-10 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100">

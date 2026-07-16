@@ -66,7 +66,7 @@ export default function ProjectsClient({ initialProjects, initialCompanies, init
         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="案件名・会社名で検索"
           className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <button onClick={() => setShowAdd(true)}
-          className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg whitespace-nowrap">
+          className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow transition-shadow whitespace-nowrap">
           + 追加
         </button>
       </div>
@@ -90,14 +90,14 @@ export default function ProjectsClient({ initialProjects, initialCompanies, init
         <div className="space-y-2">
           {displayed.map(p => (
             <div key={p.id} onClick={() => setEditProject(p)}
-              className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors">
+              className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
                 <p className="text-xs text-gray-400">
                   {p.companies?.name}{p.company_offices?.name ? `（${p.company_offices.name}）` : ''}
                 </p>
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${STATUS_COLORS[p.status as ProjectStatus] ?? 'bg-gray-100 text-gray-600'}`}>
+              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold shrink-0 ${STATUS_COLORS[p.status as ProjectStatus] ?? 'bg-gray-100 text-gray-600'}`}>
                 {STATUS_LABELS[p.status as ProjectStatus] ?? p.status}
               </span>
             </div>

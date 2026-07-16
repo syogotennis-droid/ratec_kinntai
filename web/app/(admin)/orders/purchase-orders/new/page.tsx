@@ -239,7 +239,7 @@ export default function NewPurchaseOrderPage() {
         <Link href="/orders/purchase-orders" className="text-sm text-blue-600 hover:underline">← 一覧</Link>
         <h1 className="text-sm font-bold text-gray-900">新規注文書</h1>
       </div>
-      <div className="space-y-3 mb-6">
+      <div className="space-y-3 mb-6 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">案件名 *</label>
           <div ref={searchRef} className="relative">
@@ -311,7 +311,7 @@ export default function NewPurchaseOrderPage() {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
       </div>
-      <div className="mb-4">
+      <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-bold text-gray-700">明細</h2>
           <button onClick={() => setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])}

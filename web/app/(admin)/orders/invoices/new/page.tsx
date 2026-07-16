@@ -237,7 +237,7 @@ export default function NewInvoicePage() {
         <h1 className="text-sm font-bold text-gray-900">新規請求書/納品書</h1>
       </div>
 
-      <div className="space-y-3 mb-6">
+      <div className="space-y-3 mb-6 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
         {/* Project search */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">案件名 *</label>
@@ -332,7 +332,7 @@ export default function NewInvoicePage() {
         </div>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-bold text-gray-700">明細</h2>
           <button onClick={addItem} className="text-xs text-blue-600 hover:underline">+ 行追加</button>

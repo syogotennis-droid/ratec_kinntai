@@ -294,7 +294,7 @@ export default function InvoiceDetailPage() {
         <button onClick={handleDelete} disabled={saving} className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg">削除</button>
       </div>
 
-      <div className="space-y-3 mb-6">
+      <div className="space-y-3 mb-6 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
         {/* Project search */}
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -395,7 +395,7 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-bold text-gray-700">明細</h2>
           <button onClick={addItem} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
