@@ -317,7 +317,8 @@ export default function NewPurchaseOrderPage() {
           <button onClick={() => setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])}
             className="text-xs text-blue-600 hover:underline">+ 行追加</button>
         </div>
-        <div className="overflow-x-auto">
+        {/* PC: テーブル表示 */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs min-w-[500px]">
             <thead>
               <tr className="border-b border-gray-200">
@@ -340,6 +341,50 @@ export default function NewPurchaseOrderPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* スマホ: カード表示 */}
+        <div className="md:hidden space-y-2">
+          {items.map((item, idx) => (
+            <div key={idx} className="border border-gray-200 rounded-lg p-3">
+              <div className="flex items-start gap-2 mb-2">
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <label className="block text-[11px] text-gray-500 mb-0.5">品名</label>
+                    <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)}
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-gray-500 mb-0.5">仕様</label>
+                    <input value={item.spec} onChange={e => updateItem(idx, 'spec', e.target.value)}
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                </div>
+                <button onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))} className="shrink-0 text-red-400 hover:text-red-600 mt-5 px-1" aria-label="この行を削除">×</button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[11px] text-gray-500 mb-0.5">数量</label>
+                  <input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-gray-500 mb-0.5">単位</label>
+                  <input value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-gray-500 mb-0.5">単価</label>
+                  <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
+                <span className="text-xs text-gray-500">金額</span>
+                <span className="text-sm font-bold text-gray-900">¥{item.amount.toLocaleString()}</span>
+              </div>
+            </div>
+          ))}
         </div>
         <div className="mt-3 border-t border-gray-200 pt-3 space-y-1 text-sm">
           <div className="flex justify-between"><span className="text-gray-600">小計</span><span>¥{subtotal.toLocaleString()}</span></div>
