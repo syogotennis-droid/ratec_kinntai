@@ -18,6 +18,15 @@ function shikiriUnitPrice(item: QuotationItem): number {
   return item.item_type === 'labor' ? item.unit_price : Math.round(item.unit_price * item.markup_rate)
 }
 
+// 単価を仕切り価格に置き換えるため、金額も数量×仕切り価格で引き継ぎ時に再計算する（見積書側のamountは希望小売価格ベースのため使用しない）
+function toInvoiceItem(item: QuotationItem): Omit<DocumentItem, 'id'> {
+  const unitPrice = shikiriUnitPrice(item)
+  return {
+    sort_order: item.sort_order, name: item.name, spec: item.spec ?? '',
+    qty: item.qty, unit: item.unit, unit_price: unitPrice, amount: item.qty * unitPrice,
+  }
+}
+
 interface ProjectWithCompany extends Project {
   companyData: Company
 }
@@ -108,10 +117,7 @@ export default function NewInvoicePage() {
           const latest = qs[0]
           setQuotationId(latest.id)
           const sorted = [...(latest.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
-          setItems(sorted.map(item => ({
-            sort_order: item.sort_order, name: item.name, spec: item.spec ?? '',
-            qty: item.qty, unit: item.unit, unit_price: shikiriUnitPrice(item), amount: item.amount,
-          })))
+          setItems(sorted.map(toInvoiceItem))
         } else {
           setQuotationId(0)
           setItems([{ sort_order: 0, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }])
@@ -187,10 +193,7 @@ export default function NewInvoicePage() {
     const q = quotations.find(q => q.id === qId)
     if (!q) return
     const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
-    setItems(sorted.map(item => ({
-      sort_order: item.sort_order, name: item.name, spec: item.spec ?? '',
-      qty: item.qty, unit: item.unit, unit_price: shikiriUnitPrice(item), amount: item.amount,
-    })))
+    setItems(sorted.map(toInvoiceItem))
   }
 
   const itemsSubtotal = items.reduce((s, i) => s + i.amount, 0)
