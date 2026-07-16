@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, SalesRecord, SalesPhoto } from '@/lib/supabase/types'
 import { useSidebar } from '@/lib/sidebar-context'
+import PhotoLightbox from '@/components/PhotoLightbox'
+
+const PAGE_SIZE = 10
 
 export interface SalesWithProfile extends SalesRecord {
   profile?: Profile
@@ -27,6 +30,8 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
   const [loading, setLoading] = useState(false)
   const [filterUserId, setFilterUserId] = useState<string>('all')
   const [modal, setModal] = useState<{ record?: SalesRecord | null; date?: string } | null>(null)
+  const [page, setPage] = useState(0)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -79,16 +84,24 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
   const filtered = filterUserId === 'all' ? records : records.filter(r => r.user_id === filterUserId)
   const totalAmount = filtered.reduce((s, r) => s + r.amount, 0)
   const totalCost = filtered.reduce((s, r) => s + (r.cost ?? 0), 0)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const pagedFiltered = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   const prevMonth = () => {
+    setPage(0)
     const [y, m] = yearMonth.split('-').map(Number)
     const d = new Date(y, m - 2, 1)
     setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
   const nextMonth = () => {
+    setPage(0)
     const [y, m] = yearMonth.split('-').map(Number)
     const d = new Date(y, m, 1)
     setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+  const handleFilterChange = (id: string) => {
+    setPage(0)
+    setFilterUserId(id)
   }
 
   return (
@@ -107,7 +120,7 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
         <div className="ml-auto flex items-center gap-2">
           <select
             value={filterUserId}
-            onChange={e => setFilterUserId(e.target.value)}
+            onChange={e => handleFilterChange(e.target.value)}
             className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">全員</option>
@@ -136,15 +149,19 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
       ) : filtered.length === 0 ? (
         <div className="text-sm text-gray-500 py-8 text-center">記録がありません</div>
       ) : (
+        <>
         <div className="space-y-2">
-          {filtered.map(r => (
+          {pagedFiltered.map(r => (
             <div
               key={r.id}
               onClick={() => setModal({ record: r })}
               className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all"
             >
               {photoThumbs[r.id] ? (
-                <div className="relative w-10 h-10 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                <div
+                  className="relative w-10 h-10 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100"
+                  onClick={e => { e.stopPropagation(); setLightboxUrl(photoThumbs[r.id]) }}
+                >
                   <img src={photoThumbs[r.id]} alt="" className="w-full h-full object-cover" />
                   {photoCounts[r.id] > 1 && (
                     <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] md:text-xs leading-none px-1 py-0.5 rounded-tl">
@@ -169,6 +186,30 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
             </div>
           ))}
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ‹ 前へ
+            </button>
+            <span className="text-sm text-gray-500">{page + 1} / {totalPages}</span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              次へ ›
+            </button>
+          </div>
+        )}
+        </>
+      )}
+
+      {lightboxUrl && (
+        <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       )}
 
       {modal !== null && (
@@ -206,6 +247,7 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
   const [photoUrls, setPhotoUrls] = useState<Record<number, string>>({})
   const [newFiles, setNewFiles] = useState<File[]>([])
   const [newPreviews, setNewPreviews] = useState<string[]>([])
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -352,7 +394,8 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
               {existingPhotos.map(p => (
                 <div key={p.id} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
                   {photoUrls[p.id]
-                    ? <img src={photoUrls[p.id]} alt={p.original_name} className="w-full h-full object-cover" />
+                    ? <img src={photoUrls[p.id]} alt={p.original_name} className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => setLightboxUrl(photoUrls[p.id])} />
                     : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">読込中</div>
                   }
                   <button onClick={() => deleteExistingPhoto(p)}
@@ -386,6 +429,9 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
           </button>
         </div>
       </div>
+      {lightboxUrl && (
+        <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+      )}
     </div>
   )
 }

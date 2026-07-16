@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { SalesRecord, SalesPhoto } from '@/lib/supabase/types'
 import { useProfile } from '@/lib/profile-context'
 import { useSidebar } from '@/lib/sidebar-context'
+import PhotoLightbox from '@/components/PhotoLightbox'
+
+const PAGE_SIZE = 10
 
 interface SalesClientProps {
   initialYearMonth: string
@@ -25,6 +28,8 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
   const [photoThumbs, setPhotoThumbs] = useState<Record<number, string>>(initialPhotoThumbs)
   const [loading, setLoading] = useState(false)
   const [modal, setModal] = useState<{ record?: SalesRecord | null; date?: string } | null>(null)
+  const [page, setPage] = useState(0)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const nameById = (id: string) => profiles.find(p => p.id === id)?.name ?? '—'
 
@@ -74,13 +79,17 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
 
   const totalAmount = records.reduce((s, r) => s + r.amount, 0)
   const totalCost = records.reduce((s, r) => s + (r.cost ?? 0), 0)
+  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
+  const pagedRecords = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   const prevMonth = () => {
+    setPage(0)
     const [y, m] = yearMonth.split('-').map(Number)
     const d = new Date(y, m - 2, 1)
     setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
   const nextMonth = () => {
+    setPage(0)
     const [y, m] = yearMonth.split('-').map(Number)
     const d = new Date(y, m, 1)
     setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
@@ -121,15 +130,19 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
       ) : records.length === 0 ? (
         <div className="text-sm text-gray-500 py-8 text-center">記録がありません</div>
       ) : (
+        <>
         <div className="space-y-2">
-          {records.map(r => (
+          {pagedRecords.map(r => (
             <div
               key={r.id}
               onClick={() => setModal({ record: r })}
               className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all"
             >
               {photoThumbs[r.id] ? (
-                <div className="relative w-10 h-10 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                <div
+                  className="relative w-10 h-10 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100"
+                  onClick={e => { e.stopPropagation(); setLightboxUrl(photoThumbs[r.id]) }}
+                >
                   <img src={photoThumbs[r.id]} alt="" className="w-full h-full object-cover" />
                   {photoCounts[r.id] > 1 && (
                     <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] md:text-xs leading-none px-1 py-0.5 rounded-tl">
@@ -157,6 +170,30 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
             </div>
           ))}
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ‹ 前へ
+            </button>
+            <span className="text-sm text-gray-500">{page + 1} / {totalPages}</span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              次へ ›
+            </button>
+          </div>
+        )}
+        </>
+      )}
+
+      {lightboxUrl && (
+        <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       )}
 
       {modal !== null && (
@@ -198,6 +235,7 @@ function SalesModal({ userId, record, defaultDate, readOnly = false, ownerName, 
   const [photoUrls, setPhotoUrls] = useState<Record<number, string>>({})
   const [newFiles, setNewFiles] = useState<File[]>([])
   const [newPreviews, setNewPreviews] = useState<string[]>([])
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -345,7 +383,8 @@ function SalesModal({ userId, record, defaultDate, readOnly = false, ownerName, 
               {existingPhotos.map(p => (
                 <div key={p.id} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
                   {photoUrls[p.id]
-                    ? <img src={photoUrls[p.id]} alt={p.original_name} className="w-full h-full object-cover" />
+                    ? <img src={photoUrls[p.id]} alt={p.original_name} className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => setLightboxUrl(photoUrls[p.id])} />
                     : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">読込中</div>
                   }
                   {!readOnly && (
@@ -393,6 +432,9 @@ function SalesModal({ userId, record, defaultDate, readOnly = false, ownerName, 
           )}
         </div>
       </div>
+      {lightboxUrl && (
+        <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+      )}
     </div>
   )
 }
