@@ -131,13 +131,19 @@ export default function HoursSummaryClient({ profiles, initialUserId, initialYea
             </table>
           </div>
 
-          <p className="text-[11px] text-gray-400 mb-2 leading-snug">
-            <span className="text-orange-600 font-medium">残</span>＝残業
-            <span className="text-red-600 font-medium">休</span>＝休日出勤
-            <span className="text-red-500 font-medium">休残</span>＝休日残業
-            <span className="text-indigo-600 font-medium">深</span>＝深夜
-            <span className="text-indigo-500 font-medium">深残</span>＝深夜(残業込)
-          </p>
+          <div className="flex flex-wrap gap-x-2 gap-y-1 mb-2">
+            {[
+              { label: '残', text: '残業', color: 'text-orange-600 bg-orange-50' },
+              { label: '休', text: '休日出勤', color: 'text-red-600 bg-red-50' },
+              { label: '休残', text: '休日残業', color: 'text-red-500 bg-red-50' },
+              { label: '深', text: '深夜', color: 'text-indigo-600 bg-indigo-50' },
+              { label: '深残', text: '深夜(残業込)', color: 'text-indigo-500 bg-indigo-50' },
+            ].map(({ label, text, color }) => (
+              <span key={label} className={`text-[11px] px-1.5 py-0.5 rounded ${color}`}>
+                <span className="font-bold">{label}</span>＝{text}
+              </span>
+            ))}
+          </div>
 
           <div className="grid grid-cols-7 gap-0.5 mb-1">
             {WEEKDAYS.map((w, i) => (
