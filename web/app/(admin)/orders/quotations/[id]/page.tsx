@@ -14,6 +14,11 @@ const MAKERS: Maker[] = [
   { key: 'mitsubishi', label: '三菱', endpoint: '/api/win2k-search', accent: 'red' },
   { key: 'toshiba', label: '東芝', endpoint: '/api/toshiba-search', accent: 'blue' },
 ]
+
+const SPEC_ENDPOINTS: Record<string, string> = {
+  mitsubishi: '/api/win2k-spec',
+  toshiba: '/api/toshiba-spec',
+}
 import { useProfile } from '@/lib/profile-context'
 
 const TAX_RATE = 0.1
@@ -136,10 +141,11 @@ export default function QuotationDetailPage() {
       return next
     })
 
-    // 三菱は検索結果に品名相当の情報が無いため、仕様表から埋込穴・消費電力を
-    // 追加取得できたら品名を補強する（LED照明器具のみ有効な項目のため失敗は無視）
-    if (maker.key === 'mitsubishi' && result.detailUrl) {
-      fetch(`/api/win2k-spec?detailUrl=${encodeURIComponent(result.detailUrl)}`)
+    // 検索結果だけでは品名情報が不十分なため、商品詳細ページから埋込穴・消費電力・
+    // 製品タイプ名を追加取得できたら品名を補強する（LED照明器具のみ有効な項目のため失敗は無視）
+    const specEndpoint = SPEC_ENDPOINTS[maker.key]
+    if (specEndpoint && result.detailUrl) {
+      fetch(`${specEndpoint}?detailUrl=${encodeURIComponent(result.detailUrl)}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (!data?.spec) return
