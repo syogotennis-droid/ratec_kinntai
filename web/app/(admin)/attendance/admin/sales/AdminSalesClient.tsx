@@ -150,36 +150,38 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
         <div className="text-sm text-gray-500 py-8 text-center">記録がありません</div>
       ) : (
         <>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {pagedFiltered.map(r => (
-            <div
-              key={r.id}
-              onClick={() => setModal({ record: r })}
-              className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all min-w-0"
-            >
-              {photoThumbs[r.id] ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {[pagedFiltered.slice(0, Math.ceil(pagedFiltered.length / 2)), pagedFiltered.slice(Math.ceil(pagedFiltered.length / 2))].map((col, ci) => (
+            <div key={ci} className="space-y-2">
+              {col.map(r => (
                 <div
-                  className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-gray-100"
-                  onClick={e => { e.stopPropagation(); setLightboxUrl(photoThumbs[r.id]) }}
+                  key={r.id}
+                  onClick={() => setModal({ record: r })}
+                  className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all"
                 >
-                  <img src={photoThumbs[r.id]} alt="" className="w-full h-full object-cover" />
-                  {photoCounts[r.id] > 1 && (
-                    <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] leading-none px-1 py-0.5 rounded-tl">
-                      {photoCounts[r.id]}
-                    </span>
+                  {photoThumbs[r.id] ? (
+                    <div
+                      className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-gray-100"
+                      onClick={e => { e.stopPropagation(); setLightboxUrl(photoThumbs[r.id]) }}
+                    >
+                      <img src={photoThumbs[r.id]} alt="" className="w-full h-full object-cover" />
+                      {photoCounts[r.id] > 1 && (
+                        <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] leading-none px-1 py-0.5 rounded-tl">
+                          {photoCounts[r.id]}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 rounded-lg shrink-0 bg-gray-50" />
                   )}
+                  <div className="w-12 text-xs text-gray-500 shrink-0">{r.record_date.slice(5).replace('-', '/')}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-gray-700 truncate">{r.profile?.name ?? '—'}</div>
+                    <div className="text-sm text-gray-900 truncate">{r.description || '—'}</div>
+                  </div>
+                  <div className="text-base font-medium text-gray-900 shrink-0">¥{r.amount.toLocaleString()}</div>
                 </div>
-              ) : (
-                <div className="w-16 h-16 rounded-lg shrink-0 bg-gray-50" />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-xs text-gray-500 shrink-0">{r.record_date.slice(5).replace('-', '/')}</span>
-                  <span className="text-xs font-medium text-gray-700 truncate">{r.profile?.name ?? '—'}</span>
-                </div>
-                <div className="text-sm text-gray-900 truncate mt-0.5">{r.description || '—'}</div>
-                <span className="text-base font-medium text-gray-900">¥{r.amount.toLocaleString()}</span>
-              </div>
+              ))}
             </div>
           ))}
         </div>
