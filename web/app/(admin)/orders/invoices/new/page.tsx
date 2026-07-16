@@ -17,7 +17,16 @@ interface ProjectWithCompany extends Project {
   companyData: Company
 }
 
-const ITEM_GRID_COLS = '[grid-template-columns:1fr_1fr_64px_72px_110px_120px_40px]'
+const ITEM_GRID_COLS = '[grid-template-columns:2fr_1.1fr_60px_56px_112px_128px_40px]'
+
+// 品名はExcel上は1セル(改行区切り2行)だが、システム上は品名・型番を分けて入力できるようにする
+function splitName(name: string): [string, string] {
+  const idx = name.indexOf('\n')
+  return idx === -1 ? [name, ''] : [name.slice(0, idx), name.slice(idx + 1)]
+}
+function joinName(line1: string, line2: string): string {
+  return line2 ? `${line1}\n${line2}` : line1
+}
 
 function TrashIcon({ className }: { className?: string }) {
   return (
@@ -242,7 +251,7 @@ export default function NewInvoicePage() {
 
   return (
     <div className="p-4 max-w-[1180px] mx-auto">
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-3">
         <Link href="/orders/invoices" className="text-sm text-blue-600 hover:underline shrink-0">← 一覧へ戻る</Link>
         <div className="min-w-0">
           <h1 className="text-lg font-bold text-gray-900 leading-tight">新規請求書・納品書</h1>
@@ -251,11 +260,11 @@ export default function NewInvoicePage() {
       </div>
 
       {/* 基本情報 */}
-      <div className="max-w-[1000px] mx-auto mb-4">
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5 space-y-3">
+      <div className="max-w-[1000px] mx-auto mb-3">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 md:p-4 space-y-2">
           {/* Project search */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">案件名 *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-0.5">案件名 *</label>
             <div className="relative" ref={searchRef}>
               {selectedProject ? (
                 <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white">
@@ -312,7 +321,7 @@ export default function NewInvoicePage() {
           {/* Quotation selector (if multiple) */}
           {quotations.length > 1 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">引き継ぐ見積書</label>
+              <label className="block text-sm font-medium text-gray-700 mb-0.5">引き継ぐ見積書</label>
               <select value={quotationId} onChange={e => importFromQuotation(Number(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {quotations.map(q => (
@@ -324,24 +333,24 @@ export default function NewInvoicePage() {
             </div>
           )}
           {quotations.length === 1 && (
-            <p className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+            <p className="text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg">
               見積書 {quotations[0].doc_no || quotations[0].issue_date} から明細を引き継ぎました
             </p>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">請求書番号（自動）</label>
+              <label className="block text-sm font-medium text-gray-700 mb-0.5">請求書番号（自動）</label>
               <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-400 bg-gray-50">{docNo || '...'}</div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">発行日</label>
+              <label className="block text-sm font-medium text-gray-700 mb-0.5">発行日</label>
               <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">備考</label>
+            <label className="block text-sm font-medium text-gray-700 mb-0.5">備考</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
@@ -349,8 +358,8 @@ export default function NewInvoicePage() {
       </div>
 
       {/* 明細 */}
-      <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
-        <div className="flex items-center justify-between mb-3">
+      <div className="mb-3 bg-white border border-gray-200 rounded-lg shadow-sm p-3 md:p-4">
+        <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-bold text-gray-700">明細</h2>
           <button onClick={addItem}
             className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
@@ -362,7 +371,7 @@ export default function NewInvoicePage() {
         <div className="hidden md:block overflow-x-auto">
           <div className="min-w-[900px]">
             <div className={`grid ${ITEM_GRID_COLS} gap-2 border-b border-gray-200 pb-2 text-xs font-medium text-gray-500`}>
-              <div>品名</div>
+              <div>品名・型番</div>
               <div>仕様</div>
               <div>数量</div>
               <div>単位</div>
@@ -372,10 +381,12 @@ export default function NewInvoicePage() {
             </div>
             <div className="divide-y divide-gray-100">
               {items.map((item, idx) => (
-                <div key={idx} className={`grid ${ITEM_GRID_COLS} gap-2 items-center py-2`}>
-                  <div>
-                    <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)}
-                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                <div key={idx} className={`grid ${ITEM_GRID_COLS} gap-2 items-start py-2`}>
+                  <div className="flex flex-col gap-1">
+                    <input value={splitName(item.name)[0]} onChange={e => updateItem(idx, 'name', joinName(e.target.value, splitName(item.name)[1]))}
+                      placeholder="品名" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    <input value={splitName(item.name)[1]} onChange={e => updateItem(idx, 'name', joinName(splitName(item.name)[0], e.target.value))}
+                      placeholder="型番" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                   </div>
                   <div>
                     <input value={item.spec} onChange={e => updateItem(idx, 'spec', e.target.value)}
@@ -392,9 +403,10 @@ export default function NewInvoicePage() {
                   <div>
                     <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
                       className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    <p className="text-[11px] text-gray-400 text-right mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</p>
                   </div>
-                  <div className="text-right text-sm font-semibold text-gray-900 tabular-nums">¥{item.amount.toLocaleString()}</div>
-                  <div className="flex justify-center">
+                  <div className="text-right text-sm font-semibold text-gray-900 tabular-nums py-1.5">¥{item.amount.toLocaleString()}</div>
+                  <div className="flex justify-center pt-1.5">
                     <button onClick={() => removeItem(idx)} title="この行を削除"
                       className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                       <TrashIcon className="w-4 h-4" />
@@ -419,8 +431,13 @@ export default function NewInvoicePage() {
               </div>
               <div className="mb-2">
                 <label className="block text-[11px] text-gray-500 mb-0.5">品名</label>
-                <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)}
-                  className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                <input value={splitName(item.name)[0]} onChange={e => updateItem(idx, 'name', joinName(e.target.value, splitName(item.name)[1]))}
+                  placeholder="品名" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              </div>
+              <div className="mb-2">
+                <label className="block text-[11px] text-gray-500 mb-0.5">型番</label>
+                <input value={splitName(item.name)[1]} onChange={e => updateItem(idx, 'name', joinName(splitName(item.name)[0], e.target.value))}
+                  placeholder="型番" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
               </div>
               <div className="mb-2">
                 <label className="block text-[11px] text-gray-500 mb-0.5">仕様</label>
@@ -444,6 +461,7 @@ export default function NewInvoicePage() {
                   <label className="block text-[11px] text-gray-500 mb-0.5">単価</label>
                   <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
                     className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  <p className="text-[11px] text-gray-400 text-right mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</p>
                 </div>
                 <div>
                   <label className="block text-[11px] text-gray-500 mb-0.5">金額</label>
@@ -456,38 +474,36 @@ export default function NewInvoicePage() {
       </div>
 
       {/* 金額集計・作成操作 */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
-        <div className="flex justify-end">
-          <div className="w-full sm:w-80 space-y-1.5">
-            <div className="flex justify-between text-sm text-gray-500">
-              <span>明細小計</span><span className="tabular-nums">¥{itemsSubtotal.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm text-gray-500 gap-2">
-              <span className="flex items-center gap-1 shrink-0">
-                特別調整値引き（<input
-                  type="number" value={discountDigits} min={1} max={8}
-                  onChange={e => setDiscountDigits(Math.max(1, Math.min(8, Number(e.target.value))))}
-                  className="w-10 px-1 py-0.5 border border-gray-300 rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />桁）
-              </span>
-              <span className="text-rose-500 tabular-nums">¥{discountAmount.toLocaleString()}</span>
-            </div>
-            <p className="text-[11px] text-gray-400 -mt-1">合計金額の端数調整に使用します</p>
-            <div className="flex justify-between text-sm text-gray-500">
-              <span>課税対象計</span><span className="tabular-nums">¥{adjustedSubtotal.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-500">
-              <span>消費税（10%）</span><span className="tabular-nums">¥{taxAmount.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-lg font-bold text-gray-900 pt-1.5 mt-1 border-t border-gray-200">
-              <span>合計</span><span className="tabular-nums">¥{totalAmount.toLocaleString()}</span>
-            </div>
+      <div className="ml-auto w-full sm:max-w-[460px] bg-white border border-gray-200 rounded-lg shadow-sm p-3 md:p-4">
+        <div className="space-y-1">
+          <div className="flex justify-between items-baseline text-sm text-gray-500">
+            <span>明細小計</span><span className="tabular-nums">¥{itemsSubtotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between items-baseline text-sm text-gray-500 gap-2">
+            <span className="flex items-center gap-1 shrink-0">
+              端数調整（<input
+                type="number" value={discountDigits} min={1} max={8}
+                onChange={e => setDiscountDigits(Math.max(1, Math.min(8, Number(e.target.value))))}
+                className="w-10 px-1 py-0.5 border border-gray-300 rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />桁）
+            </span>
+            <span className="text-rose-500 tabular-nums">値引き額：¥{discountAmount.toLocaleString()}</span>
+          </div>
+          <p className="text-[11px] text-gray-400">明細小計を指定した桁数で切り捨て、端数分を値引きとして計算します</p>
+          <div className="flex justify-between items-baseline text-sm text-gray-500">
+            <span>課税対象計</span><span className="tabular-nums">¥{adjustedSubtotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between items-baseline text-sm text-gray-500">
+            <span>消費税（10%）</span><span className="tabular-nums">¥{taxAmount.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between items-baseline text-lg font-bold text-gray-900 pt-1.5 mt-1 border-t border-gray-200">
+            <span>合計</span><span className="tabular-nums">¥{totalAmount.toLocaleString()}</span>
           </div>
         </div>
 
         {error && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
 
-        <div className="flex items-center justify-end gap-2 mt-4">
+        <div className="flex items-center justify-end gap-2 mt-3">
           <Link href="/orders/invoices"
             className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">
             キャンセル
