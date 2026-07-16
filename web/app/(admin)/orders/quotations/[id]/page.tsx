@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { downloadQuotationExcel } from '@/lib/excel/quotation'
 import ProductModelSearch, { Maker } from '@/components/ProductModelSearch'
 import { Win2kResult } from '@/lib/win2k'
+import { buildWin2kName } from '@/lib/win2k-name'
 
 const MAKERS: Maker[] = [
   { key: 'mitsubishi', label: '三菱', endpoint: '/api/win2k-search', accent: 'red' },
@@ -122,8 +123,7 @@ export default function QuotationDetailPage() {
   }
 
   const applyWin2kResult = (idx: number, result: Win2kResult, maker: Maker) => {
-    const productLine = result.category ? `${maker.label}　${result.category}` : maker.label
-    const name = `${productLine}\n型番：${result.code}`
+    const name = buildWin2kName(maker.label, result)
     setItems(prev => {
       const next = [...prev]
       const unitPrice = result.price ?? next[idx].unit_price
@@ -135,6 +135,24 @@ export default function QuotationDetailPage() {
       next[idx] = result.detailUrl
       return next
     })
+
+    // 三菱は検索結果に品名相当の情報が無いため、仕様表から埋込穴・消費電力を
+    // 追加取得できたら品名を補強する（LED照明器具のみ有効な項目のため失敗は無視）
+    if (maker.key === 'mitsubishi' && result.detailUrl) {
+      fetch(`/api/win2k-spec?detailUrl=${encodeURIComponent(result.detailUrl)}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (!data?.spec) return
+          const enrichedName = buildWin2kName(maker.label, result, data.spec)
+          setItems(prev => {
+            if (!prev[idx] || prev[idx].name !== name) return prev
+            const next = [...prev]
+            next[idx] = { ...next[idx], name: enrichedName }
+            return next
+          })
+        })
+        .catch(() => {})
+    }
   }
 
   const updateItem = (idx: number, field: keyof Omit<DocumentItem, 'id'>, value: string | number) => {
