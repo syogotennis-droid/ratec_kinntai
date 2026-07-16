@@ -1,4 +1,4 @@
-import { DocumentItem, Settings } from '@/lib/supabase/types'
+import { QuotationItem, Settings } from '@/lib/supabase/types'
 import { QUOTATION_TEMPLATE_B64 } from './template-b64'
 
 interface QuotationExcelData {
@@ -8,7 +8,7 @@ interface QuotationExcelData {
   projectName: string
   contactPerson: string | null
   notes: string
-  items: Omit<DocumentItem, 'id'>[]
+  items: Omit<QuotationItem, 'id'>[]
   subtotal: number
   taxAmount: number
   totalAmount: number
@@ -66,50 +66,23 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
   // 工事名 (A9)
   ws.getCell('A9').value = `【工事名】　${data.projectName ?? ''}`
 
-  // 明細行クリア (印刷範囲内 A-G + 範囲外 H-K を全行クリア)
-  for (let row = ITEM_START_ROW; row <= 37; row++) {
-    ws.getCell(`A${row}`).value = null
-    ws.getCell(`C${row}`).value = null
-    ws.getCell(`D${row}`).value = null
-    ws.getCell(`E${row}`).value = null
-    ws.getCell(`F${row}`).value = null
-    ws.getCell(`G${row}`).value = null
-    ws.getCell(`H${row}`).value = null  // 施工時間 (サンプル値・12人等をクリア)
-    ws.getCell(`I${row}`).value = null  // 仕入 (入力欄)
-    ws.getCell(`J${row}`).value = null
-    ws.getCell(`K${row}`).value = null
-  }
-
-  // 行 12-27 の A:B マージを 1行×2セル → 2行×1セルに変換（諸経費スタイル）
-  for (let r = ITEM_START_ROW; r <= 26; r += 2) {
-    try { ws.unMergeCells(`A${r}:B${r}`) } catch { /* already unmerged */ }
-    try { ws.unMergeCells(`A${r + 1}:B${r + 1}`) } catch { /* already unmerged */ }
-    ws.mergeCells(`A${r}:B${r + 1}`)
-  }
-
-  // 明細入力 + 各行の仕入合計・粗利数式を設定
+  // 明細入力
+  // C/D/E/F/K/L/O/P/R はテンプレートに数式が組み込まれているため触らない。
+  // 手入力欄の A(品名)/G(備考)/H(メーカー希望小売価格)/I(数量)/J(仕切掛け率)/N(仕入掛け率) のみ設定する。
   const maxItems = Math.min(data.items.length, MAX_ITEMS)
   for (let i = 0; i < MAX_ITEMS; i++) {
     const evenRow = ITEM_START_ROW + i * 2
-    const oddRow = evenRow + 1
     const item = i < maxItems ? data.items[i] : null
 
-    // 品名・単価・数量・小計 (偶数行マスターのみ)
-    if (item) {
-      const nameCell = ws.getCell(`A${evenRow}`)
-      nameCell.value = item.name
-      nameCell.alignment = { ...nameCell.alignment, wrapText: true }
-      ws.getCell(`D${evenRow}`).value = item.unit_price
-      ws.getCell(`E${evenRow}`).value = item.qty
-      ws.getCell(`F${evenRow}`).value = { formula: `D${evenRow}*E${evenRow}`, result: item.amount }
-    }
+    const nameCell = ws.getCell(`A${evenRow}`)
+    nameCell.value = item ? item.name : null
+    nameCell.alignment = { ...nameCell.alignment, wrapText: true }
 
-    // 仕入合計 (J) = 仕入単価 × 数量（偶数行マスターのみ）
-    ws.getCell(`J${evenRow}`).value = { formula: `I${evenRow}*E${evenRow}`, result: 0 }
-
-    // 粗利 (K) = 小計 - 仕入合計（偶数行マスターのみ）
-    const kResult = item ? item.amount : 0
-    ws.getCell(`K${evenRow}`).value = { formula: `F${evenRow}-J${evenRow}`, result: kResult }
+    ws.getCell(`G${evenRow}`).value = item?.spec || null
+    ws.getCell(`H${evenRow}`).value = item ? item.unit_price : 0
+    ws.getCell(`I${evenRow}`).value = item ? item.qty : 0
+    ws.getCell(`J${evenRow}`).value = item ? Math.round(item.markup_rate * 100 * 100) / 100 : 0
+    ws.getCell(`N${evenRow}`).value = item ? Math.round(item.purchase_rate * 100 * 100) / 100 : 0
   }
 
   // 小計・消費税・合計

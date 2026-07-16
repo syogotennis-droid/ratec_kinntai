@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Company, CompanyOffice, Project, DocumentItem } from '@/lib/supabase/types'
+import { Company, CompanyOffice, Project, QuotationItem } from '@/lib/supabase/types'
 import Link from 'next/link'
 import ProductModelSearch, { Maker } from '@/components/ProductModelSearch'
 import { Win2kResult } from '@/lib/win2k'
@@ -39,10 +39,12 @@ export default function NewQuotationPage() {
   const [projectId, setProjectId] = useState<number>(0)
   const [issueDate, setIssueDate] = useState(new Date().toLocaleDateString('sv-SE'))
   const [notes, setNotes] = useState('')
-  const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([
-    { sort_order: 0, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }
+  const [items, setItems] = useState<Omit<QuotationItem, 'id'>[]>([
+    { sort_order: 0, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2 }
   ])
   const [itemLinks, setItemLinks] = useState<(string | null)[]>([null])
+  const [bulkMarkupRate, setBulkMarkupRate] = useState('0.3')
+  const [bulkPurchaseRate, setBulkPurchaseRate] = useState('0.2')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -139,14 +141,27 @@ export default function NewQuotationPage() {
   const taxAmount = Math.floor(subtotal * TAX_RATE)
   const totalAmount = subtotal + taxAmount
 
-  const updateItem = (idx: number, field: keyof Omit<DocumentItem, 'id'>, value: string | number) => {
+  const updateItem = (idx: number, field: keyof Omit<QuotationItem, 'id'>, value: string | number) => {
     setItems(prev => {
       const next = [...prev]
       const item = { ...next[idx], [field]: value }
-      if (field === 'qty' || field === 'unit_price') item.amount = Number(item.qty) * Number(item.unit_price)
+      if (field === 'qty' || field === 'unit_price' || field === 'markup_rate') {
+        item.amount = Math.round(Number(item.qty) * Number(item.unit_price) * Number(item.markup_rate))
+      }
       next[idx] = item
       return next
     })
+  }
+
+  const applyBulkRates = () => {
+    const markup = Number(bulkMarkupRate)
+    const purchase = Number(bulkPurchaseRate)
+    setItems(prev => prev.map(item => ({
+      ...item,
+      markup_rate: isNaN(markup) ? item.markup_rate : markup,
+      purchase_rate: isNaN(purchase) ? item.purchase_rate : purchase,
+      amount: Math.round(item.qty * item.unit_price * (isNaN(markup) ? item.markup_rate : markup)),
+    })))
   }
 
   const applyWin2kResult = (idx: number, result: Win2kResult, maker: Maker) => {
@@ -154,7 +169,7 @@ export default function NewQuotationPage() {
     setItems(prev => {
       const next = [...prev]
       const unitPrice = result.price ?? next[idx].unit_price
-      next[idx] = { ...next[idx], name, unit_price: unitPrice, amount: next[idx].qty * unitPrice }
+      next[idx] = { ...next[idx], name, unit_price: unitPrice, amount: Math.round(next[idx].qty * unitPrice * next[idx].markup_rate) }
       return next
     })
     setItemLinks(prev => {
@@ -297,13 +312,28 @@ export default function NewQuotationPage() {
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-bold text-gray-700">明細</h2>
-          <button onClick={() => { setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0 }]); setItemLinks(prev => [...prev, null]) }} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
+          <button onClick={() => { setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2 }]); setItemLinks(prev => [...prev, null]) }} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
+        </div>
+        <div className="flex flex-wrap items-end gap-2 mb-2 text-xs">
+          <div>
+            <label className="block text-gray-500 mb-0.5">仕切掛け率（全行）</label>
+            <input type="number" step="0.01" value={bulkMarkupRate} onChange={e => setBulkMarkupRate(e.target.value)}
+              className="w-20 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-gray-500 mb-0.5">仕入掛け率（全行）</label>
+            <input type="number" step="0.01" value={bulkPurchaseRate} onChange={e => setBulkPurchaseRate(e.target.value)}
+              className="w-20 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          </div>
+          <button onClick={applyBulkRates} className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg">
+            全行に適用
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[500px]">
             <thead>
               <tr className="border-b border-gray-200">
-                {['型式検索', '品名', '数量', '単位', '単価', '金額', ''].map(h => (
+                {['型式検索', '品名', '数量', '単位', 'メーカー希望小売価格', '仕切掛け率', '仕入掛け率', '金額', ''].map(h => (
                   <th key={h} className="text-left py-1.5 px-2 font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -330,6 +360,8 @@ export default function NewQuotationPage() {
                   <td className="py-1 px-1"><input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0} className="w-14 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                   <td className="py-1 px-1"><input value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)} className="w-12 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                   <td className="py-1 px-1"><input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0} className="w-20 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                  <td className="py-1 px-1"><input type="number" step="0.01" value={item.markup_rate} onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value))} min={0} className="w-16 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                  <td className="py-1 px-1"><input type="number" step="0.01" value={item.purchase_rate} onChange={e => updateItem(idx, 'purchase_rate', Number(e.target.value))} min={0} className="w-16 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                   <td className="py-1 px-2 text-right font-medium">¥{item.amount.toLocaleString()}</td>
                   <td className="py-1 px-1"><button onClick={() => { setItems(prev => prev.filter((_, i) => i !== idx)); setItemLinks(prev => prev.filter((_, i) => i !== idx)) }} className="text-red-400 hover:text-red-600">×</button></td>
                 </tr>

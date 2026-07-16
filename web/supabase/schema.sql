@@ -227,7 +227,9 @@ CREATE TABLE quotation_items (
   qty NUMERIC DEFAULT 1,
   unit TEXT DEFAULT '台',
   unit_price INTEGER DEFAULT 0,
-  amount INTEGER DEFAULT 0
+  amount INTEGER DEFAULT 0,
+  markup_rate NUMERIC NOT NULL DEFAULT 0.3,
+  purchase_rate NUMERIC NOT NULL DEFAULT 0.2
 );
 
 -- 発注書
