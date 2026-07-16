@@ -173,7 +173,8 @@ export default function ProductModelSearch({ makers, onSelect }: Props) {
               <button
                 key={i}
                 ref={el => { itemRefs.current[i] = el }}
-                onClick={() => select(r)}
+                type="button"
+                onMouseDown={e => { e.preventDefault(); select(r) }}
                 onMouseEnter={() => setHighlightIndex(i)}
                 className={`w-full text-left px-3 py-2 border-b border-gray-100 last:border-0 ${
                   i === highlightIndex ? accent.hi : accent.hover
