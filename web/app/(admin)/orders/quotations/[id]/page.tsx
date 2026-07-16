@@ -272,7 +272,7 @@ export default function QuotationDetailPage() {
           <Link href="/orders/quotations" className="text-sm text-blue-600 hover:underline shrink-0">← 一覧へ戻る</Link>
           <div className="min-w-0">
             <h1 className="text-lg font-bold text-gray-900 leading-tight">見積書編集</h1>
-            <p className="text-xs text-gray-500 leading-tight">{docNo || '見積番号未設定'}</p>
+            <p className="text-sm text-gray-600 leading-tight mt-0.5">{docNo || '見積番号未設定'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -329,29 +329,31 @@ export default function QuotationDetailPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">仕入先（任意）</label>
-            <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value={0}>なし</option>
-              {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">担当者（任意）</label>
-            {contacts.length > 0 ? (
-              <select value={contactPerson} onChange={e => setContactPerson(e.target.value)}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">仕入先（任意）</label>
+              <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">なし</option>
-                {contacts.map(c => (
-                  <option key={c.id} value={c.name}>{c.name}{c.position ? `（${c.position}）` : ''}</option>
-                ))}
+                <option value={0}>なし</option>
+                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-            ) : (
-              <input type="text" value={contactPerson} onChange={e => setContactPerson(e.target.value)}
-                placeholder="例：山田 太郎"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">担当者（任意）</label>
+              {contacts.length > 0 ? (
+                <select value={contactPerson} onChange={e => setContactPerson(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">なし</option>
+                  {contacts.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}{c.position ? `（${c.position}）` : ''}</option>
+                  ))}
+                </select>
+              ) : (
+                <input type="text" value={contactPerson} onChange={e => setContactPerson(e.target.value)}
+                  placeholder="例：山田 太郎"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">備考</label>
@@ -376,7 +378,10 @@ export default function QuotationDetailPage() {
           <div className="min-w-[1080px]">
             <div className={`grid ${ITEM_GRID_COLS} gap-2 border-b border-gray-200 pb-2 text-xs font-medium text-gray-500`}>
               <div>種別</div>
-              <div>メーカー・型式検索</div>
+              <div>
+                <div>メーカー</div>
+                <div className="text-gray-400 font-normal">型式検索</div>
+              </div>
               <div>品名・型番</div>
               <div>数量</div>
               <div className="text-right">希望小売価格</div>
@@ -431,20 +436,30 @@ export default function QuotationDetailPage() {
                     </div>
                     <div>
                       {isLabor ? <span className="block text-right text-gray-300 text-sm py-1.5">—</span> : (
-                        <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
-                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        <>
+                          <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                          <div className="text-right text-[11px] text-gray-400 mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</div>
+                        </>
                       )}
                     </div>
                     <div>
                       {isLabor ? <span className="text-gray-300 text-sm">—</span> : (
-                        <input type="number" step="0.01" value={item.markup_rate} onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value))} min={0}
-                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        <div className="relative">
+                          <input type="number" step="1" value={Math.round(item.markup_rate * 100)}
+                            onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value) / 100)} min={0}
+                            className="w-full pl-2 pr-5 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
+                        </div>
                       )}
                     </div>
                     <div>
                       {isLabor ? (
-                        <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
-                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        <>
+                          <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                          <div className="text-right text-[11px] text-gray-400 mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</div>
+                        </>
                       ) : (
                         <div className="text-right text-sm text-gray-700 tabular-nums py-1.5">¥{Math.round(item.unit_price * item.markup_rate).toLocaleString()}</div>
                       )}
@@ -483,7 +498,8 @@ export default function QuotationDetailPage() {
 
                 {!isLabor && (
                   <div className="mb-2">
-                    <label className="block text-[11px] text-gray-500 mb-0.5">メーカー・型式検索</label>
+                    <label className="block text-[11px] text-gray-500 mb-0.5">メーカー</label>
+                    <label className="block text-[11px] text-gray-400 mb-0.5">型式検索</label>
                     <ProductModelSearch makers={MAKERS} onSelect={(r, m) => applyWin2kResult(idx, r, m)} />
                   </div>
                 )}
@@ -529,6 +545,7 @@ export default function QuotationDetailPage() {
                       <label className="block text-[11px] text-gray-500 mb-0.5">メーカー希望小売価格</label>
                       <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
                         className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      <div className="text-right text-[11px] text-gray-400 mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</div>
                     </div>
                   )}
                 </div>
@@ -537,8 +554,12 @@ export default function QuotationDetailPage() {
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div>
                       <label className="block text-[11px] text-gray-500 mb-0.5">掛率</label>
-                      <input type="number" step="0.01" value={item.markup_rate} onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value))} min={0}
-                        className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      <div className="relative">
+                        <input type="number" step="1" value={Math.round(item.markup_rate * 100)}
+                          onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value) / 100)} min={0}
+                          className="w-full pl-2 pr-5 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-[11px] text-gray-500 mb-0.5">仕切り価格</label>
@@ -552,6 +573,7 @@ export default function QuotationDetailPage() {
                     <label className="block text-[11px] text-gray-500 mb-0.5">仕切り価格</label>
                     <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
                       className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    <div className="text-right text-[11px] text-gray-400 mt-0.5 tabular-nums">¥{item.unit_price.toLocaleString()}</div>
                   </div>
                 )}
 
@@ -586,7 +608,7 @@ export default function QuotationDetailPage() {
         <div className="flex items-center justify-end gap-2 mt-4">
           <Link href="/orders/quotations"
             className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">
-            一覧へ戻る
+            キャンセル
           </Link>
           <button onClick={handleSave} disabled={saving}
             className="px-5 py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg shadow-sm">
