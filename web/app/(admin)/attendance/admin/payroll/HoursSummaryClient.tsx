@@ -162,18 +162,18 @@ export default function HoursSummaryClient({ profiles, initialUserId, initialYea
               return (
                 <div
                   key={day.date}
-                  className={`min-h-[44px] rounded border p-0.5 ${
+                  className={`min-h-[92px] rounded border p-1 ${
                     day.isCurrentMonth ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100'
                   }`}
                 >
-                  <div className={`text-[11px] font-medium ${dayNumColor}`}>{day.dayNum}</div>
+                  <div className={`text-xs font-medium ${dayNumColor}`}>{day.dayNum}</div>
                   {h && day.isCurrentMonth && (
-                    <div className="flex flex-wrap gap-0.5 mt-0.5">
-                      {h.overtimeMin > 0 && <span className="text-[10px] leading-tight text-orange-600 font-medium">残{formatHours(h.overtimeMin)}</span>}
-                      {h.holidayMin > 0 && <span className="text-[10px] leading-tight text-red-600 font-medium">休{formatHours(h.holidayMin)}</span>}
-                      {h.holidayOvertimeMin > 0 && <span className="text-[10px] leading-tight text-red-500 font-medium">休残{formatHours(h.holidayOvertimeMin)}</span>}
-                      {h.nightBaseMin > 0 && <span className="text-[10px] leading-tight text-indigo-600 font-medium">深{formatHours(h.nightBaseMin)}</span>}
-                      {h.nightOvertimeMin > 0 && <span className="text-[10px] leading-tight text-indigo-500 font-medium">深残{formatHours(h.nightOvertimeMin)}</span>}
+                    <div className="flex flex-col gap-0.5 mt-0.5">
+                      {h.overtimeMin > 0 && <span className="text-[11px] leading-tight text-orange-600 font-medium">残{formatHours(h.overtimeMin)}</span>}
+                      {h.holidayMin > 0 && <span className="text-[11px] leading-tight text-red-600 font-medium">休{formatHours(h.holidayMin)}</span>}
+                      {h.holidayOvertimeMin > 0 && <span className="text-[11px] leading-tight text-red-500 font-medium">休残{formatHours(h.holidayOvertimeMin)}</span>}
+                      {h.nightBaseMin > 0 && <span className="text-[11px] leading-tight text-indigo-600 font-medium">深{formatHours(h.nightBaseMin)}</span>}
+                      {h.nightOvertimeMin > 0 && <span className="text-[11px] leading-tight text-indigo-500 font-medium">深残{formatHours(h.nightOvertimeMin)}</span>}
                     </div>
                   )}
                 </div>
