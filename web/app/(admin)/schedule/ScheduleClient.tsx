@@ -55,6 +55,20 @@ const WORK_TYPE_LABEL: Record<WorkType, string> = {
   paid_leave: '有休',
   hourly_leave: '時間休',
 }
+const OVERTIME_COLOR = '#ea580c'
+// セル内の勤怠カード用：薄い背景＋濃い文字で可読性を優先した配色（色の意味＝どの勤務区分かは既存のまま）
+const WORK_TYPE_LIGHT: Record<'normal' | 'overtime' | WorkType, { bg: string; fg: string; border: string }> = {
+  normal: { bg: '#dcfce7', fg: '#15803d', border: '#16a34a' },
+  overtime: { bg: '#ffedd5', fg: '#c2410c', border: OVERTIME_COLOR },
+  paid_leave: { bg: '#f3e8ff', fg: '#7e22ce', border: '#9333ea' },
+  hourly_leave: { bg: '#cffafe', fg: '#0e7490', border: '#0891b2' },
+}
+const LEGEND_ITEMS: Array<{ key: 'normal' | 'overtime' | WorkType; label: string }> = [
+  { key: 'normal', label: '通常' },
+  { key: 'overtime', label: '残業' },
+  { key: 'paid_leave', label: '有休' },
+  { key: 'hourly_leave', label: '時間休' },
+]
 
 const USER_COLORS = [
   '#2563eb', '#16a34a', '#ea580c', '#9333ea',
@@ -163,6 +177,10 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   const goToMonth = (y: number, m: number) => {
     setYearMonth(`${y}-${String(m).padStart(2, '0')}`)
     setShowMonthPicker(false)
+  }
+  const goToday = () => {
+    const d = new Date()
+    setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -280,30 +298,52 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
     </div>
   )
 
+  const header = (
+    <div className="px-1 mb-1.5">
+      <div className="flex flex-wrap items-center gap-1" style={{ minHeight: 40 }}>
+        <button onClick={openSidebar} className="p-2 -ml-1 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <h1 className="text-base font-bold text-gray-900 mr-1 hidden sm:block">勤怠・予定</h1>
+        <button onClick={goPrev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
+        <button onClick={() => setShowMonthPicker(true)}
+          className="text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
+          {displayYear}年{displayMonth}月
+        </button>
+        <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
+        <button onClick={goToday} className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">今日</button>
+        {!profile.is_admin && <div className="ml-auto">{viewToggle}</div>}
+      </div>
+      {view === 'attendance' && (
+        <div className="flex items-center gap-2.5 flex-wrap px-1 mt-1.5">
+          {LEGEND_ITEMS.map(item => (
+            <span key={item.key} className="inline-flex items-center gap-1 text-[11px] text-gray-500">
+              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: WORK_TYPE_LIGHT[item.key].bg, border: `1px solid ${WORK_TYPE_LIGHT[item.key].border}` }} />
+              {item.label}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <div className="pt-1 pb-0">
       <style>{`
         .drum-col { scrollbar-width: none; -ms-overflow-style: none; }
         .drum-col::-webkit-scrollbar { display: none; }
+        .cal-cell { position: relative; }
+        .cal-cell .cal-hint { opacity: 0; transition: opacity 120ms; }
+        .cal-cell:hover .cal-hint { opacity: 1; }
+        .cal-cell:hover { background-color: #f9fafb; }
+        .cal-chip:hover { filter: brightness(0.97); }
       `}</style>
+      {header}
 
       {view === 'schedule' ? (
         <>
-          {/* Header */}
-          <div className="flex flex-wrap items-center gap-1 px-1 mb-1" style={{ minHeight: 44 }}>
-            <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <button onClick={goPrev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
-            <button onClick={() => setShowMonthPicker(true)}
-              className="text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
-              {displayYear}年{displayMonth}月
-            </button>
-            <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
-            {!profile.is_admin && <div className="ml-auto">{viewToggle}</div>}
-          </div>
           {/* Swipe wrapper */}
           <div style={{ overflow: 'hidden' }}>
             <div
@@ -312,12 +352,12 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               onTouchEnd={handleTouchEnd}
               style={{ transform: `translateX(${dragX}px)`, transition: sliding ? 'transform 220ms ease-out' : 'none', willChange: 'transform' }}
             >
-              {/* Calendar grid */}
-              <div style={{ height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column' }}>
+              {/* Calendar grid: PC/タブレット */}
+              <div className="hidden md:flex" style={{ height: 'calc(100vh - 96px)', flexDirection: 'column' }}>
                 {/* Day-of-week header */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #e5e7eb' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #d1d5db' }}>
                   {['日','月','火','水','木','金','土'].map((d, i) => (
-                    <div key={d} style={{ textAlign: 'center', padding: '3px 0', fontSize: 10, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                    <div key={d} style={{ textAlign: 'center', padding: '4px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
                   ))}
                 </div>
                 {/* Day cells */}
@@ -334,22 +374,35 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                     return (
                       <div
                         key={date}
+                        className="cal-cell"
                         onClick={() => setDaySheet(date)}
                         style={{
-                          borderRight: '1px solid #f3f4f6',
-                          borderBottom: '1px solid #f3f4f6',
+                          borderRight: '1px solid #e5e7eb',
+                          borderBottom: '1px solid #e5e7eb',
                           overflow: 'hidden',
                           cursor: 'pointer',
                           backgroundColor: isToday ? '#eff6ff' : undefined,
                           opacity: isCurrentMonth ? 1 : 0.35,
+                          padding: 2,
                         }}
                       >
-                        <div style={{ fontSize: 10, padding: '1px 2px', lineHeight: '14px', color: numColor || '#374151', fontWeight: isToday ? 700 : 400 }}>
-                          {dayNum}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1px 2px' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: 20, height: 20, borderRadius: isToday ? 9999 : 0,
+                            backgroundColor: isToday ? '#2563eb' : 'transparent',
+                            color: isToday ? '#ffffff' : (numColor || '#374151'),
+                            fontSize: 13, fontWeight: isToday ? 700 : 600, lineHeight: 1,
+                          }}>
+                            {dayNum}
+                          </span>
+                          {isCurrentMonth && dayEvts.length === 0 && (
+                            <span className="cal-hint" style={{ fontSize: 13, color: '#9ca3af', paddingRight: 2 }}>＋</span>
+                          )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
                           {shown.map((e, i) => (
-                            <div key={i} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 11, fontWeight: 600, lineHeight: '17px', padding: '0 3px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0, marginBottom: 1 }}>
+                            <div key={i} className="cal-chip" style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 11, fontWeight: 600, lineHeight: '17px', padding: '0 3px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0, marginBottom: 1 }} title={e.title}>
                               {e.title}
                             </div>
                           ))}
@@ -361,6 +414,48 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                     )
                   })}
                 </div>
+              </div>
+
+              {/* スマホ: 日付ごとの縦型リスト */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {calendarDays.filter(d => d.isCurrentMonth).map(({ date, dayNum }) => {
+                  const dayEvts = eventsByDate[date] ?? []
+                  const isToday = date === todayStr
+                  const isHoliday = holidayDates.has(date)
+                  const dow = new Date(`${date}T00:00:00`).getDay()
+                  const dayOfWeekLabel = ['日','月','火','水','木','金','土'][dow]
+                  const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : '#374151'
+                  return (
+                    <div key={date} onClick={() => setDaySheet(date)}
+                      className="flex items-center gap-3 px-3 py-2.5 active:bg-gray-50 cursor-pointer"
+                      style={{ backgroundColor: isToday ? '#eff6ff' : undefined }}>
+                      <div className="flex flex-col items-center w-11 shrink-0">
+                        <span style={{ fontSize: 11, color: numColor === '#374151' ? '#9ca3af' : numColor }}>{dayOfWeekLabel}</span>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: 26, height: 26, borderRadius: isToday ? 9999 : 0,
+                          backgroundColor: isToday ? '#2563eb' : 'transparent',
+                          color: isToday ? '#ffffff' : numColor,
+                          fontSize: 15, fontWeight: 700,
+                        }}>
+                          {dayNum}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0 flex flex-wrap gap-1">
+                        {dayEvts.length === 0 ? (
+                          <span className="text-xs text-gray-300">予定なし</span>
+                        ) : (
+                          dayEvts.map((e, i) => (
+                            <span key={i} className="text-xs font-semibold rounded px-1.5 py-0.5 truncate max-w-full"
+                              style={{ backgroundColor: e.backgroundColor, color: e.textColor }} title={e.title}>
+                              {e.title}
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -375,21 +470,6 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
         </>
       ) : (
         <>
-          {/* Attendance calendar header */}
-          <div className="flex flex-wrap items-center gap-1 px-1 mb-1" style={{ minHeight: 44 }}>
-            <button onClick={openSidebar} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <button onClick={goPrev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">‹</button>
-            <button onClick={() => setShowMonthPicker(true)}
-              className="text-base font-bold text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100">
-              {displayYear}年{displayMonth}月
-            </button>
-            <button onClick={goNext} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-lg leading-none">›</button>
-            {!profile.is_admin && <div className="ml-auto">{viewToggle}</div>}
-          </div>
           {/* Attendance calendar grid */}
           <div style={{ overflow: 'hidden' }}>
             <div
@@ -398,10 +478,10 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               onTouchEnd={handleTouchEnd}
               style={{ transform: `translateX(${dragX}px)`, transition: sliding ? 'transform 220ms ease-out' : 'none', willChange: 'transform' }}
             >
-              <div style={{ height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #e5e7eb' }}>
+              <div className="hidden md:flex" style={{ height: 'calc(100vh - 96px)', flexDirection: 'column' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #d1d5db' }}>
                   {['日','月','火','水','木','金','土'].map((d, i) => (
-                    <div key={d} style={{ textAlign: 'center', padding: '3px 0', fontSize: 10, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                    <div key={d} style={{ textAlign: 'center', padding: '4px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
                   ))}
                 </div>
                 <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, 1fr)` }}>
@@ -423,49 +503,122 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                         setSelectedWorkDate(date)
                       }
                     }
+                    const isOvertime = !!wr && wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
+                    const chipLabel = wr ? (isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]) : ''
+                    const chipStyle = wr ? WORK_TYPE_LIGHT[isOvertime ? 'overtime' : wr.work_type] : null
                     return (
                       <div
                         key={date}
+                        className="cal-cell"
                         onClick={handleWorkDateClick}
                         style={{
-                          borderRight: '1px solid #f3f4f6',
-                          borderBottom: '1px solid #f3f4f6',
+                          borderRight: '1px solid #e5e7eb',
+                          borderBottom: '1px solid #e5e7eb',
                           overflow: 'hidden',
                           cursor: isCurrentMonth ? 'pointer' : 'default',
                           backgroundColor: isSelected ? '#dbeafe' : isToday ? '#eff6ff' : undefined,
                           opacity: isCurrentMonth ? 1 : 0.35,
+                          padding: 2,
                         }}
                       >
-                        <div style={{ fontSize: 10, padding: '1px 2px', lineHeight: '14px', color: numColor || '#374151', fontWeight: isToday ? 700 : 400 }}>
-                          {dayNum}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1px 2px' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: 20, height: 20, borderRadius: isToday ? 9999 : 0,
+                            backgroundColor: isToday ? '#2563eb' : 'transparent',
+                            color: isToday ? '#ffffff' : (numColor || '#374151'),
+                            fontSize: 13, fontWeight: isToday ? 700 : 600, lineHeight: 1,
+                          }}>
+                            {dayNum}
+                          </span>
+                          {isCurrentMonth && !wr && (
+                            <span className="cal-hint" style={{ fontSize: 13, color: '#9ca3af', paddingRight: 2 }}>＋</span>
+                          )}
                         </div>
-                        {wr && (() => {
-                          const isOvertime = wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
-                          const chipLabel = isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]
-                          const chipColor = isOvertime ? '#ea580c' : WORK_TYPE_COLOR[wr.work_type]
-                          return (
-                          <>
-                            <div style={{ backgroundColor: chipColor, color: '#ffffff', fontSize: 10, fontWeight: 600, lineHeight: '15px', padding: '0 2px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', marginBottom: 1 }}>
+                        {wr && chipStyle && (
+                          <div className="cal-chip" style={{ backgroundColor: chipStyle.bg, borderLeft: `3px solid ${chipStyle.border}`, borderRadius: 3, padding: '2px 4px', margin: '0 1px' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: chipStyle.fg, lineHeight: '13px' }}>
                               {chipLabel}
                             </div>
                             {wr.work_type !== 'paid_leave' && (
-                              <div style={{ fontSize: 12, color: '#374151', lineHeight: '17px', padding: '1px 2px', overflow: 'hidden' }}>
-                                <div><span style={{ color: '#9ca3af', marginRight: 2 }}>出</span>{wr.start_time.slice(0, 5)}</div>
-                                <div><span style={{ color: '#9ca3af', marginRight: 2 }}>退</span>{wr.end_time.slice(0, 5)}</div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: '#1f2937', lineHeight: '16px', whiteSpace: 'nowrap' }}>
+                                {wr.start_time.slice(0, 5)}–{wr.end_time.slice(0, 5)}
                               </div>
                             )}
                             {wr.notes && (
-                              <div style={{ fontSize: 10, color: '#6b7280', lineHeight: '13px', padding: '1px 2px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                              <div style={{ fontSize: 10, color: '#6b7280', lineHeight: '13px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }} title={wr.notes}>
                                 {wr.notes}
                               </div>
                             )}
-                          </>
-                          )
-                        })()}
+                          </div>
+                        )}
                       </div>
                     )
                   })}
                 </div>
+              </div>
+
+              {/* スマホ: 日付ごとの縦型リスト */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {calendarDays.filter(d => d.isCurrentMonth).map(({ date, dayNum }) => {
+                  const wr = workRecordsByDate[date]
+                  const isToday = date === todayStr
+                  const isHoliday = holidayDates.has(date)
+                  const dow = new Date(`${date}T00:00:00`).getDay()
+                  const dayOfWeekLabel = ['日','月','火','水','木','金','土'][dow]
+                  const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : '#374151'
+                  const isSelected = selectedWorkDate === date
+                  const handleWorkDateClick = () => {
+                    if (isSelected) {
+                      const existing = workRecordsByDate[date] ?? null
+                      if (existing) { setEditWorkRecord(existing); setAddWorkDate(null) }
+                      else { setAddWorkDate(date); setEditWorkRecord(null) }
+                      setSelectedWorkDate(null)
+                    } else {
+                      setSelectedWorkDate(date)
+                    }
+                  }
+                  const isOvertime = !!wr && wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
+                  const chipLabel = wr ? (isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]) : ''
+                  const chipStyle = wr ? WORK_TYPE_LIGHT[isOvertime ? 'overtime' : wr.work_type] : null
+                  return (
+                    <div key={date} onClick={handleWorkDateClick}
+                      className="flex items-center gap-3 px-3 py-2.5 active:bg-gray-50 cursor-pointer"
+                      style={{ backgroundColor: isSelected ? '#dbeafe' : isToday ? '#eff6ff' : undefined }}>
+                      <div className="flex flex-col items-center w-11 shrink-0">
+                        <span style={{ fontSize: 11, color: numColor === '#374151' ? '#9ca3af' : numColor }}>{dayOfWeekLabel}</span>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: 26, height: 26, borderRadius: isToday ? 9999 : 0,
+                          backgroundColor: isToday ? '#2563eb' : 'transparent',
+                          color: isToday ? '#ffffff' : numColor,
+                          fontSize: 15, fontWeight: 700,
+                        }}>
+                          {dayNum}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {wr && chipStyle ? (
+                          <div style={{ backgroundColor: chipStyle.bg, borderLeft: `3px solid ${chipStyle.border}`, borderRadius: 3, padding: '3px 8px' }}>
+                            <div className="flex items-center gap-2">
+                              <span style={{ fontSize: 11, fontWeight: 700, color: chipStyle.fg }}>{chipLabel}</span>
+                              {wr.work_type !== 'paid_leave' && (
+                                <span style={{ fontSize: 13, fontWeight: 600, color: '#1f2937' }}>
+                                  {wr.start_time.slice(0, 5)}–{wr.end_time.slice(0, 5)}
+                                </span>
+                              )}
+                            </div>
+                            {wr.notes && (
+                              <div className="truncate" style={{ fontSize: 11, color: '#6b7280' }} title={wr.notes}>{wr.notes}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-300">記録なし・タップして追加</span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
