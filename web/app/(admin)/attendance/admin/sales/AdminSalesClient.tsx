@@ -552,8 +552,9 @@ function AdminSalesModal({ profiles, record, defaultDate, onClose, onSaved }: Ad
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">内容</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">案件名・現場名</label>
             <input type="text" value={description} onChange={e => setDescription(e.target.value)}
+              placeholder="例：兵庫病院 LED更新工事"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
