@@ -1,3 +1,4 @@
+import holidayJp from '@holiday-jp/holiday_jp'
 import { WorkRecord } from '@/lib/supabase/types'
 
 export interface DailyHours {
@@ -15,12 +16,22 @@ export interface HoursTotals {
   nightMin: number
 }
 
-// 1日の所定労働時間（これを超える休日出勤は「休日出勤の残業」として別集計する）
+// 1日の所定労働時間。これを超えた分を残業（休日は休日出勤の残業）として集計する。
+// 従業員は勤務区分を「通常」のまま出退勤時刻だけ入力することがほとんどのため、
+// actual_minutes(未設定なことが多い)や work_type='overtime'/'holiday' の手入力に
+// 頼らず、時刻と日付から自動的に判定する。
 const STANDARD_DAY_MIN = 480
 
 function toMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number)
   return h * 60 + m
+}
+
+function calcWorkedMinutes(startTime: string, endTime: string, breakMinutes: number): number {
+  const start = toMinutes(startTime)
+  let end = toMinutes(endTime)
+  if (end <= start) end += 24 * 60
+  return Math.max(0, end - start - breakMinutes)
 }
 
 // 22:00〜翌5:00の深夜時間帯とシフトの重なり分数を計算する
@@ -35,6 +46,14 @@ function calcNightMinutes(startTime: string, endTime: string): number {
   return night
 }
 
+// 土日・祝日、または勤務区分が明示的に「休日」の場合を休日出勤扱いにする
+function isOffDay(dateStr: string, explicitHoliday: boolean): boolean {
+  if (explicitHoliday) return true
+  const d = new Date(`${dateStr}T00:00:00`)
+  const dow = d.getDay()
+  return dow === 0 || dow === 6 || holidayJp.isHoliday(d)
+}
+
 export function calcDailyHours(records: WorkRecord[]): Record<string, DailyHours> {
   const byDate = records.reduce<Record<string, WorkRecord[]>>((acc, r) => {
     (acc[r.work_date] ??= []).push(r)
@@ -43,22 +62,23 @@ export function calcDailyHours(records: WorkRecord[]): Record<string, DailyHours
 
   const result: Record<string, DailyHours> = {}
   for (const [date, dayRecords] of Object.entries(byDate)) {
+    const workRecords = dayRecords.filter(r => r.work_type !== 'paid_leave' && r.start_time !== r.end_time)
+    const workedMin = workRecords.reduce((s, r) => s + calcWorkedMinutes(r.start_time, r.end_time, r.break_minutes), 0)
+    const nightMin = workRecords.reduce((s, r) => s + calcNightMinutes(r.start_time, r.end_time), 0)
+    const explicitHoliday = dayRecords.some(r => r.work_type === 'holiday')
+    const explicitOvertime = dayRecords.some(r => r.work_type === 'overtime')
+
     let overtimeMin = 0
     let holidayMin = 0
-    let nightMin = 0
-    for (const r of dayRecords) {
-      const min = r.actual_minutes ?? 0
-      if (r.work_type === 'overtime') overtimeMin += min
-      else if (r.work_type === 'holiday') holidayMin += min
-      if (r.work_type !== 'paid_leave') nightMin += calcNightMinutes(r.start_time, r.end_time)
+    let holidayOvertimeMin = 0
+    if (isOffDay(date, explicitHoliday)) {
+      holidayMin = workedMin
+      holidayOvertimeMin = Math.max(0, workedMin - STANDARD_DAY_MIN)
+    } else {
+      overtimeMin = explicitOvertime ? workedMin : Math.max(0, workedMin - STANDARD_DAY_MIN)
     }
-    result[date] = {
-      date,
-      overtimeMin,
-      holidayMin,
-      holidayOvertimeMin: Math.max(0, holidayMin - STANDARD_DAY_MIN),
-      nightMin,
-    }
+
+    result[date] = { date, overtimeMin, holidayMin, holidayOvertimeMin, nightMin }
   }
   return result
 }
