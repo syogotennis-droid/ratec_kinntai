@@ -229,7 +229,7 @@ export default function QuotationDetailPage() {
   if (!quotation) return <div className="p-6 text-sm text-gray-500">見つかりません</div>
 
   return (
-    <div className="p-4 max-w-2xl">
+    <div className="p-4 max-w-2xl lg:max-w-6xl">
       <div className="flex items-center gap-3 mb-4">
         <Link href="/orders/quotations" className="text-sm text-blue-600 hover:underline">← 一覧</Link>
         <h1 className="text-sm font-bold text-gray-900 flex-1">見積書</h1>
