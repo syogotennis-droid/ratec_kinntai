@@ -3,14 +3,19 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Company, Project, DocumentItem, Quotation } from '@/lib/supabase/types'
+import { Company, Project, DocumentItem, Quotation, QuotationItem } from '@/lib/supabase/types'
 import Link from 'next/link'
 
 const TAX_RATE = 0.1
 const DEFAULT_DISCOUNT_DIGITS = 4
 
 interface QuotationWithItems extends Quotation {
-  items: DocumentItem[]
+  items: QuotationItem[]
+}
+
+// 見積書の単価は希望小売価格。請求書には実際の請求単価である仕切り価格（希望小売価格×仕切掛け率）を引き継ぐ
+function shikiriUnitPrice(item: QuotationItem): number {
+  return item.item_type === 'labor' ? item.unit_price : Math.round(item.unit_price * item.markup_rate)
 }
 
 interface ProjectWithCompany extends Project {
@@ -105,7 +110,7 @@ export default function NewInvoicePage() {
           const sorted = [...(latest.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
           setItems(sorted.map(item => ({
             sort_order: item.sort_order, name: item.name, spec: item.spec ?? '',
-            qty: item.qty, unit: item.unit, unit_price: item.unit_price, amount: item.amount,
+            qty: item.qty, unit: item.unit, unit_price: shikiriUnitPrice(item), amount: item.amount,
           })))
         } else {
           setQuotationId(0)
@@ -184,7 +189,7 @@ export default function NewInvoicePage() {
     const sorted = [...(q.items ?? [])].sort((a, b) => a.sort_order - b.sort_order)
     setItems(sorted.map(item => ({
       sort_order: item.sort_order, name: item.name, spec: item.spec ?? '',
-      qty: item.qty, unit: item.unit, unit_price: item.unit_price, amount: item.amount,
+      qty: item.qty, unit: item.unit, unit_price: shikiriUnitPrice(item), amount: item.amount,
     })))
   }
 
