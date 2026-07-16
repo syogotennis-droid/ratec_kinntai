@@ -14,6 +14,11 @@
   /* 業務システムらしい落ち着いた深みのある青に調整（役割は既存のまま） */
   --color-blue-600: #1d4fd1;
   --color-blue-700: #163ea3;
+
+  /* 文字を全体的にひとまわり大きく・余白をひとまわり広く（読みやすさ向上） */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --spacing: 0.275rem;
 }
 
 @media (prefers-color-scheme: dark) {
