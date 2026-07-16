@@ -50,12 +50,19 @@ function nightOverlapMinutes(startAbs: number, endAbs: number): number {
   return night
 }
 
+// 土曜/日曜・祝日の判定（カレンダー表示の色分け用）
+export function weekendOrHolidayKind(dateStr: string): 'sat' | 'sun_or_holiday' | null {
+  const d = new Date(`${dateStr}T00:00:00`)
+  const dow = d.getDay()
+  if (dow === 6) return 'sat'
+  if (dow === 0 || holidayJp.isHoliday(d)) return 'sun_or_holiday'
+  return null
+}
+
 // 土日・祝日、または勤務区分が明示的に「休日」の場合を休日出勤扱いにする
 function isOffDay(dateStr: string, explicitHoliday: boolean): boolean {
   if (explicitHoliday) return true
-  const d = new Date(`${dateStr}T00:00:00`)
-  const dow = d.getDay()
-  return dow === 0 || dow === 6 || holidayJp.isHoliday(d)
+  return weekendOrHolidayKind(dateStr) !== null
 }
 
 export function calcDailyHours(records: WorkRecord[]): Record<string, DailyHours> {

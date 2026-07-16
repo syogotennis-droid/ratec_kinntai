@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, WorkRecord } from '@/lib/supabase/types'
-import { calcDailyHours, sumHours, formatHours } from './hours'
+import { calcDailyHours, sumHours, formatHours, weekendOrHolidayKind } from './hours'
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -140,20 +140,25 @@ export default function HoursSummaryClient({ profiles, initialUserId, initialYea
           <div className="grid grid-cols-7 gap-1">
             {calendarDays.map(day => {
               const h = dailyHours[day.date]
+              const kind = weekendOrHolidayKind(day.date)
+              const dayNumColor = !day.isCurrentMonth
+                ? 'text-gray-300'
+                : kind === 'sat' ? 'text-blue-500' : kind === 'sun_or_holiday' ? 'text-red-500' : 'text-gray-700'
               return (
                 <div
                   key={day.date}
-                  className={`min-h-[70px] rounded-lg border p-1 ${
+                  className={`min-h-[120px] rounded-lg border p-1.5 ${
                     day.isCurrentMonth ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100'
                   }`}
                 >
-                  <div className={`text-[11px] mb-0.5 ${day.isCurrentMonth ? 'text-gray-700' : 'text-gray-300'}`}>{day.dayNum}</div>
+                  <div className={`text-sm font-medium mb-1 ${dayNumColor}`}>{day.dayNum}</div>
                   {h && day.isCurrentMonth && (
                     <div className="space-y-0.5 leading-tight">
-                      {h.overtimeMin > 0 && <div className="text-[10px] text-orange-600">残 {formatHours(h.overtimeMin)}</div>}
-                      {h.holidayMin > 0 && <div className="text-[10px] text-red-600">休 {formatHours(h.holidayMin)}</div>}
-                      {h.holidayOvertimeMin > 0 && <div className="text-[10px] text-red-500">休残 {formatHours(h.holidayOvertimeMin)}</div>}
-                      {(h.nightBaseMin + h.nightOvertimeMin) > 0 && <div className="text-[10px] text-indigo-600">深 {formatHours(h.nightBaseMin + h.nightOvertimeMin)}</div>}
+                      {h.overtimeMin > 0 && <div className="text-xs text-orange-600">残業 {formatHours(h.overtimeMin)}h</div>}
+                      {h.holidayMin > 0 && <div className="text-xs text-red-600">休日出勤 {formatHours(h.holidayMin)}h</div>}
+                      {h.holidayOvertimeMin > 0 && <div className="text-xs text-red-500">休日残業 {formatHours(h.holidayOvertimeMin)}h</div>}
+                      {h.nightBaseMin > 0 && <div className="text-xs text-indigo-600">深夜 {formatHours(h.nightBaseMin)}h</div>}
+                      {h.nightOvertimeMin > 0 && <div className="text-xs text-indigo-500">深夜（残業含む） {formatHours(h.nightOvertimeMin)}h</div>}
                     </div>
                   )}
                 </div>
