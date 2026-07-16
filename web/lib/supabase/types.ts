@@ -195,11 +195,13 @@ export interface DocumentItem {
   amount: number
 }
 
-/** 見積書の明細行。unit_priceはメーカー希望小売価格として扱い、
- * 仕切掛け率・仕入掛け率を掛けて仕切り価格・仕入価格を算出する。 */
+/** 見積書の明細行。item_type='product'の場合、unit_priceはメーカー希望小売価格として扱い、
+ * 仕切掛け率・仕入掛け率を掛けて仕切り価格・仕入価格を算出する。
+ * item_type='labor'（作業）の場合、unit_priceは直接入力する価格。 */
 export interface QuotationItem extends DocumentItem {
   markup_rate: number
   purchase_rate: number
+  item_type: 'product' | 'labor'
 }
 
 export interface Quotation {

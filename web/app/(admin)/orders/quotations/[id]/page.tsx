@@ -53,7 +53,6 @@ export default function QuotationDetailPage() {
   const [items, setItems] = useState<Omit<QuotationItem, 'id'>[]>([])
   const [itemLinks, setItemLinks] = useState<(string | null)[]>([])
   const [bulkMarkupRate, setBulkMarkupRate] = useState('0.3')
-  const [bulkPurchaseRate, setBulkPurchaseRate] = useState('0.2')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -167,8 +166,10 @@ export default function QuotationDetailPage() {
     setItems(prev => {
       const next = [...prev]
       const item = { ...next[idx], [field]: value }
-      if (field === 'qty' || field === 'unit_price' || field === 'markup_rate') {
-        item.amount = Math.round(Number(item.qty) * Number(item.unit_price) * Number(item.markup_rate))
+      if (field === 'qty' || field === 'unit_price' || field === 'markup_rate' || field === 'item_type') {
+        item.amount = item.item_type === 'labor'
+          ? Math.round(Number(item.qty) * Number(item.unit_price))
+          : Math.round(Number(item.qty) * Number(item.unit_price) * Number(item.markup_rate))
       }
       next[idx] = item
       return next
@@ -177,13 +178,14 @@ export default function QuotationDetailPage() {
 
   const applyBulkRates = () => {
     const markup = Number(bulkMarkupRate)
-    const purchase = Number(bulkPurchaseRate)
-    setItems(prev => prev.map(item => ({
-      ...item,
-      markup_rate: isNaN(markup) ? item.markup_rate : markup,
-      purchase_rate: isNaN(purchase) ? item.purchase_rate : purchase,
-      amount: Math.round(item.qty * item.unit_price * (isNaN(markup) ? item.markup_rate : markup)),
-    })))
+    setItems(prev => prev.map(item => {
+      const newMarkup = isNaN(markup) ? item.markup_rate : markup
+      return {
+        ...item,
+        markup_rate: newMarkup,
+        amount: item.item_type === 'labor' ? item.amount : Math.round(item.qty * item.unit_price * newMarkup),
+      }
+    }))
   }
 
   const handleSave = async () => {
@@ -303,17 +305,12 @@ export default function QuotationDetailPage() {
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-bold text-gray-700">明細</h2>
-          <button onClick={() => { setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '台', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2 }]); setItemLinks(prev => [...prev, null]) }} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
+          <button onClick={() => { setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product' }]); setItemLinks(prev => [...prev, null]) }} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
         </div>
         <div className="flex flex-wrap items-end gap-2 mb-2 text-xs">
           <div>
             <label className="block text-gray-500 mb-0.5">仕切掛け率（全行）</label>
             <input type="number" step="0.01" value={bulkMarkupRate} onChange={e => setBulkMarkupRate(e.target.value)}
-              className="w-20 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-gray-500 mb-0.5">仕入掛け率（全行）</label>
-            <input type="number" step="0.01" value={bulkPurchaseRate} onChange={e => setBulkPurchaseRate(e.target.value)}
               className="w-20 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
           </div>
           <button onClick={applyBulkRates} className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg">
@@ -324,39 +321,59 @@ export default function QuotationDetailPage() {
           <table className="w-full text-xs min-w-[500px]">
             <thead>
               <tr className="border-b border-gray-200">
-                {['型式検索', '品名', '数量', '単位', 'メーカー希望小売価格', '仕切掛け率', '仕入掛け率', '金額', ''].map(h => (
+                {['種別', '型式検索', '品名', '数量', 'メーカー希望小売価格', '仕切掛け率', '仕切り価格', '金額', ''].map(h => (
                   <th key={h} className="text-left py-1.5 px-2 font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {items.map((item, idx) => (
+              {items.map((item, idx) => {
+                const isLabor = item.item_type === 'labor'
+                return (
                 <tr key={idx} className="border-b border-gray-100">
-                  <td className="py-1 px-1"><ProductModelSearch makers={MAKERS} onSelect={(r, m) => applyWin2kResult(idx, r, m)} /></td>
                   <td className="py-1 px-1">
-                    <div className="flex items-start gap-1">
-                      <textarea value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} rows={2} className="w-48 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" />
-                      {itemLinks[idx] && (
-                        <a href={itemLinks[idx]!} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
-                          className="shrink-0 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                          <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M8 4H4.5A1.5 1.5 0 0 0 3 5.5v10A1.5 1.5 0 0 0 4.5 17h10a1.5 1.5 0 0 0 1.5-1.5V12" />
-                            <path d="M11 3h6v6" />
-                            <path d="M9 11 17 3" />
-                          </svg>
-                        </a>
-                      )}
-                    </div>
+                    <select value={item.item_type} onChange={e => updateItem(idx, 'item_type', e.target.value)}
+                      className="px-1 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
+                      <option value="product">商品</option>
+                      <option value="labor">作業</option>
+                    </select>
+                  </td>
+                  <td className="py-1 px-1">
+                    {isLabor ? <span className="text-gray-300">—</span> : <ProductModelSearch makers={MAKERS} onSelect={(r, m) => applyWin2kResult(idx, r, m)} />}
+                  </td>
+                  <td className="py-1 px-1">
+                    {isLabor ? (
+                      <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="w-48 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    ) : (
+                      <div className="flex items-start gap-1">
+                        <textarea value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} rows={2} className="w-48 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" />
+                        {itemLinks[idx] && (
+                          <a href={itemLinks[idx]!} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
+                            className="shrink-0 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                            <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M8 4H4.5A1.5 1.5 0 0 0 3 5.5v10A1.5 1.5 0 0 0 4.5 17h10a1.5 1.5 0 0 0 1.5-1.5V12" />
+                              <path d="M11 3h6v6" />
+                              <path d="M9 11 17 3" />
+                            </svg>
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="py-1 px-1"><input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0} className="w-14 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
-                  <td className="py-1 px-1"><input value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)} className="w-12 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                   <td className="py-1 px-1"><input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0} className="w-20 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
-                  <td className="py-1 px-1"><input type="number" step="0.01" value={item.markup_rate} onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value))} min={0} className="w-16 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
-                  <td className="py-1 px-1"><input type="number" step="0.01" value={item.purchase_rate} onChange={e => updateItem(idx, 'purchase_rate', Number(e.target.value))} min={0} className="w-16 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                  <td className="py-1 px-1">
+                    {isLabor ? <span className="text-gray-300">—</span> : (
+                      <input type="number" step="0.01" value={item.markup_rate} onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value))} min={0} className="w-16 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    )}
+                  </td>
+                  <td className="py-1 px-2">
+                    {isLabor ? <span className="text-gray-300">—</span> : `¥${Math.round(item.unit_price * item.markup_rate).toLocaleString()}`}
+                  </td>
                   <td className="py-1 px-2 text-right font-medium">¥{item.amount.toLocaleString()}</td>
                   <td className="py-1 px-1"><button onClick={() => { setItems(prev => prev.filter((_, i) => i !== idx)); setItemLinks(prev => prev.filter((_, i) => i !== idx)) }} className="text-red-400 hover:text-red-600">×</button></td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>

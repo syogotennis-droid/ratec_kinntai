@@ -67,22 +67,38 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
   ws.getCell('A9').value = `【工事名】　${data.projectName ?? ''}`
 
   // 明細入力
-  // C/D/E/F/K/L/O/P/R はテンプレートに数式が組み込まれているため触らない。
-  // 手入力欄の A(品名)/G(備考)/H(メーカー希望小売価格)/I(数量)/J(仕切掛け率)/N(仕入掛け率) のみ設定する。
+  // テンプレートは12/13行目（サンプル行）のみ A/C/D/F の数式が組み込まれており、
+  // 14行目以降は E/I/J/K/L/N/O/P/R しか用意されていないため、C/D/F は毎回明示的に書き込む。
+  // 品目種別が「作業」の場合はメーカー希望小売価格の仕組みを使わず、Dに価格を直接入力する。
   const maxItems = Math.min(data.items.length, MAX_ITEMS)
   for (let i = 0; i < MAX_ITEMS; i++) {
     const evenRow = ITEM_START_ROW + i * 2
     const item = i < maxItems ? data.items[i] : null
+    const isLabor = item?.item_type === 'labor'
 
     const nameCell = ws.getCell(`A${evenRow}`)
     nameCell.value = item ? item.name : null
     nameCell.alignment = { ...nameCell.alignment, wrapText: true }
 
     ws.getCell(`G${evenRow}`).value = item?.spec || null
-    ws.getCell(`H${evenRow}`).value = item ? item.unit_price : 0
     ws.getCell(`I${evenRow}`).value = item ? item.qty : 0
-    ws.getCell(`J${evenRow}`).value = item ? Math.round(item.markup_rate * 100 * 100) / 100 : 0
-    ws.getCell(`N${evenRow}`).value = item ? Math.round(item.purchase_rate * 100 * 100) / 100 : 0
+
+    if (isLabor) {
+      // 作業行: メーカー希望小売価格・掛け率チェーンを使わず、仕切り価格(D)に直接価格を入れる
+      ws.getCell(`C${evenRow}`).value = null
+      ws.getCell(`D${evenRow}`).value = item ? item.unit_price : null
+      ws.getCell(`H${evenRow}`).value = 0
+      ws.getCell(`J${evenRow}`).value = 0
+      ws.getCell(`N${evenRow}`).value = 0
+    } else {
+      ws.getCell(`C${evenRow}`).value = item ? { formula: `H${evenRow}` } : null
+      ws.getCell(`D${evenRow}`).value = item ? { formula: `K${evenRow}` } : null
+      ws.getCell(`H${evenRow}`).value = item ? item.unit_price : 0
+      ws.getCell(`J${evenRow}`).value = item ? Math.round(item.markup_rate * 100 * 100) / 100 : 0
+      ws.getCell(`N${evenRow}`).value = item ? Math.round(item.purchase_rate * 100 * 100) / 100 : 0
+    }
+
+    ws.getCell(`F${evenRow}`).value = item ? { formula: `D${evenRow}*E${evenRow}` } : null
   }
 
   // 小計・消費税・合計
