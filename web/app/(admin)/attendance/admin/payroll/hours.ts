@@ -3,6 +3,7 @@ import { WorkRecord } from '@/lib/supabase/types'
 
 export interface DailyHours {
   date: string
+  isHoliday: boolean
   overtimeMin: number
   holidayMin: number
   holidayOvertimeMin: number
@@ -13,7 +14,8 @@ export interface HoursTotals {
   overtimeMin: number
   holidayMin: number
   holidayOvertimeMin: number
-  nightMin: number
+  nightWeekdayMin: number
+  nightHolidayMin: number
 }
 
 // 1日の所定労働時間。これを超えた分を残業（休日は休日出勤の残業）として集計する。
@@ -68,17 +70,18 @@ export function calcDailyHours(records: WorkRecord[]): Record<string, DailyHours
     const explicitHoliday = dayRecords.some(r => r.work_type === 'holiday')
     const explicitOvertime = dayRecords.some(r => r.work_type === 'overtime')
 
+    const isHoliday = isOffDay(date, explicitHoliday)
     let overtimeMin = 0
     let holidayMin = 0
     let holidayOvertimeMin = 0
-    if (isOffDay(date, explicitHoliday)) {
+    if (isHoliday) {
       holidayMin = workedMin
       holidayOvertimeMin = Math.max(0, workedMin - STANDARD_DAY_MIN)
     } else {
       overtimeMin = explicitOvertime ? workedMin : Math.max(0, workedMin - STANDARD_DAY_MIN)
     }
 
-    result[date] = { date, overtimeMin, holidayMin, holidayOvertimeMin, nightMin }
+    result[date] = { date, isHoliday, overtimeMin, holidayMin, holidayOvertimeMin, nightMin }
   }
   return result
 }
@@ -88,8 +91,9 @@ export function sumHours(daily: Record<string, DailyHours>): HoursTotals {
     overtimeMin: acc.overtimeMin + d.overtimeMin,
     holidayMin: acc.holidayMin + d.holidayMin,
     holidayOvertimeMin: acc.holidayOvertimeMin + d.holidayOvertimeMin,
-    nightMin: acc.nightMin + d.nightMin,
-  }), { overtimeMin: 0, holidayMin: 0, holidayOvertimeMin: 0, nightMin: 0 })
+    nightWeekdayMin: acc.nightWeekdayMin + (d.isHoliday ? 0 : d.nightMin),
+    nightHolidayMin: acc.nightHolidayMin + (d.isHoliday ? d.nightMin : 0),
+  }), { overtimeMin: 0, holidayMin: 0, holidayOvertimeMin: 0, nightWeekdayMin: 0, nightHolidayMin: 0 })
 }
 
 export function formatHours(min: number): string {
