@@ -21,6 +21,15 @@ const SPEC_ENDPOINTS: Record<string, string> = {
 
 const TAX_RATE = 0.1
 
+// 品名はExcel上は1セル(改行区切り2行)だが、システム上は品名・型番を分けて入力できるようにする
+function splitName(name: string): [string, string] {
+  const idx = name.indexOf('\n')
+  return idx === -1 ? [name, ''] : [name.slice(0, idx), name.slice(idx + 1)]
+}
+function joinName(line1: string, line2: string): string {
+  return line2 ? `${line1}\n${line2}` : line1
+}
+
 interface ProjectWithCompany extends Project {
   companyData: Company
 }
@@ -43,7 +52,6 @@ export default function NewQuotationPage() {
     { sort_order: 0, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product' }
   ])
   const [itemLinks, setItemLinks] = useState<(string | null)[]>([null])
-  const [bulkMarkupRate, setBulkMarkupRate] = useState('0.3')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -152,18 +160,6 @@ export default function NewQuotationPage() {
       next[idx] = item
       return next
     })
-  }
-
-  const applyBulkRates = () => {
-    const markup = Number(bulkMarkupRate)
-    setItems(prev => prev.map(item => {
-      const newMarkup = isNaN(markup) ? item.markup_rate : markup
-      return {
-        ...item,
-        markup_rate: newMarkup,
-        amount: item.item_type === 'labor' ? item.amount : Math.round(item.qty * item.unit_price * newMarkup),
-      }
-    }))
   }
 
   const applyWin2kResult = (idx: number, result: Win2kResult, maker: Maker) => {
@@ -316,16 +312,6 @@ export default function NewQuotationPage() {
           <h2 className="text-xs font-bold text-gray-700">明細</h2>
           <button onClick={() => { setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product' }]); setItemLinks(prev => [...prev, null]) }} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
         </div>
-        <div className="flex flex-wrap items-end gap-2 mb-2 text-xs">
-          <div>
-            <label className="block text-gray-500 mb-0.5">仕切掛け率（全行）</label>
-            <input type="number" step="0.01" value={bulkMarkupRate} onChange={e => setBulkMarkupRate(e.target.value)}
-              className="w-20 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          </div>
-          <button onClick={applyBulkRates} className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg">
-            全行に適用
-          </button>
-        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[500px]">
             <thead>
@@ -355,7 +341,12 @@ export default function NewQuotationPage() {
                       <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="w-48 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
                     ) : (
                       <div className="flex items-start gap-1">
-                        <textarea value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} rows={2} className="w-48 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" />
+                        <div className="flex flex-col gap-0.5 w-48">
+                          <input value={splitName(item.name)[0]} onChange={e => updateItem(idx, 'name', joinName(e.target.value, splitName(item.name)[1]))}
+                            placeholder="品名" className="px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                          <input value={splitName(item.name)[1]} onChange={e => updateItem(idx, 'name', joinName(splitName(item.name)[0], e.target.value))}
+                            placeholder="型番" className="px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        </div>
                         {itemLinks[idx] && (
                           <a href={itemLinks[idx]!} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
                             className="shrink-0 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
@@ -370,14 +361,20 @@ export default function NewQuotationPage() {
                     )}
                   </td>
                   <td className="py-1 px-1"><input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0} className="w-14 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
-                  <td className="py-1 px-1"><input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0} className="w-20 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                  <td className="py-1 px-1">
+                    {isLabor ? <span className="text-gray-300">—</span> : (
+                      <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0} className="w-20 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    )}
+                  </td>
                   <td className="py-1 px-1">
                     {isLabor ? <span className="text-gray-300">—</span> : (
                       <input type="number" step="0.01" value={item.markup_rate} onChange={e => updateItem(idx, 'markup_rate', Number(e.target.value))} min={0} className="w-16 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
                     )}
                   </td>
-                  <td className="py-1 px-2">
-                    {isLabor ? <span className="text-gray-300">—</span> : `¥${Math.round(item.unit_price * item.markup_rate).toLocaleString()}`}
+                  <td className="py-1 px-1">
+                    {isLabor ? (
+                      <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0} className="w-20 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    ) : `¥${Math.round(item.unit_price * item.markup_rate).toLocaleString()}`}
                   </td>
                   <td className="py-1 px-2 text-right font-medium">¥{item.amount.toLocaleString()}</td>
                   <td className="py-1 px-1"><button onClick={() => { setItems(prev => prev.filter((_, i) => i !== idx)); setItemLinks(prev => prev.filter((_, i) => i !== idx)) }} className="text-red-400 hover:text-red-600">×</button></td>
