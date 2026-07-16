@@ -120,11 +120,6 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
     fetchData()
   }, [fetchData])
 
-  const totalAmount = records.reduce((s, r) => s + r.amount, 0)
-  const totalCost = records.reduce((s, r) => s + (r.cost ?? 0), 0)
-  const totalProfit = totalAmount - totalCost
-  const grossMarginRate = totalAmount > 0 ? (totalProfit / totalAmount) * 100 : null
-
   const filtered = records.filter(r => {
     if (filterUserId !== 'all' && r.user_id !== filterUserId) return false
     if (filterStatus !== 'all') {
@@ -141,6 +136,11 @@ export default function AdminSalesClient({ initialYearMonth, initialRecords, ini
     }
     return true
   })
+
+  const totalAmount = filtered.reduce((s, r) => s + r.amount, 0)
+  const totalCost = filtered.reduce((s, r) => s + (r.cost ?? 0), 0)
+  const totalProfit = totalAmount - totalCost
+  const grossMarginRate = totalAmount > 0 ? (totalProfit / totalAmount) * 100 : null
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pagedFiltered = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
