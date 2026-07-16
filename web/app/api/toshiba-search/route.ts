@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as cheerio from 'cheerio'
 import { Win2kResult } from '@/lib/win2k'
+import { toHalfWidth } from '@/lib/halfwidth'
+
+const SIZE_PATTERN = /[φΦ][０-９\d]+(?:\.[０-９\d]+)?/
+
+/**
+ * 東芝の品名は「シリーズ名＋サイズ」「製品タイプ」のような複数行になっており、
+ * サイズ表記が重複したり冗長な型番接尾辞が混ざっていることが多い。サイズを
+ * 先頭に出し、最後の行（一番シンプルな製品タイプ表記）だけを使って簡潔にする。
+ */
+function simplifyName(nameParts: string[]): string {
+  const joined = nameParts.join(' ')
+  const sizeMatch = joined.match(SIZE_PATTERN)
+  const size = sizeMatch ? toHalfWidth(sizeMatch[0]) : ''
+  const lastPart = nameParts[nameParts.length - 1] ?? ''
+  const rest = toHalfWidth(lastPart.replace(SIZE_PATTERN, '').trim())
+  return `${size}${rest}`
+}
 
 export async function GET(request: NextRequest) {
   const kwd = request.nextUrl.searchParams.get('kwd')?.trim()
@@ -44,7 +61,7 @@ export async function GET(request: NextRequest) {
       const t = $nli.text().replace(/\s+/g, ' ').trim()
       if (t) nameParts.push(t)
     })
-    const name = nameParts.join(' ')
+    const name = simplifyName(nameParts)
 
     // 希望小売価格（行内の最初の td.tc.w8p）。「¥6,300(¥11,200)」の器具単体価格を採用
     const priceCell = $row.find('td.tc.w8p').first()

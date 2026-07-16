@@ -4,7 +4,7 @@ import * as cheerio from 'cheerio'
 export interface Win2kSpecSummary {
   /** 埋込穴・取付穴などのサイズ表記（例: "□450"） */
   size: string | null
-  /** □なら"スクエア"、φ/Φなら"丸形" */
+  /** □なら"ｽｸｴｱ"（丸形はΦ記号だけで通じるため付けない） */
   shapeWord: string | null
   /** 定格消費電力の数値部分（例: "33.5"） */
   wattage: string | null
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
   const sizeKey = Object.keys(table).find(k => SIZE_KEYS.includes(k))
   const sizeValue = sizeKey ? table[sizeKey] : null
-  const shapeWord = sizeValue?.startsWith('□') ? 'スクエア' : /^[φΦ]/.test(sizeValue ?? '') ? '丸形' : null
+  const shapeWord = sizeValue?.startsWith('□') ? 'ｽｸｴｱ' : null
 
   const wattageKey = Object.keys(table).find(k => k.startsWith(WATTAGE_KEY_PREFIX))
   const wattageRaw = wattageKey ? table[wattageKey] : null

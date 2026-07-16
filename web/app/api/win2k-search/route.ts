@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as cheerio from 'cheerio'
 import { Win2kResult } from '@/lib/win2k'
+import { toHalfWidth } from '@/lib/halfwidth'
+
+const FILLER_WORDS = ['一体形', 'ユニット形']
+
+function simplifyCategoryName(text: string): string {
+  let s = text.replace(/[（(][^）)]*[）)]/g, '') // 括弧書きの注記を除去
+  for (const w of FILLER_WORDS) s = s.split(w).join('')
+  return toHalfWidth(s).trim()
+}
 
 export async function GET(request: NextRequest) {
   const kwd = request.nextUrl.searchParams.get('kwd')?.trim()
@@ -28,10 +37,11 @@ export async function GET(request: NextRequest) {
     const code = $el.find('.r-box .title a').text().replace(/\s+/g, ' ').trim()
     if (!code) return
 
-    // パンくず（例: LED照明器具 ＞ LEDライトユニット形ベースライト(Myシリーズ) ＞ ライトユニット）から
-    // 先頭の大分類を除いた部分を商品名代わりに使う（三菱の検索結果には型番以外の商品名が無いため）
+    // パンくず（例: LED照明器具 ＞ LED一体形ベースライト(一般用途) ＞ スクエアライト）の
+    // 先頭の大分類と末尾のサブタイプ（形状と重複しがち）を除き、シリーズ名の部分だけを
+    // 商品名代わりに使う（三菱の検索結果には型番以外の商品名が無いため）
     const breadcrumb = $el.find('.r-box .subTitle').text().replace(/\s+/g, ' ').trim().split('＞').map(s => s.trim()).filter(Boolean)
-    const category = (breadcrumb.length > 1 ? breadcrumb.slice(1) : breadcrumb).join(' ')
+    const category = simplifyCategoryName(breadcrumb.length > 1 ? breadcrumb[1] : breadcrumb[0] ?? '')
 
     const specText = $el.find('.b-box .spec').text()
     const priceMatch = specText.match(/価格[：:]\s*([\d,]+)\s*円/)
