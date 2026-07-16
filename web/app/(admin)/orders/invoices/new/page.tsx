@@ -17,6 +17,16 @@ interface ProjectWithCompany extends Project {
   companyData: Company
 }
 
+const ITEM_GRID_COLS = '[grid-template-columns:1fr_1fr_64px_72px_110px_120px_40px]'
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0-.6 12.2A2 2 0 0114.4 21H9.6a2 2 0 01-2-1.8L7 7h10z" />
+    </svg>
+  )
+}
+
 export default function NewInvoicePage() {
   const router = useRouter()
   const searchRef = useRef<HTMLDivElement>(null)
@@ -231,235 +241,263 @@ export default function NewInvoicePage() {
   }
 
   return (
-    <div className="p-4 max-w-2xl">
+    <div className="p-4 max-w-[1180px] mx-auto">
       <div className="flex items-center gap-3 mb-4">
-        <Link href="/orders/invoices" className="text-sm text-blue-600 hover:underline">← 一覧</Link>
-        <h1 className="text-sm font-bold text-gray-900">新規請求書/納品書</h1>
+        <Link href="/orders/invoices" className="text-sm text-blue-600 hover:underline shrink-0">← 一覧へ戻る</Link>
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold text-gray-900 leading-tight">新規請求書・納品書</h1>
+          <p className="text-xs text-gray-500 leading-tight mt-0.5">請求書と納品書を作成します</p>
+        </div>
       </div>
 
-      <div className="space-y-3 mb-6 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
-        {/* Project search */}
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">案件名 *</label>
-          <div className="relative" ref={searchRef}>
-            {selectedProject ? (
-              <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white">
-                <span className="text-xs text-gray-500 shrink-0 max-w-[40%] truncate" title={selectedProject.companyData.name}>{selectedProject.companyData.name}</span>
-                <span className="text-sm text-gray-900 flex-1 min-w-0 truncate" title={selectedProject.name}>{selectedProject.name}</span>
-                <button onClick={() => { setSelectedProject(null); setProjectId(0); setQuotations([]) }}
-                  className="text-gray-400 hover:text-gray-600 text-xs shrink-0">×</button>
-              </div>
-            ) : (
-              <input
-                type="text"
-                value={search}
-                onChange={e => { setSearch(e.target.value); setShowResults(true); setHighlightIndex(-1) }}
-                onFocus={() => setShowResults(true)}
-                onKeyDown={handleSearchKeyDown}
-                placeholder="会社名・案件名で検索"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            )}
-            {showResults && !selectedProject && (
-              <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-auto">
-                {Object.values(grouped).length === 0 ? (
-                  <div className="px-3 py-2 text-xs text-gray-400">該当なし</div>
-                ) : (
-                  Object.values(grouped).map(({ company, projs }) => (
-                    <div key={company.id}>
-                      <div className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-gray-50 sticky top-0">
-                        {company.name}
+      {/* 基本情報 */}
+      <div className="max-w-[1000px] mx-auto mb-4">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5 space-y-3">
+          {/* Project search */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">案件名 *</label>
+            <div className="relative" ref={searchRef}>
+              {selectedProject ? (
+                <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                  <span className="text-xs text-gray-500 shrink-0 max-w-[40%] truncate" title={selectedProject.companyData.name}>{selectedProject.companyData.name}</span>
+                  <span className="text-sm text-gray-900 flex-1 min-w-0 truncate" title={selectedProject.name}>{selectedProject.name}</span>
+                  <button onClick={() => { setSelectedProject(null); setProjectId(0); setQuotations([]) }}
+                    className="text-gray-400 hover:text-gray-600 text-xs shrink-0">×</button>
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setShowResults(true); setHighlightIndex(-1) }}
+                  onFocus={() => setShowResults(true)}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder="会社名・案件名で検索"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              )}
+              {showResults && !selectedProject && (
+                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-auto">
+                  {Object.values(grouped).length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-gray-400">該当なし</div>
+                  ) : (
+                    Object.values(grouped).map(({ company, projs }) => (
+                      <div key={company.id}>
+                        <div className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-gray-50 sticky top-0">
+                          {company.name}
+                        </div>
+                        {projs.map(p => {
+                          const flatIndex = flatResults.indexOf(p)
+                          return (
+                            <button
+                              key={p.id}
+                              ref={el => { itemRefs.current[flatIndex] = el }}
+                              onMouseDown={() => selectProject(p)}
+                              onMouseEnter={() => setHighlightIndex(flatIndex)}
+                              className={`w-full text-left px-5 py-2 text-sm transition-colors ${
+                                flatIndex === highlightIndex ? 'bg-blue-50 text-blue-700' : 'text-gray-800 hover:bg-blue-50'
+                              }`}
+                            >
+                              {p.name}
+                            </button>
+                          )
+                        })}
                       </div>
-                      {projs.map(p => {
-                        const flatIndex = flatResults.indexOf(p)
-                        return (
-                          <button
-                            key={p.id}
-                            ref={el => { itemRefs.current[flatIndex] = el }}
-                            onMouseDown={() => selectProject(p)}
-                            onMouseEnter={() => setHighlightIndex(flatIndex)}
-                            className={`w-full text-left px-5 py-2 text-sm transition-colors ${
-                              flatIndex === highlightIndex ? 'bg-blue-50 text-blue-700' : 'text-gray-800 hover:bg-blue-50'
-                            }`}
-                          >
-                            {p.name}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Quotation selector (if multiple) */}
-        {quotations.length > 1 && (
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">引き継ぐ見積書</label>
-            <select value={quotationId} onChange={e => importFromQuotation(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              {quotations.map(q => (
-                <option key={q.id} value={q.id}>
-                  {q.doc_no || '番号なし'} {q.issue_date} ¥{q.total_amount.toLocaleString()} [{q.status}]
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        {quotations.length === 1 && (
-          <p className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
-            見積書 {quotations[0].doc_no || quotations[0].issue_date} から明細を引き継ぎました
-          </p>
-        )}
+          {/* Quotation selector (if multiple) */}
+          {quotations.length > 1 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">引き継ぐ見積書</label>
+              <select value={quotationId} onChange={e => importFromQuotation(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {quotations.map(q => (
+                  <option key={q.id} value={q.id}>
+                    {q.doc_no || '番号なし'} {q.issue_date} ¥{q.total_amount.toLocaleString()} [{q.status}]
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {quotations.length === 1 && (
+            <p className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+              見積書 {quotations[0].doc_no || quotations[0].issue_date} から明細を引き継ぎました
+            </p>
+          )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">請求書番号（自動）</label>
-            <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 bg-gray-50">{docNo || '...'}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">請求書番号（自動）</label>
+              <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-400 bg-gray-50">{docNo || '...'}</div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">発行日</label>
+              <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">発行日</label>
-            <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">備考</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">備考</label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
       </div>
 
+      {/* 明細 */}
       <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs font-bold text-gray-700">明細</h2>
-          <button onClick={addItem} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-gray-700">明細</h2>
+          <button onClick={addItem}
+            className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+            + 行追加
+          </button>
         </div>
-        {/* PC: テーブル表示 */}
+
+        {/* PC: 一覧表示 */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-xs min-w-[500px]">
-            <thead>
-              <tr className="border-b border-gray-200">
-                {['品名', '仕様', '数量', '単位', '単価', '金額', ''].map(h => (
-                  <th key={h} className="text-left py-1.5 px-2 font-medium text-gray-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
+          <div className="min-w-[900px]">
+            <div className={`grid ${ITEM_GRID_COLS} gap-2 border-b border-gray-200 pb-2 text-xs font-medium text-gray-500`}>
+              <div>品名</div>
+              <div>仕様</div>
+              <div>数量</div>
+              <div>単位</div>
+              <div className="text-right">単価</div>
+              <div className="text-right">金額</div>
+              <div />
+            </div>
+            <div className="divide-y divide-gray-100">
               {items.map((item, idx) => (
-                <tr key={idx} className="border-b border-gray-100">
-                  <td className="py-1 px-1">
+                <div key={idx} className={`grid ${ITEM_GRID_COLS} gap-2 items-center py-2`}>
+                  <div>
                     <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)}
-                      className="w-24 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  </td>
-                  <td className="py-1 px-1">
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
                     <input value={item.spec} onChange={e => updateItem(idx, 'spec', e.target.value)}
-                      className="w-24 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  </td>
-                  <td className="py-1 px-1">
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
                     <input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0}
-                      className="w-14 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  </td>
-                  <td className="py-1 px-1">
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
                     <input value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)}
-                      className="w-12 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  </td>
-                  <td className="py-1 px-1">
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
                     <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
-                      className="w-20 px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  </td>
-                  <td className="py-1 px-2 text-right font-medium">¥{item.amount.toLocaleString()}</td>
-                  <td className="py-1 px-1">
-                    <button onClick={() => removeItem(idx)} className="text-red-400 hover:text-red-600">×</button>
-                  </td>
-                </tr>
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div className="text-right text-sm font-semibold text-gray-900 tabular-nums">¥{item.amount.toLocaleString()}</div>
+                  <div className="flex justify-center">
+                    <button onClick={() => removeItem(idx)} title="この行を削除"
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
 
         {/* スマホ: カード表示 */}
         <div className="md:hidden space-y-2">
           {items.map((item, idx) => (
             <div key={idx} className="border border-gray-200 rounded-lg p-3">
-              <div className="flex items-start gap-2 mb-2">
-                <div className="flex-1 space-y-2">
-                  <div>
-                    <label className="block text-[11px] text-gray-500 mb-0.5">品名</label>
-                    <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)}
-                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-gray-500 mb-0.5">仕様</label>
-                    <input value={item.spec} onChange={e => updateItem(idx, 'spec', e.target.value)}
-                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                </div>
-                <button onClick={() => removeItem(idx)} className="shrink-0 text-red-400 hover:text-red-600 mt-5 px-1" aria-label="この行を削除">×</button>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-gray-500">明細 {idx + 1}</span>
+                <button onClick={() => removeItem(idx)} title="この行を削除"
+                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" aria-label="この行を削除">
+                  <TrashIcon className="w-4 h-4" />
+                </button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="mb-2">
+                <label className="block text-[11px] text-gray-500 mb-0.5">品名</label>
+                <input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)}
+                  className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              </div>
+              <div className="mb-2">
+                <label className="block text-[11px] text-gray-500 mb-0.5">仕様</label>
+                <input value={item.spec} onChange={e => updateItem(idx, 'spec', e.target.value)}
+                  className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-2">
                 <div>
                   <label className="block text-[11px] text-gray-500 mb-0.5">数量</label>
                   <input type="number" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} min={0}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label className="block text-[11px] text-gray-500 mb-0.5">単位</label>
                   <input value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500" />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[11px] text-gray-500 mb-0.5">単価</label>
                   <input type="number" value={item.unit_price} onChange={e => updateItem(idx, 'unit_price', Number(e.target.value))} min={0}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500" />
                 </div>
-              </div>
-              <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
-                <span className="text-xs text-gray-500">金額</span>
-                <span className="text-sm font-bold text-gray-900">¥{item.amount.toLocaleString()}</span>
+                <div>
+                  <label className="block text-[11px] text-gray-500 mb-0.5">金額</label>
+                  <div className="px-2 py-1.5 text-sm font-semibold text-right text-gray-900 tabular-nums">¥{item.amount.toLocaleString()}</div>
+                </div>
               </div>
             </div>
           ))}
         </div>
-
-        <div className="mt-3 border-t border-gray-200 pt-3 space-y-1 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-600">明細小計</span>
-            <span>¥{itemsSubtotal.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600 flex items-center gap-1">
-              特別調整値引き（<input
-                type="number" value={discountDigits} min={1} max={8}
-                onChange={e => setDiscountDigits(Math.max(1, Math.min(8, Number(e.target.value))))}
-                className="w-10 px-1 py-0.5 border border-gray-300 rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />桁）
-            </span>
-            <span className="text-red-600">¥{discountAmount.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">課税対象計</span>
-            <span>¥{adjustedSubtotal.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">消費税（10%）</span>
-            <span>¥{taxAmount.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between font-bold text-base">
-            <span>合計</span>
-            <span>¥{totalAmount.toLocaleString()}</span>
-          </div>
-        </div>
       </div>
 
-      {error && <p className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+      {/* 金額集計・作成操作 */}
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
+        <div className="flex justify-end">
+          <div className="w-full sm:w-80 space-y-1.5">
+            <div className="flex justify-between text-sm text-gray-500">
+              <span>明細小計</span><span className="tabular-nums">¥{itemsSubtotal.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-gray-500 gap-2">
+              <span className="flex items-center gap-1 shrink-0">
+                特別調整値引き（<input
+                  type="number" value={discountDigits} min={1} max={8}
+                  onChange={e => setDiscountDigits(Math.max(1, Math.min(8, Number(e.target.value))))}
+                  className="w-10 px-1 py-0.5 border border-gray-300 rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />桁）
+              </span>
+              <span className="text-rose-500 tabular-nums">¥{discountAmount.toLocaleString()}</span>
+            </div>
+            <p className="text-[11px] text-gray-400 -mt-1">合計金額の端数調整に使用します</p>
+            <div className="flex justify-between text-sm text-gray-500">
+              <span>課税対象計</span><span className="tabular-nums">¥{adjustedSubtotal.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-sm text-gray-500">
+              <span>消費税（10%）</span><span className="tabular-nums">¥{taxAmount.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-lg font-bold text-gray-900 pt-1.5 mt-1 border-t border-gray-200">
+              <span>合計</span><span className="tabular-nums">¥{totalAmount.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
 
-      <button onClick={handleSave} disabled={saving}
-        className="w-full py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
-        {saving ? '保存中...' : '作成'}
-      </button>
+        {error && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+
+        <div className="flex items-center justify-end gap-2 mt-4">
+          <Link href="/orders/invoices"
+            className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">
+            キャンセル
+          </Link>
+          <button onClick={handleSave} disabled={saving}
+            className="px-5 py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg shadow-sm">
+            {saving ? '作成中...' : '請求書・納品書を作成'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
