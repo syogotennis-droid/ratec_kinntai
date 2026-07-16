@@ -81,10 +81,10 @@ export default function HoursSummaryClient({ profiles, initialUserId, initialYea
   const selectedProfile = profiles.find(p => p.id === userId)
 
   return (
-    <div className="p-4">
-      <div className="flex flex-wrap items-center gap-2 mb-4">
+    <div className="px-4 pt-2 pb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-2">
         <select value={userId ?? ''} onChange={e => setUserId(e.target.value || null)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <div className="flex items-center gap-2">
