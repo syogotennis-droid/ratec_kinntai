@@ -107,6 +107,7 @@ CREATE TABLE bonuses (
   year_month TEXT NOT NULL,
   user_id UUID NOT NULL REFERENCES profiles(id),
   bonus_amount INTEGER DEFAULT 0,
+  salary_amount INTEGER DEFAULT 0,
   notes TEXT,
   created_by UUID REFERENCES profiles(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

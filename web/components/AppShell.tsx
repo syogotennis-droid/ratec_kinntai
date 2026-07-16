@@ -29,8 +29,8 @@ const adminNavGroups: NavGroup[] = [
     heading: '人事労務',
     items: [
       { to: '/attendance/admin/work-list', label: '勤怠管理' },
-      { to: '/attendance/admin/payroll', label: '給与計算' },
-      { to: '/attendance/admin/bonuses', label: 'ボーナス管理' },
+      { to: '/attendance/admin/payroll', label: '残業時間集計' },
+      { to: '/attendance/admin/bonuses', label: '給与・賞与管理' },
       { to: '/attendance/admin/card-expenses', label: 'カード経費' },
       { to: '/attendance/admin/employees', label: '従業員管理' },
     ],

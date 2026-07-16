@@ -96,6 +96,7 @@ export interface Bonus {
   year_month: string
   user_id: string
   bonus_amount: number
+  salary_amount: number
   notes: string | null
 }
 
