@@ -82,6 +82,20 @@ function userColor(userId: string | null) {
   return USER_COLORS[hash % USER_COLORS.length]
 }
 
+function hexToRgba(hex: string, alpha: number) {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.substring(0, 2), 16)
+  const g = parseInt(h.substring(2, 4), 16)
+  const b = parseInt(h.substring(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+// 予定カード用の表示名：色だけに頼らず従業員が分かるよう、既存の氏名から姓のみを取り出す（新しい表示名データは追加しない）
+function familyName(fullName: string) {
+  const idx = fullName.indexOf(' ')
+  return idx === -1 ? fullName : fullName.slice(0, idx)
+}
+
 
 function actualMinutes(start: string, end: string, breakMin: number): number {
   const [sh, sm] = start.slice(0, 5).split(':').map(Number)
@@ -117,6 +131,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   const [addDate, setAddDate] = useState<string | null>(null)
   const [addWorkDate, setAddWorkDate] = useState<string | null>(null)
   const [showMonthPicker, setShowMonthPicker] = useState(false)
+  const [visibleUserIds, setVisibleUserIds] = useState<Set<string> | null>(null)
   const touchStartX = useRef(0)
   const [dragX, setDragX] = useState(0)
   const [sliding, setSliding] = useState(false)
@@ -183,6 +198,15 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
     setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
 
+  const toggleUser = (id: string) => {
+    setVisibleUserIds(prev => {
+      const base = prev ?? new Set(profiles.map(p => p.id))
+      const next = new Set(base)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
   }
@@ -225,13 +249,35 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
 
   const holidayDates = new Set(holidayEvents.map(e => e.date))
 
-  const calEvents: CalEvent[] = schedules.map(s => {
-    const p = profiles.find(pr => pr.id === s.created_by)
-    const vividColor = p?.color || userColor(s.created_by)
-    return { title: s.title, date: s.date, backgroundColor: vividColor, textColor: '#ffffff' }
-  })
+  const visibleSchedules = useMemo(() => {
+    if (!visibleUserIds) return schedules
+    return schedules.filter(s => s.created_by && visibleUserIds.has(s.created_by))
+  }, [schedules, visibleUserIds])
 
-  const allEvents = [...holidayEvents, ...calEvents]
+  interface ScheduleChip {
+    schedule: Schedule
+    employeeName: string
+    initial: string
+    color: string
+    timeStr: string | null
+  }
+
+  const scheduleChips: ScheduleChip[] = useMemo(() => visibleSchedules.map(s => {
+    const p = profiles.find(pr => pr.id === s.created_by)
+    const color = p?.color || userColor(s.created_by)
+    const employeeName = p?.name || '不明'
+    const initial = p?.avatar_char || p?.name?.charAt(0) || '?'
+    const timeStr = s.start_time ? `${s.start_time.slice(0, 5)}${s.end_time ? '–' + s.end_time.slice(0, 5) : ''}` : null
+    return { schedule: s, employeeName, initial, color, timeStr }
+  }), [visibleSchedules, profiles])
+
+  const scheduleChipsByDate = useMemo(() => {
+    return scheduleChips.reduce<Record<string, ScheduleChip[]>>((acc, c) => {
+      if (!acc[c.schedule.date]) acc[c.schedule.date] = []
+      acc[c.schedule.date].push(c)
+      return acc
+    }, {})
+  }, [scheduleChips])
 
   const numWeeks = useMemo(() => {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -264,12 +310,12 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   }, [yearMonth, numWeeks])
 
   const eventsByDate = useMemo(() => {
-    return allEvents.reduce<Record<string, CalEvent[]>>((acc, e) => {
+    return holidayEvents.reduce<Record<string, CalEvent[]>>((acc, e) => {
       if (!acc[e.date]) acc[e.date] = []
       acc[e.date].push(e)
       return acc
     }, {})
-  }, [allEvents])
+  }, [holidayEvents])
 
   const todayStr = useMemo(() => {
     const d = new Date()
@@ -326,6 +372,41 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
           ))}
         </div>
       )}
+      {view === 'schedule' && (
+        <div className="flex items-center gap-1.5 px-1 mt-1.5 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+          <button onClick={() => setVisibleUserIds(null)}
+            className="shrink-0 text-[11px] px-2 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
+            style={visibleUserIds === null
+              ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
+              : { backgroundColor: '#fff', color: '#4b5563', borderColor: '#e5e7eb' }}>
+            全員表示
+          </button>
+          <button onClick={() => setVisibleUserIds(new Set([profile.id]))}
+            className="shrink-0 text-[11px] px-2 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
+            style={visibleUserIds?.size === 1 && visibleUserIds.has(profile.id)
+              ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
+              : { backgroundColor: '#fff', color: '#4b5563', borderColor: '#e5e7eb' }}>
+            自分のみ
+          </button>
+          <span className="shrink-0 w-px h-4 bg-gray-200 mx-0.5" />
+          {profiles.map(p => {
+            const isVisible = visibleUserIds === null || visibleUserIds.has(p.id)
+            const color = p.color || userColor(p.id)
+            return (
+              <button key={p.id} onClick={() => toggleUser(p.id)}
+                className="shrink-0 inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
+                style={{
+                  backgroundColor: isVisible ? hexToRgba(color, 0.12) : '#f3f4f6',
+                  borderColor: isVisible ? color : '#e5e7eb',
+                  color: isVisible ? color : '#9ca3af',
+                }}>
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: isVisible ? color : '#d1d5db' }} />
+                {p.name}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 
@@ -364,12 +445,13 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                 <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, 1fr)` }}>
                   {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
                     const dayEvts = eventsByDate[date] ?? []
+                    const dayChips = scheduleChipsByDate[date] ?? []
                     const isToday = date === todayStr
                     const isHoliday = holidayDates.has(date)
                     const dow = new Date(`${date}T00:00:00`).getDay()
                     const maxPerCell = numWeeks >= 6 ? 3 : numWeeks === 5 ? 5 : 6
-                    const shown = dayEvts.slice(0, maxPerCell)
-                    const extra = dayEvts.length - maxPerCell
+                    const shownChips = dayChips.slice(0, maxPerCell)
+                    const extra = dayChips.length - maxPerCell
                     const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
                     return (
                       <div
@@ -396,18 +478,28 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                           }}>
                             {dayNum}
                           </span>
-                          {isCurrentMonth && dayEvts.length === 0 && (
+                          {isCurrentMonth && dayChips.length === 0 && (
                             <span className="cal-hint" style={{ fontSize: 13, color: '#9ca3af', paddingRight: 2 }}>＋</span>
                           )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
-                          {shown.map((e, i) => (
-                            <div key={i} className="cal-chip" style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 11, fontWeight: 600, lineHeight: '17px', padding: '0 3px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0, marginBottom: 1 }} title={e.title}>
+                          {dayEvts.map((e, i) => (
+                            <div key={`h${i}`} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 10, fontWeight: 600, lineHeight: '15px', padding: '0 3px', borderRadius: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0, marginBottom: 1 }} title={e.title}>
                               {e.title}
                             </div>
                           ))}
+                          {shownChips.map(c => {
+                            const label = `${c.employeeName}${c.timeStr ? ' ' + c.timeStr : ''} / ${c.schedule.title}`
+                            return (
+                              <div key={c.schedule.id} className="cal-chip" title={label}
+                                style={{ backgroundColor: hexToRgba(c.color, 0.14), borderLeft: `3px solid ${c.color}`, borderRadius: 2, padding: '0 3px', lineHeight: '15px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0, marginBottom: 1 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: c.color }}>{familyName(c.employeeName)}</span>
+                                <span style={{ fontSize: 10, color: '#374151' }}>｜{c.schedule.title}</span>
+                              </div>
+                            )
+                          })}
                           {extra > 0 && (
-                            <div style={{ fontSize: 10, color: '#6b7280', lineHeight: '14px', paddingLeft: 2, fontWeight: 500, flexShrink: 0 }}>+{extra}</div>
+                            <div style={{ fontSize: 10, color: '#6b7280', lineHeight: '14px', paddingLeft: 2, fontWeight: 500, flexShrink: 0 }}>＋{extra}件</div>
                           )}
                         </div>
                       </div>
@@ -420,11 +512,14 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               <div className="md:hidden divide-y divide-gray-100">
                 {calendarDays.filter(d => d.isCurrentMonth).map(({ date, dayNum }) => {
                   const dayEvts = eventsByDate[date] ?? []
+                  const dayChips = scheduleChipsByDate[date] ?? []
                   const isToday = date === todayStr
                   const isHoliday = holidayDates.has(date)
                   const dow = new Date(`${date}T00:00:00`).getDay()
                   const dayOfWeekLabel = ['日','月','火','水','木','金','土'][dow]
                   const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : '#374151'
+                  const shownChips = dayChips.slice(0, 3)
+                  const extra = dayChips.length - 3
                   return (
                     <div key={date} onClick={() => setDaySheet(date)}
                       className="flex items-center gap-3 px-3 py-2.5 active:bg-gray-50 cursor-pointer"
@@ -441,16 +536,28 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                           {dayNum}
                         </span>
                       </div>
-                      <div className="flex-1 min-w-0 flex flex-wrap gap-1">
-                        {dayEvts.length === 0 ? (
+                      <div className="flex-1 min-w-0 space-y-1">
+                        {dayEvts.map((e, i) => (
+                          <div key={`h${i}`} className="text-xs font-semibold rounded px-1.5 py-0.5 truncate"
+                            style={{ backgroundColor: e.backgroundColor, color: e.textColor }} title={e.title}>
+                            {e.title}
+                          </div>
+                        ))}
+                        {shownChips.length === 0 && dayEvts.length === 0 ? (
                           <span className="text-xs text-gray-300">予定なし</span>
                         ) : (
-                          dayEvts.map((e, i) => (
-                            <span key={i} className="text-xs font-semibold rounded px-1.5 py-0.5 truncate max-w-full"
-                              style={{ backgroundColor: e.backgroundColor, color: e.textColor }} title={e.title}>
-                              {e.title}
-                            </span>
+                          shownChips.map(c => (
+                            <div key={c.schedule.id} className="text-xs rounded px-1.5 py-1 truncate"
+                              style={{ backgroundColor: hexToRgba(c.color, 0.14), borderLeft: `2px solid ${c.color}` }}
+                              title={`${c.employeeName}${c.timeStr ? ' ' + c.timeStr : ''} / ${c.schedule.title}`}>
+                              <span style={{ fontWeight: 700, color: c.color }}>{familyName(c.employeeName)}</span>
+                              <span className="text-gray-700">｜{c.schedule.title}</span>
+                              {c.timeStr && <span className="text-gray-400 ml-1">{c.timeStr}</span>}
+                            </div>
                           ))
+                        )}
+                        {extra > 0 && (
+                          <div className="text-[11px] text-gray-400 pl-1">＋{extra}件</div>
                         )}
                       </div>
                     </div>
@@ -660,6 +767,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
           schedule={editSchedule}
           defaultDate={addDate ?? undefined}
           userId={profile.id}
+          profiles={profiles}
           onClose={() => { setAddDate(null); setEditSchedule(null) }}
           onSaved={fetchSchedules}
         />
@@ -732,6 +840,7 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
                       )}
                     </div>
                     <div style={{ borderLeftColor: color }} className="border-l-[3px] pl-3 flex-1 min-w-0 py-0.5">
+                      <p className="text-xs font-semibold" style={{ color }}>{p?.name ?? '不明'}</p>
                       <p className="text-sm font-medium text-gray-900">{s.title}</p>
                       {s.notes && <p className="text-xs text-gray-400 mt-0.5">{s.notes}</p>}
                     </div>
@@ -958,11 +1067,13 @@ interface ScheduleModalProps {
   schedule: Schedule | null
   defaultDate?: string
   userId: string
+  profiles: UserProfile[]
   onClose: () => void
   onSaved: () => void
 }
 
-function ScheduleModal({ schedule, defaultDate, userId, onClose, onSaved }: ScheduleModalProps) {
+function ScheduleModal({ schedule, defaultDate, userId, profiles, onClose, onSaved }: ScheduleModalProps) {
+  const creator = schedule ? profiles.find(p => p.id === schedule.created_by) : null
   const [title, setTitle] = useState(schedule?.title ?? '')
   const [date, setDate] = useState(schedule?.date ?? defaultDate ?? new Date().toLocaleDateString('sv-SE'))
   const [allDay, setAllDay] = useState(!schedule?.start_time)
@@ -1007,7 +1118,14 @@ function ScheduleModal({ schedule, defaultDate, userId, onClose, onSaved }: Sche
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
-        <h2 className="text-base font-bold text-gray-900 mb-4">{schedule ? '予定を編集' : '予定を追加'}</h2>
+        <h2 className="text-base font-bold text-gray-900 mb-1">{schedule ? '予定を編集' : '予定を追加'}</h2>
+        {creator && (
+          <div className="flex items-center gap-1.5 mb-3 text-xs text-gray-500">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: creator.color || userColor(creator.id) }} />
+            登録者：{creator.name}
+          </div>
+        )}
+        {!creator && <div className="mb-2" />}
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">タイトル *</label>
