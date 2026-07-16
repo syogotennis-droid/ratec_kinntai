@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Quotation, QuotationItem, Project, Supplier, QuotationStatus, Settings, CompanyContact } from '@/lib/supabase/types'
+import { Quotation, QuotationItem, Project, QuotationStatus, Settings } from '@/lib/supabase/types'
 import Link from 'next/link'
 import { downloadQuotationExcel } from '@/lib/excel/quotation'
 import ProductModelSearch, { Maker } from '@/components/ProductModelSearch'
@@ -58,7 +58,6 @@ export default function QuotationDetailPage() {
   const profile = useProfile()
   const [quotation, setQuotation] = useState<FullQuotation | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
   const [customerName, setCustomerName] = useState('')
   const [loading, setLoading] = useState(true)
@@ -68,7 +67,6 @@ export default function QuotationDetailPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const [contacts, setContacts] = useState<CompanyContact[]>([])
   const [projectId, setProjectId] = useState<number>(0)
   const [supplierId, setSupplierId] = useState<number>(0)
   const [docNo, setDocNo] = useState('')
@@ -82,16 +80,14 @@ export default function QuotationDetailPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
-    const [qRes, projectsRes, suppliersRes, settingsRes] = await Promise.all([
+    const [qRes, projectsRes, settingsRes] = await Promise.all([
       supabase.from('quotations').select('*, items:quotation_items(*)').eq('id', id).single(),
       supabase.from('projects').select('*, companies(name)').order('name'),
-      supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
       supabase.from('settings').select('*').single(),
     ])
     const q = qRes.data as FullQuotation | null
     setQuotation(q)
     setProjects(projectsRes.data ?? [])
-    setSuppliers(suppliersRes.data ?? [])
     setSettings(settingsRes.data ?? null)
     if (q) {
       setProjectId(q.project_id)
@@ -112,16 +108,6 @@ export default function QuotationDetailPage() {
   }, [id])
 
   useEffect(() => { fetchData() }, [fetchData])
-
-  useEffect(() => {
-    if (!projectId) return
-    const proj = projects.find(p => p.id === projectId) as { company_id?: number } | undefined
-    const companyId = proj?.company_id
-    if (!companyId) return
-    createClient().from('company_contacts').select('*').eq('company_id', companyId).order('created_at').then(({ data }) => {
-      setContacts(data ?? [])
-    })
-  }, [projectId, projects])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -319,7 +305,7 @@ export default function QuotationDetailPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">見積書番号（任意）</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">見積書番号</label>
               <input type="text" value={docNo} onChange={e => setDocNo(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
@@ -327,32 +313,6 @@ export default function QuotationDetailPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">発行日</label>
               <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">仕入先（任意）</label>
-              <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value={0}>なし</option>
-                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">担当者（任意）</label>
-              {contacts.length > 0 ? (
-                <select value={contactPerson} onChange={e => setContactPerson(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">なし</option>
-                  {contacts.map(c => (
-                    <option key={c.id} value={c.name}>{c.name}{c.position ? `（${c.position}）` : ''}</option>
-                  ))}
-                </select>
-              ) : (
-                <input type="text" value={contactPerson} onChange={e => setContactPerson(e.target.value)}
-                  placeholder="例：山田 太郎"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              )}
             </div>
           </div>
           <div>
@@ -384,7 +344,7 @@ export default function QuotationDetailPage() {
               </div>
               <div>品名・型番</div>
               <div>数量</div>
-              <div className="text-right">希望小売価格</div>
+              <div className="text-right">メーカー希望小売価格</div>
               <div>掛率</div>
               <div className="text-right">仕切り価格</div>
               <div className="text-right">金額</div>
@@ -415,7 +375,7 @@ export default function QuotationDetailPage() {
                             <input value={splitName(item.name)[0]} onChange={e => updateItem(idx, 'name', joinName(e.target.value, splitName(item.name)[1]))}
                               placeholder="品名" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                             <input value={splitName(item.name)[1]} onChange={e => updateItem(idx, 'name', joinName(splitName(item.name)[0], e.target.value))}
-                              placeholder="型番" className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                              placeholder="型番" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                           </div>
                           {itemLinks[idx] && (
                             <a href={itemLinks[idx]!} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
@@ -517,7 +477,7 @@ export default function QuotationDetailPage() {
                         <div>
                           <label className="block text-[11px] text-gray-500 mb-0.5">型番</label>
                           <input value={splitName(item.name)[1]} onChange={e => updateItem(idx, 'name', joinName(splitName(item.name)[0], e.target.value))}
-                            placeholder="型番" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                            placeholder="型番" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                         </div>
                       </div>
                       {itemLinks[idx] && (
