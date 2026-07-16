@@ -87,10 +87,10 @@ export default function AppShell({ profile, children }: Props) {
   }
 
   const NavLinks = () => (
-    <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
+    <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5">
       {navGroups.map((group) => (
         <div key={group.heading ?? group.items[0]?.to}>
-          {group.heading && <p className="px-3 mb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{group.heading}</p>}
+          {group.heading && <p className="px-3 mb-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">{group.heading}</p>}
           <div className="space-y-0.5">
             {group.items.map((item) => {
               const isActive = pathname.startsWith(item.to)
@@ -101,8 +101,8 @@ export default function AppShell({ profile, children }: Props) {
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
                   {item.label}
@@ -115,16 +115,27 @@ export default function AppShell({ profile, children }: Props) {
     </nav>
   )
 
+  const avatarLabel = profile.avatar_char || profile.name.slice(0, 1)
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-4 border-b border-gray-200">
-        <p className="text-sm font-medium text-gray-900">{profile.name}</p>
+      <div className="px-4 py-4 border-b border-slate-800 flex items-center gap-3">
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+          style={{ backgroundColor: profile.color || '#2563eb' }}
+        >
+          {avatarLabel}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white truncate">{profile.name}</p>
+          <p className="text-xs text-slate-400">{profile.is_admin ? '管理者' : '担当者'}</p>
+        </div>
       </div>
       <NavLinks />
-      <div className="px-3 py-4 border-t border-gray-200">
+      <div className="px-3 py-4 border-t border-slate-800">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
         >
           ログアウト
         </button>
@@ -137,7 +148,7 @@ export default function AppShell({ profile, children }: Props) {
     <SidebarContext.Provider value={() => setSidebarOpen(true)}>
     <div className="flex h-screen overflow-hidden">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-56 md:flex-col md:flex-shrink-0 border-r border-gray-200 bg-white">
+      <aside className="hidden md:flex md:w-60 md:flex-col md:flex-shrink-0 bg-slate-900">
         <SidebarContent />
       </aside>
 
@@ -145,7 +156,7 @@ export default function AppShell({ profile, children }: Props) {
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <aside className="relative z-50 w-64 h-full bg-white flex flex-col">
+          <aside className="relative z-50 w-64 h-full bg-slate-900 flex flex-col">
             <SidebarContent />
           </aside>
         </div>
