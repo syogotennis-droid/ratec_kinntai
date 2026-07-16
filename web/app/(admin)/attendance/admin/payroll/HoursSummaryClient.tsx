@@ -105,25 +105,25 @@ export default function HoursSummaryClient({ profiles, initialUserId, initialYea
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left py-2 px-3 font-medium text-gray-500 text-xs">区分</th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">労働時間</th>
+                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">残業</th>
+                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">休日出勤<span className="block font-normal">（うち残業）</span></th>
                   <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">深夜</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="py-2 px-3 font-medium text-gray-700">
-                    平日
-                    <span className="block text-[10px] text-gray-400 font-normal">残業</span>
-                  </td>
+                  <td className="py-2 px-3 font-medium text-gray-700">平日</td>
                   <td className="py-2 px-3 text-right font-bold text-orange-600">{formatHours(totals.overtimeMin)}h</td>
+                  <td className="py-2 px-3 text-right text-gray-300">—</td>
                   <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightWeekdayMin)}h</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 font-medium text-gray-700">
-                    休日
-                    <span className="block text-[10px] text-gray-400 font-normal">出勤・うち残業 {formatHours(totals.holidayOvertimeMin)}h</span>
+                  <td className="py-2 px-3 font-medium text-gray-700">休日</td>
+                  <td className="py-2 px-3 text-right text-gray-300">—</td>
+                  <td className="py-2 px-3 text-right font-bold text-red-600">
+                    {formatHours(totals.holidayMin)}h
+                    <span className="block text-[10px] text-gray-400 font-normal">（{formatHours(totals.holidayOvertimeMin)}h）</span>
                   </td>
-                  <td className="py-2 px-3 text-right font-bold text-red-600">{formatHours(totals.holidayMin)}h</td>
                   <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightHolidayMin)}h</td>
                 </tr>
               </tbody>
