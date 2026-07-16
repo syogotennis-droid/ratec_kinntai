@@ -172,7 +172,7 @@ export default function WorkListClient({ initialYearMonth, initialSummaries, ini
           <style>{`
             .fc-daygrid-day-number { pointer-events: none; }
             .fc-event { cursor: pointer; font-size: 11px; padding: 1px 4px; border-radius: 4px; }
-            .fc-toolbar { display: none; }
+            .fc-toolbar.fc-toolbar { display: none !important; }
           `}</style>
           <FullCalendar
             key={yearMonth}
