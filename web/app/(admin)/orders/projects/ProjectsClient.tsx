@@ -11,9 +11,9 @@ export interface ProjectWithCompany extends Project {
 }
 
 const STATUS_COLORS: Record<ProjectStatus, string> = {
-  active: 'bg-green-100 text-green-700',
-  completed: 'bg-blue-100 text-blue-700',
-  cancelled: 'bg-gray-100 text-gray-500',
+  active: 'bg-blue-50 text-blue-700 border border-blue-200',
+  completed: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  cancelled: 'bg-gray-100 text-gray-500 border border-gray-200',
 }
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
@@ -21,6 +21,8 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
   completed: '完了',
   cancelled: 'キャンセル',
 }
+
+type SortKey = 'name' | 'created_new' | 'created_old'
 
 export default function ProjectsClient({ initialProjects, initialCompanies, initialOffices }: { initialProjects: ProjectWithCompany[]; initialCompanies: Company[]; initialOffices: CompanyOffice[] }) {
   const [projects, setProjects] = useState<ProjectWithCompany[]>(initialProjects)
@@ -31,6 +33,7 @@ export default function ProjectsClient({ initialProjects, initialCompanies, init
   const [showAdd, setShowAdd] = useState(false)
   const [filterStatus, setFilterStatus] = useState<ProjectStatus | 'all'>('active')
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<SortKey>('name')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -55,54 +58,120 @@ export default function ProjectsClient({ initialProjects, initialCompanies, init
   const displayed = projects
     .filter(p => filterStatus === 'all' || p.status === filterStatus)
     .filter(p => !search || p.name.includes(search) || p.companies?.name.includes(search) || p.company_offices?.name.includes(search))
+    .slice()
+    .sort((a, b) => {
+      if (sort === 'created_new') return b.created_at.localeCompare(a.created_at)
+      if (sort === 'created_old') return a.created_at.localeCompare(b.created_at)
+      return a.name.localeCompare(b.name, 'ja')
+    })
+
+  const isFiltered = search.trim() !== '' || filterStatus !== 'all'
 
   return (
     <div className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <MobileMenuButton />
-        <h1 className="text-base font-bold text-gray-900">案件管理</h1>
-      </div>
-      <div className="flex items-center gap-2 mb-3">
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="案件名・会社名で検索"
-          className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <MobileMenuButton />
+          <div className="min-w-0">
+            <h1 className="text-lg md:text-xl font-bold text-gray-900">案件管理</h1>
+            <p className="text-xs text-gray-500 mt-0.5">案件の登録・進捗確認</p>
+          </div>
+        </div>
         <button onClick={() => setShowAdd(true)}
-          className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow transition-shadow whitespace-nowrap">
-          + 追加
+          className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow transition-shadow whitespace-nowrap shrink-0">
+          ＋ 新規案件
         </button>
       </div>
 
-      <div className="flex gap-1 mb-3">
-        {(['all', 'active', 'completed', 'cancelled'] as const).map(s => (
-          <button key={s} onClick={() => setFilterStatus(s)}
-            className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
-              filterStatus === s ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}>
-            {s === 'all' ? '全て' : STATUS_LABELS[s]}
-          </button>
-        ))}
+      <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="案件名・取引先名で検索"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3" />
+
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex gap-1">
+          {(['all', 'active', 'completed', 'cancelled'] as const).map(s => (
+            <button key={s} onClick={() => setFilterStatus(s)}
+              className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+                filterStatus === s ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
+              }`}>
+              {s === 'all' ? 'すべて' : STATUS_LABELS[s]}
+            </button>
+          ))}
+        </div>
+        <select
+          value={sort}
+          onChange={e => setSort(e.target.value as SortKey)}
+          className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="name">案件名順</option>
+          <option value="created_new">登録日が新しい順</option>
+          <option value="created_old">登録日が古い順</option>
+        </select>
       </div>
+
+      <div className="text-xs text-gray-500 mb-2">{displayed.length}件</div>
 
       {loading ? (
         <div className="text-sm text-gray-500 py-8 text-center">読み込み中...</div>
       ) : displayed.length === 0 ? (
-        <div className="text-sm text-gray-500 py-8 text-center">案件名がありません</div>
+        <div className="py-10 text-center">
+          <p className="text-sm text-gray-500">{isFiltered ? '該当する案件がありません' : '案件がありません'}</p>
+          {!isFiltered && (
+            <button onClick={() => setShowAdd(true)}
+              className="mt-3 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow transition-shadow">
+              ＋ 新規案件を作成
+            </button>
+          )}
+        </div>
       ) : (
-        <div className="space-y-2">
+        <>
+        {/* PC: 一覧表示 */}
+        <div className="hidden lg:block border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <div className="grid [grid-template-columns:1fr_1fr_120px_64px] gap-3 bg-gray-50 border-b border-gray-200 px-3 py-2 text-xs font-medium text-gray-500">
+            <div>案件名</div>
+            <div>取引先</div>
+            <div>状態</div>
+            <div />
+          </div>
+          <div className="divide-y divide-gray-100">
+            {displayed.map(p => (
+              <div key={p.id} onClick={() => setEditProject(p)}
+                className="grid [grid-template-columns:1fr_1fr_120px_64px] gap-3 items-center px-3 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-900 truncate" title={p.name}>{p.name}</div>
+                </div>
+                <div className="min-w-0 text-sm text-gray-500 truncate" title={p.companies?.name || undefined}>
+                  {p.companies?.name}{p.company_offices?.name ? `（${p.company_offices.name}）` : ''}
+                </div>
+                <div>
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${STATUS_COLORS[p.status as ProjectStatus] ?? 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
+                    {STATUS_LABELS[p.status as ProjectStatus] ?? p.status}
+                  </span>
+                </div>
+                <div className="text-right text-sm text-blue-600 font-medium whitespace-nowrap">詳細 ›</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* スマホ: カード表示 */}
+        <div className="lg:hidden space-y-2">
           {displayed.map(p => (
             <div key={p.id} onClick={() => setEditProject(p)}
-              className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:bg-blue-50 cursor-pointer transition-all">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                <p className="text-xs text-gray-400">
-                  {p.companies?.name}{p.company_offices?.name ? `（${p.company_offices.name}）` : ''}
-                </p>
+              className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 cursor-pointer hover:shadow-md transition-all">
+              <div className="text-sm font-semibold text-gray-900 truncate" title={p.name}>{p.name}</div>
+              <div className="text-xs text-gray-500 truncate mt-0.5">
+                {p.companies?.name}{p.company_offices?.name ? `（${p.company_offices.name}）` : ''}
               </div>
-              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold shrink-0 ${STATUS_COLORS[p.status as ProjectStatus] ?? 'bg-gray-100 text-gray-600'}`}>
-                {STATUS_LABELS[p.status as ProjectStatus] ?? p.status}
-              </span>
+              <div className="flex items-center justify-between mt-2">
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[p.status as ProjectStatus] ?? 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
+                  {STATUS_LABELS[p.status as ProjectStatus] ?? p.status}
+                </span>
+                <span className="text-xs text-blue-600 font-medium">詳細を見る ›</span>
+              </div>
             </div>
           ))}
         </div>
+        </>
       )}
 
       {(showAdd || editProject) && (
