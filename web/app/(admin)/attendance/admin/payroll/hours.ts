@@ -7,15 +7,18 @@ export interface DailyHours {
   overtimeMin: number
   holidayMin: number
   holidayOvertimeMin: number
-  nightMin: number
+  nightBaseMin: number
+  nightOvertimeMin: number
 }
 
 export interface HoursTotals {
   overtimeMin: number
   holidayMin: number
   holidayOvertimeMin: number
-  nightWeekdayMin: number
-  nightHolidayMin: number
+  nightWeekdayBaseMin: number
+  nightWeekdayOvertimeMin: number
+  nightHolidayBaseMin: number
+  nightHolidayOvertimeMin: number
 }
 
 // 1日の所定労働時間。これを超えた分を残業（休日は休日出勤の残業）として集計する。
@@ -29,22 +32,21 @@ function toMinutes(time: string): number {
   return h * 60 + m
 }
 
-function calcWorkedMinutes(startTime: string, endTime: string, breakMinutes: number): number {
+// 出退勤時刻(と必要ならその日の中での積算所定内労働時間)から、絶対分(0時起点、日またぎは+1440)の開始・終了を返す
+function toAbsRange(startTime: string, endTime: string): [number, number] {
   const start = toMinutes(startTime)
   let end = toMinutes(endTime)
   if (end <= start) end += 24 * 60
-  return Math.max(0, end - start - breakMinutes)
+  return [start, end]
 }
 
-// 22:00〜翌5:00の深夜時間帯とシフトの重なり分数を計算する
-function calcNightMinutes(startTime: string, endTime: string): number {
-  const start = toMinutes(startTime)
-  let end = toMinutes(endTime)
-  if (end <= start) end += 24 * 60
+// 22:00〜翌5:00の深夜時間帯と、絶対分で表した区間の重なりを計算する
+function nightOverlapMinutes(startAbs: number, endAbs: number): number {
+  if (endAbs <= startAbs) return 0
   const overlap = (aStart: number, aEnd: number, bStart: number, bEnd: number) =>
     Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart))
-  let night = overlap(start, end, 22 * 60, 29 * 60)
-  night += overlap(start, end, 22 * 60 - 24 * 60, 5 * 60)
+  let night = overlap(startAbs, endAbs, 22 * 60, 29 * 60)
+  night += overlap(startAbs, endAbs, 22 * 60 - 24 * 60, 5 * 60)
   return night
 }
 
@@ -64,24 +66,47 @@ export function calcDailyHours(records: WorkRecord[]): Record<string, DailyHours
 
   const result: Record<string, DailyHours> = {}
   for (const [date, dayRecords] of Object.entries(byDate)) {
-    const workRecords = dayRecords.filter(r => r.work_type !== 'paid_leave' && r.start_time !== r.end_time)
-    const workedMin = workRecords.reduce((s, r) => s + calcWorkedMinutes(r.start_time, r.end_time, r.break_minutes), 0)
-    const nightMin = workRecords.reduce((s, r) => s + calcNightMinutes(r.start_time, r.end_time), 0)
     const explicitHoliday = dayRecords.some(r => r.work_type === 'holiday')
     const explicitOvertime = dayRecords.some(r => r.work_type === 'overtime')
-
     const isHoliday = isOffDay(date, explicitHoliday)
+
+    const workRecords = dayRecords
+      .filter(r => r.work_type !== 'paid_leave' && r.start_time !== r.end_time)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time))
+
+    let workedMin = 0
+    let baseMin = 0 // 所定労働時間(8時間)以内の実働分
+    let nightBaseMin = 0
+    let nightOvertimeMin = 0
+
+    for (const r of workRecords) {
+      const [startAbs, endAbs] = toAbsRange(r.start_time, r.end_time)
+      const recordWorkedMin = Math.max(0, endAbs - startAbs - r.break_minutes)
+      workedMin += recordWorkedMin
+
+      // 手動で「残業」区分にした記録はその区間全体を残業扱いにする
+      const baseRemaining = explicitOvertime ? 0 : Math.max(0, STANDARD_DAY_MIN - baseMin)
+      const baseThisRecord = Math.min(recordWorkedMin, baseRemaining)
+      baseMin += baseThisRecord
+
+      // 休憩は所定内労働の終わり(残業に入る前)に取るものと仮定して区切り時刻を決める
+      const boundaryAbs = baseThisRecord >= recordWorkedMin ? endAbs : startAbs + baseThisRecord + r.break_minutes
+
+      nightBaseMin += nightOverlapMinutes(startAbs, Math.min(boundaryAbs, endAbs))
+      nightOvertimeMin += nightOverlapMinutes(Math.max(boundaryAbs, startAbs), endAbs)
+    }
+
     let overtimeMin = 0
     let holidayMin = 0
     let holidayOvertimeMin = 0
     if (isHoliday) {
       holidayMin = workedMin
-      holidayOvertimeMin = Math.max(0, workedMin - STANDARD_DAY_MIN)
+      holidayOvertimeMin = Math.max(0, workedMin - baseMin)
     } else {
-      overtimeMin = explicitOvertime ? workedMin : Math.max(0, workedMin - STANDARD_DAY_MIN)
+      overtimeMin = Math.max(0, workedMin - baseMin)
     }
 
-    result[date] = { date, isHoliday, overtimeMin, holidayMin, holidayOvertimeMin, nightMin }
+    result[date] = { date, isHoliday, overtimeMin, holidayMin, holidayOvertimeMin, nightBaseMin, nightOvertimeMin }
   }
   return result
 }
@@ -91,9 +116,14 @@ export function sumHours(daily: Record<string, DailyHours>): HoursTotals {
     overtimeMin: acc.overtimeMin + d.overtimeMin,
     holidayMin: acc.holidayMin + d.holidayMin,
     holidayOvertimeMin: acc.holidayOvertimeMin + d.holidayOvertimeMin,
-    nightWeekdayMin: acc.nightWeekdayMin + (d.isHoliday ? 0 : d.nightMin),
-    nightHolidayMin: acc.nightHolidayMin + (d.isHoliday ? d.nightMin : 0),
-  }), { overtimeMin: 0, holidayMin: 0, holidayOvertimeMin: 0, nightWeekdayMin: 0, nightHolidayMin: 0 })
+    nightWeekdayBaseMin: acc.nightWeekdayBaseMin + (d.isHoliday ? 0 : d.nightBaseMin),
+    nightWeekdayOvertimeMin: acc.nightWeekdayOvertimeMin + (d.isHoliday ? 0 : d.nightOvertimeMin),
+    nightHolidayBaseMin: acc.nightHolidayBaseMin + (d.isHoliday ? d.nightBaseMin : 0),
+    nightHolidayOvertimeMin: acc.nightHolidayOvertimeMin + (d.isHoliday ? d.nightOvertimeMin : 0),
+  }), {
+    overtimeMin: 0, holidayMin: 0, holidayOvertimeMin: 0,
+    nightWeekdayBaseMin: 0, nightWeekdayOvertimeMin: 0, nightHolidayBaseMin: 0, nightHolidayOvertimeMin: 0,
+  })
 }
 
 export function formatHours(min: number): string {

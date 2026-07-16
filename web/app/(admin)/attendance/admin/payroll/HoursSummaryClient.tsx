@@ -105,26 +105,26 @@ export default function HoursSummaryClient({ profiles, initialUserId, initialYea
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left py-2 px-3 font-medium text-gray-500 text-xs">区分</th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">残業</th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">休日出勤<span className="block font-normal">（うち残業）</span></th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">深夜</th>
+                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">残業<span className="block font-normal">（休日は出勤・うち残業）</span></th>
+                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">深夜<span className="block font-normal">（残業含まない）</span></th>
+                  <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs">深夜<span className="block font-normal">（残業含む）</span></th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-b border-gray-100">
                   <td className="py-2 px-3 font-medium text-gray-700">平日</td>
                   <td className="py-2 px-3 text-right font-bold text-orange-600">{formatHours(totals.overtimeMin)}h</td>
-                  <td className="py-2 px-3 text-right text-gray-300">—</td>
-                  <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightWeekdayMin)}h</td>
+                  <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightWeekdayBaseMin)}h</td>
+                  <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightWeekdayOvertimeMin)}h</td>
                 </tr>
                 <tr>
                   <td className="py-2 px-3 font-medium text-gray-700">休日</td>
-                  <td className="py-2 px-3 text-right text-gray-300">—</td>
                   <td className="py-2 px-3 text-right font-bold text-red-600">
                     {formatHours(totals.holidayMin)}h
                     <span className="block text-[10px] text-gray-400 font-normal">（{formatHours(totals.holidayOvertimeMin)}h）</span>
                   </td>
-                  <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightHolidayMin)}h</td>
+                  <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightHolidayBaseMin)}h</td>
+                  <td className="py-2 px-3 text-right font-bold text-indigo-600">{formatHours(totals.nightHolidayOvertimeMin)}h</td>
                 </tr>
               </tbody>
             </table>
@@ -153,7 +153,7 @@ export default function HoursSummaryClient({ profiles, initialUserId, initialYea
                       {h.overtimeMin > 0 && <div className="text-[10px] text-orange-600">残 {formatHours(h.overtimeMin)}</div>}
                       {h.holidayMin > 0 && <div className="text-[10px] text-red-600">休 {formatHours(h.holidayMin)}</div>}
                       {h.holidayOvertimeMin > 0 && <div className="text-[10px] text-red-500">休残 {formatHours(h.holidayOvertimeMin)}</div>}
-                      {h.nightMin > 0 && <div className="text-[10px] text-indigo-600">深 {formatHours(h.nightMin)}</div>}
+                      {(h.nightBaseMin + h.nightOvertimeMin) > 0 && <div className="text-[10px] text-indigo-600">深 {formatHours(h.nightBaseMin + h.nightOvertimeMin)}</div>}
                     </div>
                   )}
                 </div>
