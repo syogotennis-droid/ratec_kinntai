@@ -15,7 +15,7 @@ export default function CompaniesClient({ initialCompanies }: { initialCompanies
 
   const fetchCompanies = useCallback(async () => {
     setLoading(true)
-    const { data } = await createClient().from('companies').select('*').order('name')
+    const { data } = await createClient().from('companies').select('*').order('address')
     setCompanies(data ?? [])
     setLoading(false)
   }, [])
