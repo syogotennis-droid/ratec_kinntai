@@ -119,6 +119,11 @@ function formatTime(t: string | null) {
   return `${ampm}${hour}:${String(m).padStart(2, '0')}`
 }
 
+// スマホの月間カレンダー表示専用の短縮時刻（保存値・詳細画面の表示は変更しない）
+function shortHour(t: string): string {
+  return String(Number(t.slice(0, 2)))
+}
+
 export default function ScheduleClient({ initialYearMonth, initialSchedules, initialWorkRecords, initialProfiles }: {
   initialYearMonth: string
   initialSchedules: Schedule[]
@@ -141,6 +146,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   const [addWorkDate, setAddWorkDate] = useState<string | null>(null)
   const [showMonthPicker, setShowMonthPicker] = useState(false)
   const [visibleUserIds, setVisibleUserIds] = useState<Set<string> | null>(null)
+  const [showEmployeeFilterSheet, setShowEmployeeFilterSheet] = useState(false)
   const touchStartX = useRef(0)
   const [dragX, setDragX] = useState(0)
   const [sliding, setSliding] = useState(false)
@@ -385,7 +391,9 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
         </div>
       )}
       {view === 'schedule' && (
-        <div className="flex items-center gap-2 px-1 mt-1.5 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+        <>
+        {/* PC: 従業員チップを常時表示 */}
+        <div className="hidden md:flex items-center gap-2 px-1 mt-1.5 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
           <span className="shrink-0 text-[9px] font-medium text-gray-400">表示対象</span>
           <button onClick={() => setVisibleUserIds(null)}
             className="shrink-0 text-[10px] px-2 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
@@ -422,6 +430,36 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
             )
           })}
         </div>
+
+        {/* スマホ: 全員・自分のみ・担当者を絞る の3つだけ表示 */}
+        <div className="flex md:hidden items-center gap-2 px-1 mt-1.5">
+          <span className="shrink-0 text-[9px] font-medium text-gray-400">表示対象</span>
+          <button onClick={() => setVisibleUserIds(null)}
+            className="shrink-0 text-xs px-2.5 py-1.5 rounded-full border font-medium transition-colors whitespace-nowrap"
+            style={visibleUserIds === null
+              ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
+              : { backgroundColor: '#fff', color: '#374151', borderColor: '#d1d5db' }}>
+            全員
+          </button>
+          <button onClick={() => setVisibleUserIds(new Set([profile.id]))}
+            className="shrink-0 text-xs px-2.5 py-1.5 rounded-full border font-medium transition-colors whitespace-nowrap"
+            style={visibleUserIds?.size === 1 && visibleUserIds.has(profile.id)
+              ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
+              : { backgroundColor: '#fff', color: '#374151', borderColor: '#d1d5db' }}>
+            自分のみ
+          </button>
+          <button onClick={() => setShowEmployeeFilterSheet(true)}
+            className="shrink-0 text-xs px-2.5 py-1.5 rounded-full border font-medium transition-colors whitespace-nowrap"
+            style={visibleUserIds !== null && !(visibleUserIds.size === 1 && visibleUserIds.has(profile.id))
+              ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
+              : { backgroundColor: '#fff', color: '#374151', borderColor: '#d1d5db' }}>
+            担当者を絞る
+          </button>
+          {visibleUserIds !== null && !(visibleUserIds.size === 1 && visibleUserIds.has(profile.id)) && (
+            <span className="shrink-0 text-xs text-blue-600 font-medium">担当者 {visibleUserIds.size}名</span>
+          )}
+        </div>
+        </>
       )}
     </div>
   )
@@ -560,7 +598,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                     <div key={date} className="cal-cell" onClick={handleCellClick}
                       style={{
                         borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb',
-                        minHeight: 62, overflow: 'hidden', cursor: 'pointer',
+                        minHeight: 66, overflow: 'hidden', cursor: 'pointer',
                         backgroundColor: isToday ? '#eff6ff' : undefined,
                         opacity: isCurrentMonth ? 1 : 0.35, padding: '2px 1px',
                       }}>
@@ -575,7 +613,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                           {dayNum}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginTop: 2, overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1.5, marginTop: 2, overflow: 'hidden' }}>
                         {dayEvts.slice(0, 1).map((e, i) => (
                           <div key={`h${i}`} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 8.5, fontWeight: 600, lineHeight: '12px', borderRadius: 2, padding: '0 2px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }} title={e.title}>
                             {e.title}
@@ -583,13 +621,13 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                         ))}
                         {shownChips.map(c => (
                           <div key={c.schedule.id} title={`${c.employeeName}${c.timeStr ? ' ' + c.timeStr : ''} / ${c.schedule.title}`}
-                            style={{ display: 'flex', alignItems: 'center', gap: 2, backgroundColor: hexToRgba(c.color, 0.26), borderLeft: `2px solid ${c.color}`, borderRadius: 2, padding: '0 2px', lineHeight: '13px', overflow: 'hidden' }}>
-                            <span style={{ flexShrink: 0, width: 11, height: 11, borderRadius: 999, backgroundColor: c.color, color: '#ffffff', fontSize: 7.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{c.initial}</span>
-                            <span style={{ flex: 1, minWidth: 0, fontSize: 9, fontWeight: 500, color: '#1f2937', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{c.schedule.title}</span>
+                            style={{ display: 'flex', alignItems: 'center', gap: 2, backgroundColor: hexToRgba(c.color, 0.26), borderLeft: `2px solid ${c.color}`, borderRadius: 2, padding: '1px 2px', lineHeight: '14px', overflow: 'hidden' }}>
+                            <span style={{ flexShrink: 0, width: 12, height: 12, borderRadius: 999, backgroundColor: c.color, color: '#ffffff', fontSize: 8, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{c.initial}</span>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 9.5, fontWeight: 500, color: '#1f2937', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{c.schedule.title}</span>
                           </div>
                         ))}
                         {extra > 0 && (
-                          <div className="cal-more" style={{ fontSize: 8.5, color: '#6b7280', lineHeight: '11px', fontWeight: 600 }}>ほか{extra}件</div>
+                          <div className="cal-more" style={{ fontSize: 9.5, color: '#4b5563', lineHeight: '16px', paddingLeft: 2, fontWeight: 600 }}>ほか{extra}件</div>
                         )}
                       </div>
                     </div>
@@ -726,7 +764,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                     <div key={date} className="cal-cell" onClick={handleCellTap}
                       style={{
                         borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb',
-                        minHeight: 62, overflow: 'hidden', cursor: 'pointer',
+                        minHeight: 66, overflow: 'hidden', cursor: 'pointer',
                         backgroundColor: isToday ? '#eff6ff' : undefined,
                         opacity: isCurrentMonth ? 1 : 0.35, padding: '2px 1px',
                       }}>
@@ -742,16 +780,16 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                         </span>
                       </div>
                       {wr && chipStyle && (
-                        <div style={{ backgroundColor: chipStyle.bg, borderLeft: `2px solid ${chipStyle.border}`, borderRadius: 2, padding: '1px 3px', margin: '2px 1px 0' }}>
-                          <div style={{ fontSize: 8, fontWeight: 700, color: chipStyle.fg, lineHeight: '10px' }}>
+                        <div style={{ backgroundColor: chipStyle.bg, borderLeft: `2px solid ${chipStyle.border}`, borderRadius: 2, padding: '1px 2px', margin: '2px 1px 0', overflow: 'hidden' }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: chipStyle.fg, lineHeight: '11px', whiteSpace: 'nowrap' }}>
                             {chipLabel}
                           </div>
                           {wr.work_type !== 'paid_leave' ? (
-                            <div style={{ fontSize: 9, fontWeight: 800, color: '#111827', lineHeight: '11px' }}>
-                              {wr.start_time.slice(0, 5)}–{wr.end_time.slice(0, 5)}
+                            <div style={{ fontSize: 10, fontWeight: 800, color: '#111827', lineHeight: '12px', whiteSpace: 'nowrap' }}>
+                              {shortHour(wr.start_time)}–{shortHour(wr.end_time)}
                             </div>
                           ) : (
-                            <div style={{ fontSize: 8.5, fontWeight: 700, color: '#111827', lineHeight: '11px' }}>終日</div>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: '#111827', lineHeight: '11px', whiteSpace: 'nowrap' }}>終日</div>
                           )}
                         </div>
                       )}
@@ -824,6 +862,68 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
       >
         +
       </button>
+
+      {/* スマホ: 担当者を絞る ボトムシート */}
+      {showEmployeeFilterSheet && (
+        <EmployeeFilterSheet
+          profiles={profiles}
+          visibleUserIds={visibleUserIds}
+          onApply={(ids) => { setVisibleUserIds(ids.size === profiles.length ? null : ids); setShowEmployeeFilterSheet(false) }}
+          onClose={() => setShowEmployeeFilterSheet(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+interface EmployeeFilterSheetProps {
+  profiles: UserProfile[]
+  visibleUserIds: Set<string> | null
+  onApply: (ids: Set<string>) => void
+  onClose: () => void
+}
+
+function EmployeeFilterSheet({ profiles, visibleUserIds, onApply, onClose }: EmployeeFilterSheetProps) {
+  const [temp, setTemp] = useState<Set<string>>(new Set(visibleUserIds ?? profiles.map(p => p.id)))
+  const toggle = (id: string) => setTemp(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+
+  return (
+    <div className="fixed inset-0 z-50" onClick={onClose}>
+      <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[70vh] flex flex-col"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        </div>
+        <div className="px-5 pt-1 pb-3">
+          <h2 className="text-base font-bold text-gray-900">担当者を絞る</h2>
+        </div>
+        <div className="overflow-y-auto flex-1 px-5 pb-2">
+          {profiles.map(p => {
+            const color = p.color || userColor(p.id)
+            const checked = temp.has(p.id)
+            return (
+              <label key={p.id} className="flex items-center gap-3 py-2.5 cursor-pointer border-b border-gray-50 last:border-b-0">
+                <input type="checkbox" checked={checked} onChange={() => toggle(p.id)} className="w-4 h-4 shrink-0" />
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                <span className="text-sm text-gray-900">{p.name}</span>
+              </label>
+            )
+          })}
+        </div>
+        <div className="flex items-center gap-2 px-5 py-3 border-t border-gray-100">
+          <button onClick={() => setTemp(new Set())} className="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">
+            すべて解除
+          </button>
+          <div className="flex-1" />
+          <button onClick={() => onApply(temp)} className="px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm">
+            適用
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -842,6 +942,19 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
   const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][new Date(date).getDay()]
   const isWeekend = new Date(date).getDay() === 0 || new Date(date).getDay() === 6
 
+  const [dragY, setDragY] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const dragStartY = useRef(0)
+  const handleDragStart = (e: React.TouchEvent) => { setDragging(true); dragStartY.current = e.touches[0].clientY }
+  const handleDragMove = (e: React.TouchEvent) => {
+    const diff = e.touches[0].clientY - dragStartY.current
+    if (diff > 0) setDragY(diff)
+  }
+  const handleDragEnd = () => {
+    setDragging(false)
+    if (dragY > 80) onClose(); else setDragY(0)
+  }
+
   const sorted = [...schedules].sort((a, b) => {
     if (!a.start_time && b.start_time) return -1
     if (a.start_time && !b.start_time) return 1
@@ -852,13 +965,15 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
       <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[70vh] flex flex-col"
+        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out' }}
         onClick={e => e.stopPropagation()}>
-        {/* Handle bar */}
-        <div className="flex justify-center pt-2 pb-1">
+        {/* Handle bar（下にスワイプで閉じる） */}
+        <div className="flex justify-center pt-2 pb-1" onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-2 pb-3">
+        <div className="flex items-center justify-between px-5 pt-2 pb-3"
+          onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
           <h2 className={`text-lg font-bold ${isWeekend ? 'text-red-500' : 'text-gray-900'}`}>
             {m}月{d}日 {dayOfWeek}曜日
           </h2>
@@ -1181,7 +1296,7 @@ function ScheduleModal({ schedule, defaultDate, userId, profiles, onClose, onSav
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">タイトル *</label>
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)} autoFocus
+            <input type="text" value={title} onChange={e => setTitle(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
@@ -1240,14 +1355,29 @@ function WorkDaySheet({ date, workRecord, onClose, onEdit, onAdd }: WorkDaySheet
     return `${h}:${min}`
   }
 
+  const [dragY, setDragY] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const dragStartY = useRef(0)
+  const handleDragStart = (e: React.TouchEvent) => { setDragging(true); dragStartY.current = e.touches[0].clientY }
+  const handleDragMove = (e: React.TouchEvent) => {
+    const diff = e.touches[0].clientY - dragStartY.current
+    if (diff > 0) setDragY(diff)
+  }
+  const handleDragEnd = () => {
+    setDragging(false)
+    if (dragY > 80) onClose(); else setDragY(0)
+  }
+
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
       <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[60vh] flex flex-col"
+        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out' }}
         onClick={e => e.stopPropagation()}>
-        <div className="flex justify-center pt-2 pb-1">
+        <div className="flex justify-center pt-2 pb-1" onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
-        <div className="flex items-center justify-between px-5 pt-2 pb-3">
+        <div className="flex items-center justify-between px-5 pt-2 pb-3"
+          onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
           <h2 className={`text-lg font-bold ${isWeekend ? 'text-red-500' : 'text-gray-900'}`}>
             {m}月{d}日 {dayOfWeek}曜日
           </h2>
