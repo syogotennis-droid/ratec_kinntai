@@ -69,9 +69,8 @@ export default function NewQuotationPage() {
   const [issueDate, setIssueDate] = useState(new Date().toLocaleDateString('sv-SE'))
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<Omit<QuotationItem, 'id'>[]>([
-    { sort_order: 0, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product' }
+    { sort_order: 0, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product', product_url: null }
   ])
-  const [itemLinks, setItemLinks] = useState<(string | null)[]>([null])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -184,12 +183,10 @@ export default function NewQuotationPage() {
   }
 
   const addItem = () => {
-    setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product' }])
-    setItemLinks(prev => [...prev, null])
+    setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product', product_url: null }])
   }
   const removeItem = (idx: number) => {
     setItems(prev => prev.filter((_, i) => i !== idx))
-    setItemLinks(prev => prev.filter((_, i) => i !== idx))
   }
 
   const applyWin2kResult = (idx: number, result: Win2kResult, maker: Maker) => {
@@ -197,12 +194,7 @@ export default function NewQuotationPage() {
     setItems(prev => {
       const next = [...prev]
       const unitPrice = result.price ?? next[idx].unit_price
-      next[idx] = { ...next[idx], name, unit_price: unitPrice, amount: Math.round(next[idx].qty * unitPrice * next[idx].markup_rate) }
-      return next
-    })
-    setItemLinks(prev => {
-      const next = [...prev]
-      next[idx] = result.detailUrl
+      next[idx] = { ...next[idx], name, unit_price: unitPrice, amount: Math.round(next[idx].qty * unitPrice * next[idx].markup_rate), product_url: result.detailUrl }
       return next
     })
 
@@ -401,8 +393,8 @@ export default function NewQuotationPage() {
                             <input value={splitName(item.name)[1]} onChange={e => updateItem(idx, 'name', joinName(splitName(item.name)[0], e.target.value))}
                               placeholder="型番" className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                           </div>
-                          {itemLinks[idx] && (
-                            <a href={itemLinks[idx]!} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
+                          {item.product_url && (
+                            <a href={item.product_url} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
                               className="shrink-0 p-1 mt-0.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                               <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M8 4H4.5A1.5 1.5 0 0 0 3 5.5v10A1.5 1.5 0 0 0 4.5 17h10a1.5 1.5 0 0 0 1.5-1.5V12" />
@@ -497,8 +489,8 @@ export default function NewQuotationPage() {
                     <div className="flex items-start gap-1">
                       <input value={splitName(item.name)[0]} onChange={e => updateItem(idx, 'name', joinName(e.target.value, splitName(item.name)[1]))}
                         placeholder="品名" className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                      {itemLinks[idx] && (
-                        <a href={itemLinks[idx]!} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
+                      {item.product_url && (
+                        <a href={item.product_url} target="_blank" rel="noreferrer noopener" title="公式サイトの商品ページを開く"
                           className="shrink-0 p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                           <svg viewBox="0 0 20 20" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
                             <path d="M8 4H4.5A1.5 1.5 0 0 0 3 5.5v10A1.5 1.5 0 0 0 4.5 17h10a1.5 1.5 0 0 0 1.5-1.5V12" />
