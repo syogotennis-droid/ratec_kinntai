@@ -29,7 +29,7 @@ const STATUS_SELECT_STYLES: Record<QuotationStatus, string> = {
   '失注': 'bg-red-50 text-red-600 border-red-200',
 }
 
-const ITEM_GRID_COLS = '[grid-template-columns:64px_140px_1fr_56px_100px_72px_110px_120px_40px]'
+const ITEM_GRID_COLS = '[grid-template-columns:56px_120px_1fr_56px_96px_64px_100px_112px_36px]'
 // 狭い列で数値入力のスピンナー矢印が桁を隠してしまうのを防ぐ
 const NO_SPINNER = '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
 
