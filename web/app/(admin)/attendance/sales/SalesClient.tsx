@@ -70,6 +70,7 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
   const [filterUserId, setFilterUserId] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<'all' | 'no_amount' | 'no_cost' | 'complete'>('all')
   const [filterPhoto, setFilterPhoto] = useState<'all' | 'has' | 'none'>('all')
+  const [filterDate, setFilterDate] = useState('')
 
   const nameById = (id: string) => profiles.find(p => p.id === id)?.name ?? '—'
 
@@ -131,6 +132,7 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
       const name = nameById(r.user_id).toLowerCase()
       if (!desc.includes(q) && !name.includes(q)) return false
     }
+    if (filterDate && r.record_date !== filterDate) return false
     return true
   })
 
@@ -141,11 +143,20 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
 
   const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE))
   const pagedRecords = filteredRecords.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-  const isFiltered = searchQuery.trim() !== '' || filterUserId !== 'all' || filterStatus !== 'all' || filterPhoto !== 'all'
+  const isFiltered = searchQuery.trim() !== '' || filterUserId !== 'all' || filterStatus !== 'all' || filterPhoto !== 'all' || filterDate !== ''
 
   const handleFilterChange = (fn: () => void) => {
     setPage(0)
     fn()
+  }
+
+  const handleDateFilterChange = (v: string) => {
+    setPage(0)
+    setFilterDate(v)
+    if (v) {
+      const ym = v.slice(0, 7)
+      if (ym !== yearMonth) setYearMonth(ym)
+    }
   }
 
   const prevMonth = () => {
@@ -219,6 +230,18 @@ export default function SalesClient({ initialYearMonth, initialRecords, initialP
           placeholder="案件名・現場名・担当者で検索"
           className="flex-1 min-w-[180px] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        <div className="flex items-center gap-1">
+          <input
+            type="date"
+            value={filterDate}
+            onChange={e => handleDateFilterChange(e.target.value)}
+            className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {filterDate && (
+            <button onClick={() => handleDateFilterChange('')} aria-label="日付検索をクリア"
+              className="px-1.5 py-1 text-xs text-gray-400 hover:text-gray-600">×</button>
+          )}
+        </div>
         <select
           value={filterUserId}
           onChange={e => handleFilterChange(() => setFilterUserId(e.target.value))}
