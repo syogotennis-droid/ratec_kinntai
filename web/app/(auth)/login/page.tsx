@@ -26,7 +26,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
           <div className="text-center mb-8">
-            <h1 className="text-xl font-bold text-gray-900">業務管理システム</h1>
+            <h1 className="text-xl font-bold text-gray-900">RATEC ONE</h1>
             <p className="text-sm text-gray-500 mt-1">ログイン</p>
           </div>
 
