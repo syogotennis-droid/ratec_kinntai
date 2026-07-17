@@ -592,7 +592,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                   const extra = dayChips.length - maxPerCell
                   const handleCellClick = () => {
                     if (!isCurrentMonth) return
-                    if (dayChips.length === 0) { setAddDate(date) } else { setDaySheet(date) }
+                    setDaySheet(date)
                   }
                   return (
                     <div key={date} className="cal-cell" onClick={handleCellClick}
@@ -945,8 +945,14 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
   const [dragY, setDragY] = useState(0)
   const [dragging, setDragging] = useState(false)
   const dragStartY = useRef(0)
-  const handleDragStart = (e: React.TouchEvent) => { setDragging(true); dragStartY.current = e.touches[0].clientY }
+  const listRef = useRef<HTMLDivElement>(null)
+  const handleDragStart = (e: React.TouchEvent) => {
+    if (listRef.current && listRef.current.scrollTop > 0) return
+    setDragging(true)
+    dragStartY.current = e.touches[0].clientY
+  }
   const handleDragMove = (e: React.TouchEvent) => {
+    if (!dragging) return
     const diff = e.touches[0].clientY - dragStartY.current
     if (diff > 0) setDragY(diff)
   }
@@ -963,17 +969,17 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
   })
 
   return (
-    <div className="fixed inset-0 z-50" onClick={onClose}>
+    <div className="fixed inset-0 z-50" onClick={onClose} style={{ overscrollBehavior: 'contain' }}>
       <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[70vh] flex flex-col"
-        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out' }}
-        onClick={e => e.stopPropagation()}>
+        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out', overscrollBehavior: 'contain' }}
+        onClick={e => e.stopPropagation()}
+        onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
         {/* Handle bar（下にスワイプで閉じる） */}
-        <div className="flex justify-center pt-2 pb-1" onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
+        <div className="flex justify-center pt-2 pb-1">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-2 pb-3"
-          onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
+        <div className="flex items-center justify-between px-5 pt-2 pb-3">
           <h2 className={`text-lg font-bold ${isWeekend ? 'text-red-500' : 'text-gray-900'}`}>
             {m}月{d}日 {dayOfWeek}曜日
           </h2>
@@ -983,7 +989,7 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
           </button>
         </div>
         {/* List */}
-        <div className="overflow-y-auto flex-1 px-5 pb-8">
+        <div ref={listRef} className="overflow-y-auto flex-1 px-5 pb-8" style={{ overscrollBehavior: 'contain' }}>
           {sorted.length === 0 ? (
             <p className="text-sm text-gray-400 py-6 text-center">予定なし</p>
           ) : (
@@ -1358,8 +1364,14 @@ function WorkDaySheet({ date, workRecord, onClose, onEdit, onAdd }: WorkDaySheet
   const [dragY, setDragY] = useState(0)
   const [dragging, setDragging] = useState(false)
   const dragStartY = useRef(0)
-  const handleDragStart = (e: React.TouchEvent) => { setDragging(true); dragStartY.current = e.touches[0].clientY }
+  const listRef = useRef<HTMLDivElement>(null)
+  const handleDragStart = (e: React.TouchEvent) => {
+    if (listRef.current && listRef.current.scrollTop > 0) return
+    setDragging(true)
+    dragStartY.current = e.touches[0].clientY
+  }
   const handleDragMove = (e: React.TouchEvent) => {
+    if (!dragging) return
     const diff = e.touches[0].clientY - dragStartY.current
     if (diff > 0) setDragY(diff)
   }
@@ -1369,15 +1381,15 @@ function WorkDaySheet({ date, workRecord, onClose, onEdit, onAdd }: WorkDaySheet
   }
 
   return (
-    <div className="fixed inset-0 z-50" onClick={onClose}>
+    <div className="fixed inset-0 z-50" onClick={onClose} style={{ overscrollBehavior: 'contain' }}>
       <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[60vh] flex flex-col"
-        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out' }}
-        onClick={e => e.stopPropagation()}>
-        <div className="flex justify-center pt-2 pb-1" onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
+        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out', overscrollBehavior: 'contain' }}
+        onClick={e => e.stopPropagation()}
+        onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
+        <div className="flex justify-center pt-2 pb-1">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
-        <div className="flex items-center justify-between px-5 pt-2 pb-3"
-          onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
+        <div className="flex items-center justify-between px-5 pt-2 pb-3">
           <h2 className={`text-lg font-bold ${isWeekend ? 'text-red-500' : 'text-gray-900'}`}>
             {m}月{d}日 {dayOfWeek}曜日
           </h2>
@@ -1388,7 +1400,7 @@ function WorkDaySheet({ date, workRecord, onClose, onEdit, onAdd }: WorkDaySheet
             </button>
           )}
         </div>
-        <div className="overflow-y-auto flex-1 px-5 pb-8">
+        <div ref={listRef} className="overflow-y-auto flex-1 px-5 pb-8" style={{ overscrollBehavior: 'contain' }}>
           {workRecord ? (
             <div onClick={() => onEdit(workRecord)}
               className="flex items-center gap-3 py-3 px-2 rounded-xl hover:bg-gray-50 cursor-pointer">
