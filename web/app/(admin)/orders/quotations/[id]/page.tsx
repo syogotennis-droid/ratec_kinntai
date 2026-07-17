@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Quotation, QuotationItem, Project, QuotationStatus, Settings } from '@/lib/supabase/types'
@@ -75,8 +75,6 @@ export default function QuotationDetailPage() {
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
 
   const [projectId, setProjectId] = useState<number>(0)
   const [supplierId, setSupplierId] = useState<number>(0)
@@ -119,15 +117,6 @@ export default function QuotationDetailPage() {
   }, [id])
 
   useEffect(() => { fetchData() }, [fetchData])
-
-  useEffect(() => {
-    if (!menuOpen) return
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [menuOpen])
 
   const subtotal = items.reduce((s, item) => s + item.amount, 0)
   const taxAmount = Math.floor(subtotal * TAX_RATE)
@@ -247,7 +236,6 @@ export default function QuotationDetailPage() {
   }
 
   const handleDelete = async () => {
-    setMenuOpen(false)
     if (!confirm('削除しますか？')) return
     setSaving(true)
     try {
@@ -264,84 +252,60 @@ export default function QuotationDetailPage() {
 
   return (
     <div className="p-4 max-w-[1180px] mx-auto">
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link href="/orders/quotations" className="text-sm text-blue-600 hover:underline shrink-0">← 一覧へ戻る</Link>
-          <div className="min-w-0">
-            <h1 className="text-lg font-bold text-gray-900 leading-tight">見積書編集</h1>
-            <p className="text-sm text-gray-600 leading-tight mt-0.5">{docNo || '見積番号未設定'}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button onClick={handleExport} disabled={exporting || saving}
-            className="px-3 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white rounded-lg">
-            {exporting ? '出力中...' : 'Excel出力'}
-          </button>
-          <div className="relative" ref={menuRef}>
-            <button onClick={() => setMenuOpen(v => !v)}
-              className="w-9 h-9 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-lg border border-gray-200"
-              aria-label="その他の操作">
-              ⋮
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden">
-                <button onClick={handleDelete} disabled={saving}
-                  className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50">
-                  この見積書を削除
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+      <div className="flex items-center gap-3 mb-4">
+        <Link href="/orders/quotations" className="text-sm text-blue-600 hover:underline">← 一覧</Link>
+        <h1 className="text-sm font-bold text-gray-900 flex-1">見積書</h1>
+        <button onClick={handleExport} disabled={exporting || saving}
+          className="px-3 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white rounded-lg">
+          {exporting ? '出力中...' : 'Excel出力'}
+        </button>
+        <button onClick={handleDelete} disabled={saving} className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg">削除</button>
       </div>
 
       {/* 基本情報 */}
       <div className="max-w-[1000px] mx-auto mb-4">
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">案件名</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">案件名</label>
               <select value={projectId} onChange={e => setProjectId(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ステータス</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">ステータス</label>
               <select value={status} onChange={e => setStatus(e.target.value as QuotationStatus)}
-                className={`w-full px-3 py-2 border rounded-lg text-base font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${STATUS_SELECT_STYLES[status]}`}>
+                className={`w-full px-3 py-2 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${STATUS_SELECT_STYLES[status]}`}>
                 {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">見積書番号</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">見積書番号</label>
               <input type="text" value={docNo} onChange={e => setDocNo(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">発行日</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">発行日</label>
               <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">備考</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">備考</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
         </div>
       </div>
 
       {/* 明細 */}
       <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-gray-700">明細</h2>
-          <button onClick={addItem}
-            className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-            + 行追加
-          </button>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xs font-bold text-gray-700">明細</h2>
+          <button onClick={addItem} className="text-xs text-blue-600 hover:underline">+ 行追加</button>
         </div>
 
         {/* PC: 一覧表示 */}
@@ -564,37 +528,20 @@ export default function QuotationDetailPage() {
             )
           })}
         </div>
-      </div>
 
-      {/* 金額・保存操作 */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 md:p-5">
-        <div className="flex justify-end">
-          <div className="w-full sm:w-72 space-y-1">
-            <div className="flex justify-between text-sm text-gray-500">
-              <span>小計</span><span className="tabular-nums">¥{subtotal.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-500">
-              <span>消費税（10%）</span><span className="tabular-nums">¥{taxAmount.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-lg font-bold text-gray-900 pt-1.5 mt-1 border-t border-gray-200">
-              <span>合計</span><span className="tabular-nums">¥{totalAmount.toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
-
-        {error && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-
-        <div className="flex items-center justify-end gap-2 mt-4">
-          <Link href="/orders/quotations"
-            className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">
-            キャンセル
-          </Link>
-          <button onClick={handleSave} disabled={saving}
-            className="px-5 py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg shadow-sm">
-            {saving ? '保存中...' : '変更を保存'}
-          </button>
+        <div className="mt-3 border-t border-gray-200 pt-3 space-y-1 text-sm">
+          <div className="flex justify-between"><span className="text-gray-600">小計</span><span>¥{subtotal.toLocaleString()}</span></div>
+          <div className="flex justify-between"><span className="text-gray-600">消費税（10%）</span><span>¥{taxAmount.toLocaleString()}</span></div>
+          <div className="flex justify-between font-bold text-base"><span>合計</span><span>¥{totalAmount.toLocaleString()}</span></div>
         </div>
       </div>
+
+      {error && <p className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+
+      <button onClick={handleSave} disabled={saving}
+        className="w-full py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
+        {saving ? '保存中...' : '保存'}
+      </button>
     </div>
   )
 }
