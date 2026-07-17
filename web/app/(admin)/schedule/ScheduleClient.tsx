@@ -133,6 +133,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   const [workRecords, setWorkRecords] = useState<WorkRecord[]>(initialWorkRecords)
   const [loading, setLoading] = useState(false)
   const [daySheet, setDaySheet] = useState<string | null>(null)
+  const [workDaySheetDate, setWorkDaySheetDate] = useState<string | null>(null)
   const [selectedWorkDate, setSelectedWorkDate] = useState<string | null>(null)
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null)
   const [editWorkRecord, setEditWorkRecord] = useState<WorkRecord | null>(null)
@@ -329,6 +330,9 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
   }, [])
+
+  // FABの新規追加は、表示中の月に「今日」が含まれる場合は今日、それ以外はその月の1日を初期値にする
+  const fabDefaultDate = todayStr.slice(0, 7) === yearMonth ? todayStr : `${yearMonth}-01`
 
   const workRecordsByDate = useMemo(() => {
     return workRecords.reduce<Record<string, WorkRecord>>((acc, r) => {
@@ -530,64 +534,68 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                 </div>
               </div>
 
-              {/* スマホ: 日付ごとの縦型リスト */}
-              <div className="md:hidden divide-y divide-gray-100">
-                {calendarDays.filter(d => d.isCurrentMonth).map(({ date, dayNum }) => {
+              {/* スマホ: 月間カレンダー */}
+              <div className="md:hidden">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #9ca3af' }}>
+                  {['日','月','火','水','木','金','土'].map((d, i) => (
+                    <div key={d} style={{ textAlign: 'center', padding: '4px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                  ))}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                  {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
                   const dayEvts = eventsByDate[date] ?? []
                   const dayChips = scheduleChipsByDate[date] ?? []
                   const isToday = date === todayStr
                   const isHoliday = holidayDates.has(date)
                   const dow = new Date(`${date}T00:00:00`).getDay()
-                  const dayOfWeekLabel = ['日','月','火','水','木','金','土'][dow]
-                  const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : '#374151'
-                  const shownChips = dayChips.slice(0, 3)
-                  const extra = dayChips.length - 3
-                  const handleRowClick = () => {
+                  const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
+                  const maxPerCell = 2
+                  const shownChips = dayChips.slice(0, maxPerCell)
+                  const extra = dayChips.length - maxPerCell
+                  const handleCellClick = () => {
+                    if (!isCurrentMonth) return
                     if (dayChips.length === 0) { setAddDate(date) } else { setDaySheet(date) }
                   }
                   return (
-                    <div key={date} onClick={handleRowClick}
-                      className="flex items-center gap-3 px-3 py-2.5 active:bg-gray-50 cursor-pointer"
-                      style={{ backgroundColor: isToday ? '#eff6ff' : undefined }}>
-                      <div className="flex flex-col items-center w-11 shrink-0">
-                        <span style={{ fontSize: 11, color: numColor === '#374151' ? '#9ca3af' : numColor }}>{dayOfWeekLabel}</span>
+                    <div key={date} className="cal-cell" onClick={handleCellClick}
+                      style={{
+                        borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb',
+                        minHeight: 62, overflow: 'hidden', cursor: 'pointer',
+                        backgroundColor: isToday ? '#eff6ff' : undefined,
+                        opacity: isCurrentMonth ? 1 : 0.35, padding: '2px 1px',
+                      }}>
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          width: 26, height: 26, borderRadius: isToday ? 9999 : 0,
+                          width: 20, height: 20, borderRadius: isToday ? 9999 : 0,
                           backgroundColor: isToday ? '#2563eb' : 'transparent',
-                          color: isToday ? '#ffffff' : numColor,
-                          fontSize: 15, fontWeight: 700,
+                          color: isToday ? '#ffffff' : (numColor || '#374151'),
+                          fontSize: 12, fontWeight: isToday ? 700 : 600, lineHeight: 1,
                         }}>
                           {dayNum}
                         </span>
                       </div>
-                      <div className="flex-1 min-w-0 space-y-1">
-                        {dayEvts.map((e, i) => (
-                          <div key={`h${i}`} className="text-xs font-semibold rounded px-1.5 py-0.5 truncate"
-                            style={{ backgroundColor: e.backgroundColor, color: e.textColor }} title={e.title}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginTop: 2, overflow: 'hidden' }}>
+                        {dayEvts.slice(0, 1).map((e, i) => (
+                          <div key={`h${i}`} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 8.5, fontWeight: 600, lineHeight: '12px', borderRadius: 2, padding: '0 2px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }} title={e.title}>
                             {e.title}
                           </div>
                         ))}
-                        {shownChips.length === 0 && dayEvts.length === 0 ? (
-                          <span className="text-xs text-gray-300">予定なし</span>
-                        ) : (
-                          shownChips.map(c => (
-                            <div key={c.schedule.id} className="flex items-center gap-1.5 text-xs rounded px-1.5 py-1"
-                              style={{ backgroundColor: hexToRgba(c.color, 0.22), borderLeft: `3px solid ${c.color}` }}
-                              title={`${c.employeeName}${c.timeStr ? ' ' + c.timeStr : ''} / ${c.schedule.title}`}>
-                              <span className="shrink-0 font-bold rounded-full px-2" style={{ color: '#ffffff', backgroundColor: c.color, lineHeight: '18px' }}>{familyName(c.employeeName)}</span>
-                              <span className="flex-1 min-w-0 truncate font-medium" style={{ color: '#1f2937' }}>{c.schedule.title}</span>
-                              {c.timeStr && <span className="shrink-0 text-gray-400">{c.timeStr}</span>}
-                            </div>
-                          ))
-                        )}
+                        {shownChips.map(c => (
+                          <div key={c.schedule.id} title={`${c.employeeName}${c.timeStr ? ' ' + c.timeStr : ''} / ${c.schedule.title}`}
+                            style={{ display: 'flex', alignItems: 'center', gap: 2, backgroundColor: hexToRgba(c.color, 0.26), borderLeft: `2px solid ${c.color}`, borderRadius: 2, padding: '0 2px', lineHeight: '13px', overflow: 'hidden' }}>
+                            <span style={{ flexShrink: 0, width: 11, height: 11, borderRadius: 999, backgroundColor: c.color, color: '#ffffff', fontSize: 7.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{c.initial}</span>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 9, fontWeight: 500, color: '#1f2937', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{c.schedule.title}</span>
+                          </div>
+                        ))}
                         {extra > 0 && (
-                          <div className="cal-more text-[11px] pl-1 font-bold" style={{ color: '#2563eb' }}>＋{extra}件を表示</div>
+                          <div className="cal-more" style={{ fontSize: 8.5, color: '#6b7280', lineHeight: '11px', fontWeight: 600 }}>ほか{extra}件</div>
                         )}
                       </div>
                     </div>
                   )
                 })}
+                </div>
               </div>
             </div>
           </div>
@@ -693,67 +701,64 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                 </div>
               </div>
 
-              {/* スマホ: 日付ごとの縦型リスト */}
-              <div className="md:hidden divide-y divide-gray-100">
-                {calendarDays.filter(d => d.isCurrentMonth).map(({ date, dayNum }) => {
+              {/* スマホ: 月間カレンダー */}
+              <div className="md:hidden">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #9ca3af' }}>
+                  {['日','月','火','水','木','金','土'].map((d, i) => (
+                    <div key={d} style={{ textAlign: 'center', padding: '4px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                  ))}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                  {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
                   const wr = workRecordsByDate[date]
                   const isToday = date === todayStr
                   const isHoliday = holidayDates.has(date)
                   const dow = new Date(`${date}T00:00:00`).getDay()
-                  const dayOfWeekLabel = ['日','月','火','水','木','金','土'][dow]
-                  const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : '#374151'
-                  const isSelected = selectedWorkDate === date
-                  const handleWorkDateClick = () => {
-                    if (isSelected) {
-                      const existing = workRecordsByDate[date] ?? null
-                      if (existing) { setEditWorkRecord(existing); setAddWorkDate(null) }
-                      else { setAddWorkDate(date); setEditWorkRecord(null) }
-                      setSelectedWorkDate(null)
-                    } else {
-                      setSelectedWorkDate(date)
-                    }
+                  const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
+                  const handleCellTap = () => {
+                    if (!isCurrentMonth) return
+                    setWorkDaySheetDate(date)
                   }
                   const isOvertime = !!wr && wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
                   const chipLabel = wr ? (isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]) : ''
                   const chipStyle = wr ? WORK_TYPE_LIGHT[isOvertime ? 'overtime' : wr.work_type] : null
                   return (
-                    <div key={date} onClick={handleWorkDateClick}
-                      className="flex items-center gap-3 px-3 py-2.5 active:bg-gray-50 cursor-pointer"
-                      style={{ backgroundColor: isSelected ? '#dbeafe' : isToday ? '#eff6ff' : undefined }}>
-                      <div className="flex flex-col items-center w-11 shrink-0">
-                        <span style={{ fontSize: 11, color: numColor === '#374151' ? '#9ca3af' : numColor }}>{dayOfWeekLabel}</span>
+                    <div key={date} className="cal-cell" onClick={handleCellTap}
+                      style={{
+                        borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb',
+                        minHeight: 62, overflow: 'hidden', cursor: 'pointer',
+                        backgroundColor: isToday ? '#eff6ff' : undefined,
+                        opacity: isCurrentMonth ? 1 : 0.35, padding: '2px 1px',
+                      }}>
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          width: 26, height: 26, borderRadius: isToday ? 9999 : 0,
+                          width: 20, height: 20, borderRadius: isToday ? 9999 : 0,
                           backgroundColor: isToday ? '#2563eb' : 'transparent',
-                          color: isToday ? '#ffffff' : numColor,
-                          fontSize: 15, fontWeight: 700,
+                          color: isToday ? '#ffffff' : (numColor || '#374151'),
+                          fontSize: 12, fontWeight: isToday ? 700 : 600, lineHeight: 1,
                         }}>
                           {dayNum}
                         </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        {wr && chipStyle ? (
-                          <div style={{ backgroundColor: chipStyle.bg, borderLeft: `4px solid ${chipStyle.border}`, borderRadius: 4, padding: '5px 10px' }}>
-                            <div className="flex items-center gap-2">
-                              <span style={{ fontSize: 11, fontWeight: 700, color: chipStyle.fg }}>{chipLabel}</span>
-                              {wr.work_type !== 'paid_leave' && (
-                                <span style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>
-                                  {wr.start_time.slice(0, 5)}–{wr.end_time.slice(0, 5)}
-                                </span>
-                              )}
-                            </div>
-                            {wr.notes && (
-                              <div className="truncate" style={{ fontSize: 11, color: '#57606f' }} title={wr.notes}>{wr.notes}</div>
-                            )}
+                      {wr && chipStyle && (
+                        <div style={{ backgroundColor: chipStyle.bg, borderLeft: `2px solid ${chipStyle.border}`, borderRadius: 2, padding: '1px 3px', margin: '2px 1px 0' }}>
+                          <div style={{ fontSize: 8, fontWeight: 700, color: chipStyle.fg, lineHeight: '10px' }}>
+                            {chipLabel}
                           </div>
-                        ) : (
-                          <span className="text-xs text-gray-300">記録なし・タップして追加</span>
-                        )}
-                      </div>
+                          {wr.work_type !== 'paid_leave' ? (
+                            <div style={{ fontSize: 9, fontWeight: 800, color: '#111827', lineHeight: '11px' }}>
+                              {wr.start_time.slice(0, 5)}–{wr.end_time.slice(0, 5)}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 8.5, fontWeight: 700, color: '#111827', lineHeight: '11px' }}>終日</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })}
+                </div>
               </div>
             </div>
           </div>
@@ -763,6 +768,16 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               month={displayMonth}
               onSelect={goToMonth}
               onClose={() => setShowMonthPicker(false)}
+            />
+          )}
+          {/* スマホ: 日付タップで勤怠詳細ボトムシート */}
+          {workDaySheetDate && (
+            <WorkDaySheet
+              date={workDaySheetDate}
+              workRecord={workRecordsByDate[workDaySheetDate] ?? null}
+              onClose={() => setWorkDaySheetDate(null)}
+              onAdd={() => { setAddWorkDate(workDaySheetDate); setWorkDaySheetDate(null) }}
+              onEdit={(wr) => { setEditWorkRecord(wr); setWorkDaySheetDate(null) }}
             />
           )}
           {(addWorkDate !== null || editWorkRecord !== null) && (
@@ -800,6 +815,15 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
           onSaved={fetchSchedules}
         />
       )}
+
+      {/* スマホ: 新規追加FAB */}
+      <button
+        onClick={() => { if (view === 'schedule') setAddDate(fabDefaultDate); else setAddWorkDate(fabDefaultDate) }}
+        className="md:hidden fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-2xl font-light shadow-lg flex items-center justify-center"
+        aria-label={view === 'schedule' ? '予定を追加' : '勤怠を追加'}
+      >
+        +
+      </button>
     </div>
   )
 }
