@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1d4fd1",
+  themeColor: "#012074",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <RegisterServiceWorker />
         {/* ホーム画面から起動した(PWAとしてインストール済みの)時だけ表示する起動画面 */}
         <div className="pwa-splash">
-          <img src="/icons/192" alt="" className="pwa-splash-icon" />
+          <img src="/icons/icon-192.png" alt="" className="pwa-splash-icon" />
           <div className="pwa-splash-title">業務管理</div>
           <div className="pwa-splash-subtitle">勤怠・売上・帳票管理</div>
           <div className="pwa-splash-spinner" />
