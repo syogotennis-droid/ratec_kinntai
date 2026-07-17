@@ -381,30 +381,30 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
         </div>
       )}
       {view === 'schedule' && (
-        <div className="flex items-center gap-1.5 px-1 mt-1 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
-          <span className="shrink-0 text-[10px] font-semibold text-gray-400">表示対象</span>
+        <div className="flex items-center gap-2 px-1 mt-1.5 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+          <span className="shrink-0 text-[9px] font-medium text-gray-400">表示対象</span>
           <button onClick={() => setVisibleUserIds(null)}
-            className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border font-medium transition-colors whitespace-nowrap"
+            className="shrink-0 text-[10px] px-2 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
             style={visibleUserIds === null
               ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
               : { backgroundColor: '#fff', color: '#374151', borderColor: '#d1d5db' }}>
             全員
           </button>
           <button onClick={() => setVisibleUserIds(new Set([profile.id]))}
-            className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border font-medium transition-colors whitespace-nowrap"
+            className="shrink-0 text-[10px] px-2 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
             style={visibleUserIds?.size === 1 && visibleUserIds.has(profile.id)
               ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
               : { backgroundColor: '#fff', color: '#374151', borderColor: '#d1d5db' }}>
             自分のみ
           </button>
-          <span className="shrink-0 w-px h-3.5 bg-gray-300 mx-1" />
-          <span className="shrink-0 text-[10px] font-semibold text-gray-400">担当者</span>
+          <span className="shrink-0 w-px h-4 bg-gray-300 mx-1.5" />
+          <span className="shrink-0 text-[9px] font-medium text-gray-400">担当者</span>
           {profiles.map(p => {
             const isVisible = visibleUserIds === null || visibleUserIds.has(p.id)
             const color = p.color || userColor(p.id)
             return (
               <button key={p.id} onClick={() => toggleUser(p.id)}
-                className="shrink-0 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border transition-colors whitespace-nowrap"
+                className="shrink-0 inline-flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full border transition-colors whitespace-nowrap"
                 style={{
                   backgroundColor: isVisible ? hexToRgba(color, 0.16) : '#ffffff',
                   borderColor: isVisible ? color : '#d1d5db',
@@ -432,7 +432,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
         .cal-cell:hover .cal-hint { opacity: 1; }
         .cal-cell:hover { background-color: #f9fafb; }
         .cal-chip:hover { filter: brightness(0.97); }
-        .cal-more:hover { text-decoration: underline; }
+        .cal-more:hover { text-decoration: underline; color: #2563eb !important; }
       `}</style>
       {header}
 
@@ -511,19 +511,17 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                             const label = `${c.employeeName}${c.timeStr ? ' ' + c.timeStr : ''} / ${c.schedule.title}`
                             return (
                               <div key={c.schedule.id} className="cal-chip" title={label}
-                                style={{ display: 'flex', flexDirection: 'column', backgroundColor: hexToRgba(c.color, 0.26), borderLeft: `3px solid ${c.color}`, borderRadius: 4, padding: '2px 4px', overflow: 'hidden', flexShrink: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, lineHeight: '15px' }}>
-                                  <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#ffffff', backgroundColor: c.color, borderRadius: 999, padding: '1px 5px', lineHeight: '13px' }}>{displayName}</span>
-                                  <span style={{ flex: 1, minWidth: 0, fontSize: 10.5, fontWeight: 500, color: '#1f2937', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{c.schedule.title}</span>
-                                </div>
+                                style={{ display: 'flex', alignItems: 'center', gap: 4, backgroundColor: hexToRgba(c.color, 0.26), borderLeft: `3px solid ${c.color}`, borderRadius: 4, padding: '2px 4px', lineHeight: '15px', overflow: 'hidden', flexShrink: 0 }}>
+                                <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#ffffff', backgroundColor: c.color, borderRadius: 999, padding: '1px 5px', lineHeight: '13px' }}>{displayName}</span>
+                                <span style={{ flex: 1, minWidth: 0, fontSize: 10.5, fontWeight: 500, color: '#1f2937', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{c.schedule.title}</span>
                                 {c.timeStr && (
-                                  <div style={{ fontSize: 9.5, fontWeight: 500, color: '#4b5563', lineHeight: '12px', paddingLeft: 28 }}>{c.timeStr}</div>
+                                  <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 500, color: '#6b7280' }}>{c.timeStr}</span>
                                 )}
                               </div>
                             )
                           })}
                           {extra > 0 && (
-                            <div className="cal-more" style={{ fontSize: 10.5, color: '#1d4ed8', lineHeight: '14px', paddingLeft: 2, fontWeight: 700, flexShrink: 0, cursor: 'pointer' }}>＋{extra}件を表示</div>
+                            <div className="cal-more" style={{ fontSize: 10, color: '#6b7280', lineHeight: '14px', paddingLeft: 2, fontWeight: 500, flexShrink: 0, cursor: 'pointer' }}>ほか{extra}件</div>
                           )}
                         </div>
                       </div>
