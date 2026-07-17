@@ -195,7 +195,7 @@ function SupplierModal({ supplier, onClose, onSaved }: SupplierModalProps) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">種別（任意）</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">種別</label>
               <select value={supplierType} onChange={e => setSupplierType(e.target.value as '直販' | '代理店')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="直販">直販</option>
@@ -203,31 +203,31 @@ function SupplierModal({ supplier, onClose, onSaved }: SupplierModalProps) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">郵便番号（任意）</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">郵便番号</label>
               <input type="text" value={postal} onChange={e => setPostal(e.target.value)} placeholder="650-0011"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">住所（任意）</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">住所</label>
             <input type="text" value={address} onChange={e => setAddress(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">電話番号（任意）</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">電話番号</label>
               <input type="text" value={tel} onChange={e => setTel(e.target.value)} placeholder="090-1234-5678"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">メールアドレス（任意）</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">メールアドレス</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@example.com"
                 className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${emailError ? 'border-red-400' : 'border-gray-300'}`} />
               {emailError && <p className="mt-1 text-xs text-red-600">{emailError}</p>}
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">備考（任意）</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">備考</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
