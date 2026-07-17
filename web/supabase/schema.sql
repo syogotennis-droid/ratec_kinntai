@@ -231,7 +231,8 @@ CREATE TABLE quotation_items (
   amount INTEGER DEFAULT 0,
   markup_rate NUMERIC NOT NULL DEFAULT 0.3,
   purchase_rate NUMERIC NOT NULL DEFAULT 0.2,
-  item_type TEXT NOT NULL DEFAULT 'product' CHECK (item_type IN ('product', 'labor'))
+  item_type TEXT NOT NULL DEFAULT 'product' CHECK (item_type IN ('product', 'labor')),
+  product_url TEXT
 );
 
 -- 発注書

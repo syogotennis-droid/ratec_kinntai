@@ -203,6 +203,7 @@ export interface QuotationItem extends DocumentItem {
   markup_rate: number
   purchase_rate: number
   item_type: 'product' | 'labor'
+  product_url: string | null
 }
 
 export interface Quotation {
