@@ -759,7 +759,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                   const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
                   const handleCellTap = () => {
                     if (!isCurrentMonth) return
-                    setWorkDaySheetDate(date)
+                    if (wr) { setWorkDaySheetDate(date) } else { setAddWorkDate(date) }
                   }
                   const isOvertime = !!wr && wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
                   const chipLabel = wr ? (isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]) : ''
