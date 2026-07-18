@@ -49,6 +49,15 @@ body {
   background: transparent;
 }
 
+/* 一覧の検索結果で、検索文字に一致した部分を控えめに強調表示する */
+.search-highlight {
+  background-color: #fef3c7;
+  color: inherit;
+  font-weight: 600;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
 /* PWA起動画面(ホーム画面から起動した時だけ表示し、通常のブラウザ表示では出さない) */
 .pwa-splash {
   position: fixed;

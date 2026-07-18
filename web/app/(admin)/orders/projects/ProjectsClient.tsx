@@ -24,6 +24,14 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
 
 type SortKey = 'name' | 'created_new' | 'created_old'
 
+// 検索文字と一致した部分だけを<mark>で強調する(検索ロジック自体には影響しない、表示専用のヘルパー)
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query) return text
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const parts = text.split(new RegExp(`(${escaped})`, 'g'))
+  return parts.map((part, i) => (part === query ? <mark key={i} className="search-highlight">{part}</mark> : part))
+}
+
 export default function ProjectsClient({ initialProjects, initialCompanies, initialOffices }: { initialProjects: ProjectWithCompany[]; initialCompanies: Company[]; initialOffices: CompanyOffice[] }) {
   const [projects, setProjects] = useState<ProjectWithCompany[]>(initialProjects)
   const [companies, setCompanies] = useState<Company[]>(initialCompanies)
@@ -198,14 +206,16 @@ export default function ProjectsClient({ initialProjects, initialCompanies, init
             <div />
           </div>
           <div className="divide-y divide-gray-100">
-            {displayed.map(p => (
+            {displayed.map(p => {
+              const companyDisplay = `${p.companies?.name ?? ''}${p.company_offices?.name ? `（${p.company_offices.name}）` : ''}`
+              return (
               <div key={p.id} onClick={() => setEditProject(p)}
                 className="grid [grid-template-columns:1fr_1fr_120px_64px] gap-3 items-center px-3 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors">
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-gray-900 truncate" title={p.name}>{p.name}</div>
+                  <div className="text-sm font-semibold text-gray-900 truncate" title={p.name}>{search ? highlightMatch(p.name, search) : p.name}</div>
                 </div>
                 <div className="min-w-0 text-sm text-gray-500 truncate" title={p.companies?.name || undefined}>
-                  {p.companies?.name}{p.company_offices?.name ? `（${p.company_offices.name}）` : ''}
+                  {search ? highlightMatch(companyDisplay, search) : companyDisplay}
                 </div>
                 <div>
                   <span className={`text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${STATUS_COLORS[p.status as ProjectStatus] ?? 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
@@ -214,18 +224,21 @@ export default function ProjectsClient({ initialProjects, initialCompanies, init
                 </div>
                 <div className="text-right text-sm text-blue-600 font-medium whitespace-nowrap">詳細 ›</div>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
         {/* スマホ: カード表示 */}
         <div className="lg:hidden space-y-2">
-          {displayed.map(p => (
+          {displayed.map(p => {
+            const companyDisplay = `${p.companies?.name ?? ''}${p.company_offices?.name ? `（${p.company_offices.name}）` : ''}`
+            return (
             <div key={p.id} onClick={() => setEditProject(p)}
               className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 cursor-pointer hover:shadow-md transition-all">
-              <div className="text-sm font-semibold text-gray-900 truncate" title={p.name}>{p.name}</div>
+              <div className="text-sm font-semibold text-gray-900 truncate" title={p.name}>{search ? highlightMatch(p.name, search) : p.name}</div>
               <div className="text-xs text-gray-500 truncate mt-0.5">
-                {p.companies?.name}{p.company_offices?.name ? `（${p.company_offices.name}）` : ''}
+                {search ? highlightMatch(companyDisplay, search) : companyDisplay}
               </div>
               <div className="flex items-center justify-between mt-2">
                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[p.status as ProjectStatus] ?? 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
@@ -234,7 +247,8 @@ export default function ProjectsClient({ initialProjects, initialCompanies, init
                 <span className="text-xs text-blue-600 font-medium">詳細を見る ›</span>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
         </>
       )}
