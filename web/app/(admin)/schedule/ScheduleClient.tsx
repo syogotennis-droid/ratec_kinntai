@@ -593,7 +593,12 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                   const extra = dayChips.length - maxPerCell
                   const handleCellClick = () => {
                     if (!isCurrentMonth) return
-                    setDaySheet(date)
+                    if (daySheet === date) {
+                      setAddDate(date)
+                      setDaySheet(null)
+                    } else {
+                      setDaySheet(date)
+                    }
                   }
                   return (
                     <div key={date} className="cal-cell" onClick={handleCellClick}
@@ -759,7 +764,12 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                   const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
                   const handleCellTap = () => {
                     if (!isCurrentMonth) return
-                    if (wr) { setWorkDaySheetDate(date) } else { setAddWorkDate(date) }
+                    if (workDaySheetDate === date) {
+                      if (wr) { setEditWorkRecord(wr) } else { setAddWorkDate(date) }
+                      setWorkDaySheetDate(null)
+                    } else {
+                      setWorkDaySheetDate(date)
+                    }
                   }
                   const isOvertime = !!wr && wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
                   const chipLabel = wr ? (isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]) : ''
@@ -861,10 +871,13 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
         />
       )}
 
-      {/* スマホ: 新規追加FAB */}
+      {/* スマホ: 新規追加FAB(日付詳細シートを開いている場合はその日付を対象にする) */}
       <button
-        onClick={() => { if (view === 'schedule') setAddDate(fabDefaultDate); else setAddWorkDate(fabDefaultDate) }}
-        className="md:hidden fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-2xl font-light shadow-lg flex items-center justify-center"
+        onClick={() => {
+          if (view === 'schedule') { setAddDate(daySheet ?? fabDefaultDate); setDaySheet(null) }
+          else { setAddWorkDate(workDaySheetDate ?? fabDefaultDate); setWorkDaySheetDate(null) }
+        }}
+        className="md:hidden fixed bottom-5 right-5 z-[60] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-2xl font-light shadow-lg flex items-center justify-center"
         aria-label={view === 'schedule' ? '予定を追加' : '勤怠を追加'}
       >
         +
@@ -976,12 +989,11 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
   })
 
   return (
-    <div className="fixed inset-0 z-50" onClick={onClose} style={{ overscrollBehavior: 'contain' }}>
+    <div className="fixed inset-0 z-50" style={{ overscrollBehavior: 'contain', pointerEvents: 'none' }}>
       <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[70vh] flex flex-col"
-        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out', overscrollBehavior: 'contain' }}
-        onClick={e => e.stopPropagation()}
+        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out', overscrollBehavior: 'contain', pointerEvents: 'auto' }}
         onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
-        {/* Handle bar（下にスワイプで閉じる） */}
+        {/* Handle bar（下にスワイプで閉じる。カレンダー側は背後で操作可能） */}
         <div className="flex justify-center pt-2 pb-1">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
@@ -1388,10 +1400,9 @@ function WorkDaySheet({ date, workRecord, onClose, onEdit, onAdd }: WorkDaySheet
   }
 
   return (
-    <div className="fixed inset-0 z-50" onClick={onClose} style={{ overscrollBehavior: 'contain' }}>
+    <div className="fixed inset-0 z-50" style={{ overscrollBehavior: 'contain', pointerEvents: 'none' }}>
       <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[60vh] flex flex-col"
-        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out', overscrollBehavior: 'contain' }}
-        onClick={e => e.stopPropagation()}
+        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out', overscrollBehavior: 'contain', pointerEvents: 'auto' }}
         onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
         <div className="flex justify-center pt-2 pb-1">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
