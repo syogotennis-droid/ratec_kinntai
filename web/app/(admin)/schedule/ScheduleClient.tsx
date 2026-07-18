@@ -465,7 +465,8 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   )
 
   return (
-    <div className="flex flex-col pt-1 pb-0 md:h-screen md:overflow-hidden">
+    <div className="flex flex-col pt-1 pb-0 h-[100dvh] overflow-hidden md:h-screen md:overflow-hidden"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <style>{`
         .drum-col { scrollbar-width: none; -ms-overflow-style: none; }
         .drum-col::-webkit-scrollbar { display: none; }
@@ -479,14 +480,14 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
       {header}
 
       {view === 'schedule' ? (
-        <div className="flex flex-col md:flex-1 md:min-h-0 md:overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Swipe wrapper */}
-          <div className="md:flex-1 md:min-h-0 flex flex-col" style={{ overflow: 'hidden' }}>
+          <div className="flex-1 min-h-0 flex flex-col" style={{ overflow: 'hidden' }}>
             <div
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="md:flex-1 md:min-h-0 flex flex-col"
+              className="flex-1 min-h-0 flex flex-col"
               style={{ transform: `translateX(${dragX}px)`, transition: sliding ? 'transform 220ms ease-out' : 'none', willChange: 'transform' }}
             >
               {/* Calendar grid: PC/タブレット */}
@@ -573,13 +574,13 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               </div>
 
               {/* スマホ: 月間カレンダー */}
-              <div className="md:hidden">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #9ca3af' }}>
+              <div className="md:hidden flex flex-col flex-1 min-h-0">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #9ca3af', flexShrink: 0 }}>
                   {['日','月','火','水','木','金','土'].map((d, i) => (
-                    <div key={d} style={{ textAlign: 'center', padding: '4px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                    <div key={d} style={{ textAlign: 'center', padding: '3px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
                   ))}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, minmax(0, 1fr))`, flex: 1, minHeight: 0 }}>
                   {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
                   const dayEvts = eventsByDate[date] ?? []
                   const dayChips = scheduleChipsByDate[date] ?? []
@@ -597,37 +598,38 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                   return (
                     <div key={date} className="cal-cell" onClick={handleCellClick}
                       style={{
+                        display: 'flex', flexDirection: 'column',
                         borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb',
-                        minHeight: 66, overflow: 'hidden', cursor: 'pointer',
+                        overflow: 'hidden', cursor: 'pointer',
                         backgroundColor: isToday ? '#eff6ff' : undefined,
-                        opacity: isCurrentMonth ? 1 : 0.35, padding: '2px 1px',
+                        opacity: isCurrentMonth ? 1 : 0.35, padding: '3px 1px',
                       }}>
-                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          width: 20, height: 20, borderRadius: isToday ? 9999 : 0,
+                          width: 21, height: 21, borderRadius: isToday ? 9999 : 0,
                           backgroundColor: isToday ? '#2563eb' : 'transparent',
                           color: isToday ? '#ffffff' : (numColor || '#374151'),
-                          fontSize: 12, fontWeight: isToday ? 700 : 600, lineHeight: 1,
+                          fontSize: 13, fontWeight: isToday ? 700 : 600, lineHeight: 1,
                         }}>
                           {dayNum}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1.5, marginTop: 2, overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, overflow: 'hidden', minHeight: 0 }}>
                         {dayEvts.slice(0, 1).map((e, i) => (
-                          <div key={`h${i}`} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 8.5, fontWeight: 600, lineHeight: '12px', borderRadius: 2, padding: '0 2px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }} title={e.title}>
+                          <div key={`h${i}`} style={{ backgroundColor: e.backgroundColor, color: e.textColor, fontSize: 9, fontWeight: 600, lineHeight: '13px', borderRadius: 2, padding: '0 2px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flexShrink: 0 }} title={e.title}>
                             {e.title}
                           </div>
                         ))}
                         {shownChips.map(c => (
                           <div key={c.schedule.id} title={`${c.employeeName}${c.timeStr ? ' ' + c.timeStr : ''} / ${c.schedule.title}`}
-                            style={{ display: 'flex', alignItems: 'center', gap: 2, backgroundColor: hexToRgba(c.color, 0.26), borderLeft: `2px solid ${c.color}`, borderRadius: 2, padding: '1px 2px', lineHeight: '14px', overflow: 'hidden' }}>
-                            <span style={{ flexShrink: 0, width: 12, height: 12, borderRadius: 999, backgroundColor: c.color, color: '#ffffff', fontSize: 8, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{c.initial}</span>
-                            <span style={{ flex: 1, minWidth: 0, fontSize: 9.5, fontWeight: 500, color: '#1f2937', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{c.schedule.title}</span>
+                            style={{ display: 'flex', alignItems: 'center', gap: 2, backgroundColor: hexToRgba(c.color, 0.26), borderLeft: `2px solid ${c.color}`, borderRadius: 2, padding: '1.5px 2px', lineHeight: '15px', overflow: 'hidden', flexShrink: 0 }}>
+                            <span style={{ flexShrink: 0, width: 13, height: 13, borderRadius: 999, backgroundColor: c.color, color: '#ffffff', fontSize: 8.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{c.initial}</span>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 10.5, fontWeight: 500, color: '#1f2937', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{c.schedule.title}</span>
                           </div>
                         ))}
                         {extra > 0 && (
-                          <div className="cal-more" style={{ fontSize: 9.5, color: '#4b5563', lineHeight: '16px', paddingLeft: 2, fontWeight: 600 }}>ほか{extra}件</div>
+                          <div className="cal-more" style={{ fontSize: 10, color: '#4b5563', lineHeight: '17px', paddingLeft: 2, fontWeight: 600, flexShrink: 0 }}>ほか{extra}件</div>
                         )}
                       </div>
                     </div>
@@ -637,6 +639,8 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               </div>
             </div>
           </div>
+          {/* スマホ: 右下の追加ボタンが最下段の日付・予定と重ならないための余白 */}
+          <div className="md:hidden" style={{ height: 56, flexShrink: 0 }} />
           {showMonthPicker && (
             <MonthPicker
               year={displayYear}
@@ -647,14 +651,14 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
           )}
         </div>
       ) : (
-        <div className="flex flex-col md:flex-1 md:min-h-0 md:overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Attendance calendar grid */}
-          <div className="md:flex-1 md:min-h-0 flex flex-col" style={{ overflow: 'hidden' }}>
+          <div className="flex-1 min-h-0 flex flex-col" style={{ overflow: 'hidden' }}>
             <div
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="md:flex-1 md:min-h-0 flex flex-col"
+              className="flex-1 min-h-0 flex flex-col"
               style={{ transform: `translateX(${dragX}px)`, transition: sliding ? 'transform 220ms ease-out' : 'none', willChange: 'transform' }}
             >
               <div className="hidden md:flex md:flex-1 md:min-h-0" style={{ flexDirection: 'column' }}>
@@ -740,13 +744,13 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               </div>
 
               {/* スマホ: 月間カレンダー */}
-              <div className="md:hidden">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #9ca3af' }}>
+              <div className="md:hidden flex flex-col flex-1 min-h-0">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #9ca3af', flexShrink: 0 }}>
                   {['日','月','火','水','木','金','土'].map((d, i) => (
-                    <div key={d} style={{ textAlign: 'center', padding: '4px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                    <div key={d} style={{ textAlign: 'center', padding: '3px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
                   ))}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, minmax(0, 1fr))`, flex: 1, minHeight: 0 }}>
                   {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
                   const wr = workRecordsByDate[date]
                   const isToday = date === todayStr
@@ -763,33 +767,34 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                   return (
                     <div key={date} className="cal-cell" onClick={handleCellTap}
                       style={{
+                        display: 'flex', flexDirection: 'column',
                         borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb',
-                        minHeight: 66, overflow: 'hidden', cursor: 'pointer',
+                        overflow: 'hidden', cursor: 'pointer',
                         backgroundColor: isToday ? '#eff6ff' : undefined,
-                        opacity: isCurrentMonth ? 1 : 0.35, padding: '2px 1px',
+                        opacity: isCurrentMonth ? 1 : 0.35, padding: '3px 1px',
                       }}>
-                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          width: 20, height: 20, borderRadius: isToday ? 9999 : 0,
+                          width: 21, height: 21, borderRadius: isToday ? 9999 : 0,
                           backgroundColor: isToday ? '#2563eb' : 'transparent',
                           color: isToday ? '#ffffff' : (numColor || '#374151'),
-                          fontSize: 12, fontWeight: isToday ? 700 : 600, lineHeight: 1,
+                          fontSize: 13, fontWeight: isToday ? 700 : 600, lineHeight: 1,
                         }}>
                           {dayNum}
                         </span>
                       </div>
                       {wr && chipStyle && (
-                        <div style={{ backgroundColor: chipStyle.bg, borderLeft: `2px solid ${chipStyle.border}`, borderRadius: 2, padding: '1px 2px', margin: '2px 1px 0', overflow: 'hidden' }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: chipStyle.fg, lineHeight: '11px', whiteSpace: 'nowrap' }}>
+                        <div style={{ backgroundColor: chipStyle.bg, borderLeft: `2px solid ${chipStyle.border}`, borderRadius: 2, padding: '1.5px 2px', margin: '3px 1px 0', overflow: 'hidden', flexShrink: 0 }}>
+                          <div style={{ fontSize: 9.5, fontWeight: 700, color: chipStyle.fg, lineHeight: '12px', whiteSpace: 'nowrap' }}>
                             {chipLabel}
                           </div>
                           {wr.work_type !== 'paid_leave' ? (
-                            <div style={{ fontSize: 10, fontWeight: 800, color: '#111827', lineHeight: '12px', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#111827', lineHeight: '13px', whiteSpace: 'nowrap' }}>
                               {shortHour(wr.start_time)}–{shortHour(wr.end_time)}
                             </div>
                           ) : (
-                            <div style={{ fontSize: 9, fontWeight: 700, color: '#111827', lineHeight: '11px', whiteSpace: 'nowrap' }}>終日</div>
+                            <div style={{ fontSize: 9.5, fontWeight: 700, color: '#111827', lineHeight: '12px', whiteSpace: 'nowrap' }}>終日</div>
                           )}
                         </div>
                       )}
@@ -800,6 +805,8 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               </div>
             </div>
           </div>
+          {/* スマホ: 右下の追加ボタンが最下段の日付・勤怠と重ならないための余白 */}
+          <div className="md:hidden" style={{ height: 56, flexShrink: 0 }} />
           {showMonthPicker && (
             <MonthPicker
               year={displayYear}
