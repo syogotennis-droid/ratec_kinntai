@@ -139,6 +139,9 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   const [loading, setLoading] = useState(false)
   const [daySheet, setDaySheet] = useState<string | null>(null)
   const [workDaySheetDate, setWorkDaySheetDate] = useState<string | null>(null)
+  const [maxPerCell, setMaxPerCell] = useState(3)
+  const mobileCellRef = useRef<HTMLDivElement>(null)
+  const mobileDateRowRef = useRef<HTMLDivElement>(null)
   const [selectedWorkDate, setSelectedWorkDate] = useState<string | null>(null)
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null)
   const [editWorkRecord, setEditWorkRecord] = useState<WorkRecord | null>(null)
@@ -324,6 +327,25 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
     return days
   }, [yearMonth, numWeeks])
 
+  // スマホ: セルの実測サイズから、枠を絶対に超えない範囲で表示できるチップ数を動的に算出
+  // (CHIP_UNIT=1件あたりの増分, MORE_LINE="ほかN件"の行の高さ。実測に基づく定数)
+  useEffect(() => {
+    if (view !== 'schedule') return
+    const CHIP_UNIT = 20
+    const MORE_LINE = 19
+    const recompute = () => {
+      const cell = mobileCellRef.current
+      const dateRow = mobileDateRowRef.current
+      if (!cell || !dateRow) return
+      const available = cell.getBoundingClientRect().height - dateRow.getBoundingClientRect().height - 2
+      const n = Math.floor((available - MORE_LINE) / CHIP_UNIT)
+      setMaxPerCell(Math.max(2, Math.min(6, n)))
+    }
+    recompute()
+    window.addEventListener('resize', recompute)
+    return () => window.removeEventListener('resize', recompute)
+  }, [view, numWeeks, yearMonth])
+
   const eventsByDate = useMemo(() => {
     return holidayEvents.reduce<Record<string, CalEvent[]>>((acc, e) => {
       if (!acc[e.date]) acc[e.date] = []
@@ -363,7 +385,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   )
 
   const header = (
-    <div className="px-1 mb-0.5 shrink-0">
+    <div className="px-1 mb-0 shrink-0">
       <div className="flex flex-wrap items-center gap-1" style={{ minHeight: 28 }}>
         <button onClick={openSidebar} className="p-1.5 -ml-1 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -432,24 +454,24 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
         </div>
 
         {/* スマホ: 全員・自分のみ・担当者を絞る の3つだけ表示 */}
-        <div className="flex md:hidden items-center gap-2 px-1 mt-1.5">
+        <div className="flex md:hidden items-center gap-2 px-1 mt-1">
           <span className="shrink-0 text-[9px] font-medium text-gray-400">表示対象</span>
           <button onClick={() => setVisibleUserIds(null)}
-            className="shrink-0 text-xs px-2.5 py-1.5 rounded-full border font-medium transition-colors whitespace-nowrap"
+            className="shrink-0 text-xs px-2.5 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
             style={visibleUserIds === null
               ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
               : { backgroundColor: '#fff', color: '#374151', borderColor: '#d1d5db' }}>
             全員
           </button>
           <button onClick={() => setVisibleUserIds(new Set([profile.id]))}
-            className="shrink-0 text-xs px-2.5 py-1.5 rounded-full border font-medium transition-colors whitespace-nowrap"
+            className="shrink-0 text-xs px-2.5 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
             style={visibleUserIds?.size === 1 && visibleUserIds.has(profile.id)
               ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
               : { backgroundColor: '#fff', color: '#374151', borderColor: '#d1d5db' }}>
             自分のみ
           </button>
           <button onClick={() => setShowEmployeeFilterSheet(true)}
-            className="shrink-0 text-xs px-2.5 py-1.5 rounded-full border font-medium transition-colors whitespace-nowrap"
+            className="shrink-0 text-xs px-2.5 py-1 rounded-full border font-medium transition-colors whitespace-nowrap"
             style={visibleUserIds !== null && !(visibleUserIds.size === 1 && visibleUserIds.has(profile.id))
               ? { backgroundColor: '#2563eb', color: '#fff', borderColor: '#2563eb' }
               : { backgroundColor: '#fff', color: '#374151', borderColor: '#d1d5db' }}>
@@ -577,18 +599,17 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               <div className="md:hidden flex flex-col flex-1 min-h-0">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #9ca3af', flexShrink: 0 }}>
                   {['日','月','火','水','木','金','土'].map((d, i) => (
-                    <div key={d} style={{ textAlign: 'center', padding: '3px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                    <div key={d} style={{ textAlign: 'center', padding: '2px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
                   ))}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, minmax(0, 1fr))`, flex: 1, minHeight: 0 }}>
-                  {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
+                  {calendarDays.map(({ date, dayNum, isCurrentMonth }, idx) => {
                   const dayEvts = eventsByDate[date] ?? []
                   const dayChips = scheduleChipsByDate[date] ?? []
                   const isToday = date === todayStr
                   const isHoliday = holidayDates.has(date)
                   const dow = new Date(`${date}T00:00:00`).getDay()
                   const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
-                  const maxPerCell = 3
                   const shownChips = dayChips.slice(0, maxPerCell)
                   const extra = dayChips.length - maxPerCell
                   const handleCellClick = () => {
@@ -601,15 +622,15 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                     }
                   }
                   return (
-                    <div key={date} className="cal-cell" onClick={handleCellClick}
+                    <div key={date} ref={idx === 0 ? mobileCellRef : undefined} className="cal-cell" onClick={handleCellClick}
                       style={{
                         display: 'flex', flexDirection: 'column',
                         borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb',
                         overflow: 'hidden', cursor: 'pointer',
                         backgroundColor: isToday ? '#eff6ff' : undefined,
-                        opacity: isCurrentMonth ? 1 : 0.35, padding: '3px 1px',
+                        opacity: isCurrentMonth ? 1 : 0.35, padding: '2px 1px',
                       }}>
-                      <div style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                      <div ref={idx === 0 ? mobileDateRowRef : undefined} style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                           width: 21, height: 21, borderRadius: isToday ? 9999 : 0,
@@ -752,7 +773,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               <div className="md:hidden flex flex-col flex-1 min-h-0">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #9ca3af', flexShrink: 0 }}>
                   {['日','月','火','水','木','金','土'].map((d, i) => (
-                    <div key={d} style={{ textAlign: 'center', padding: '3px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
+                    <div key={d} style={{ textAlign: 'center', padding: '2px 0', fontSize: 11, fontWeight: 600, color: i===0?'#ef4444':i===6?'#3b82f6':'#9ca3af' }}>{d}</div>
                   ))}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, minmax(0, 1fr))`, flex: 1, minHeight: 0 }}>
@@ -781,7 +802,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                         borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb',
                         overflow: 'hidden', cursor: 'pointer',
                         backgroundColor: isToday ? '#eff6ff' : undefined,
-                        opacity: isCurrentMonth ? 1 : 0.35, padding: '3px 1px',
+                        opacity: isCurrentMonth ? 1 : 0.35, padding: '2px 1px',
                       }}>
                       <div style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
                         <span style={{
@@ -964,22 +985,39 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
 
   const [dragY, setDragY] = useState(0)
   const [dragging, setDragging] = useState(false)
+  const draggingRef = useRef(false)
   const dragStartY = useRef(0)
   const listRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const handleDragStart = (e: React.TouchEvent) => {
     if (listRef.current && listRef.current.scrollTop > 0) return
     setDragging(true)
+    draggingRef.current = true
     dragStartY.current = e.touches[0].clientY
-  }
-  const handleDragMove = (e: React.TouchEvent) => {
-    if (!dragging) return
-    const diff = e.touches[0].clientY - dragStartY.current
-    if (diff > 0) setDragY(diff)
   }
   const handleDragEnd = () => {
     setDragging(false)
+    draggingRef.current = false
     if (dragY > 80) onClose(); else setDragY(0)
   }
+
+  // ブラウザ標準の「引っ張って更新」より、このシートを閉じるスワイプを優先させるため、
+  // passive:falseのネイティブリスナーでpreventDefaultする(ReactのonTouchMoveはpassiveで登録され
+  // preventDefaultが効かないため)。ページ全体の引っ張って更新自体は無効化しない。
+  useEffect(() => {
+    const el = panelRef.current
+    if (!el) return
+    const onMove = (e: TouchEvent) => {
+      if (!draggingRef.current) return
+      const diff = e.touches[0].clientY - dragStartY.current
+      if (diff > 0) {
+        e.preventDefault()
+        setDragY(diff)
+      }
+    }
+    el.addEventListener('touchmove', onMove, { passive: false })
+    return () => el.removeEventListener('touchmove', onMove)
+  }, [])
 
   const sorted = [...schedules].sort((a, b) => {
     if (!a.start_time && b.start_time) return -1
@@ -989,10 +1027,10 @@ function DaySheet({ date, schedules, profiles, onClose, onAdd, onEdit }: DayShee
   })
 
   return (
-    <div className="fixed inset-0 z-50" style={{ overscrollBehavior: 'contain', pointerEvents: 'none' }}>
-      <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[70vh] flex flex-col"
-        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out', overscrollBehavior: 'contain', pointerEvents: 'auto' }}
-        onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
+    <div className="fixed inset-0 z-50" style={{ pointerEvents: 'none' }}>
+      <div ref={panelRef} className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[70vh] flex flex-col"
+        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out', pointerEvents: 'auto' }}
+        onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
         {/* Handle bar（下にスワイプで閉じる。カレンダー側は背後で操作可能） */}
         <div className="flex justify-center pt-2 pb-1">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
@@ -1382,28 +1420,45 @@ function WorkDaySheet({ date, workRecord, onClose, onEdit, onAdd }: WorkDaySheet
 
   const [dragY, setDragY] = useState(0)
   const [dragging, setDragging] = useState(false)
+  const draggingRef = useRef(false)
   const dragStartY = useRef(0)
   const listRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const handleDragStart = (e: React.TouchEvent) => {
     if (listRef.current && listRef.current.scrollTop > 0) return
     setDragging(true)
+    draggingRef.current = true
     dragStartY.current = e.touches[0].clientY
-  }
-  const handleDragMove = (e: React.TouchEvent) => {
-    if (!dragging) return
-    const diff = e.touches[0].clientY - dragStartY.current
-    if (diff > 0) setDragY(diff)
   }
   const handleDragEnd = () => {
     setDragging(false)
+    draggingRef.current = false
     if (dragY > 80) onClose(); else setDragY(0)
   }
 
+  // ブラウザ標準の「引っ張って更新」より、このシートを閉じるスワイプを優先させるため、
+  // passive:falseのネイティブリスナーでpreventDefaultする(ReactのonTouchMoveはpassiveで登録され
+  // preventDefaultが効かないため)。ページ全体の引っ張って更新自体は無効化しない。
+  useEffect(() => {
+    const el = panelRef.current
+    if (!el) return
+    const onMove = (e: TouchEvent) => {
+      if (!draggingRef.current) return
+      const diff = e.touches[0].clientY - dragStartY.current
+      if (diff > 0) {
+        e.preventDefault()
+        setDragY(diff)
+      }
+    }
+    el.addEventListener('touchmove', onMove, { passive: false })
+    return () => el.removeEventListener('touchmove', onMove)
+  }, [])
+
   return (
-    <div className="fixed inset-0 z-50" style={{ overscrollBehavior: 'contain', pointerEvents: 'none' }}>
-      <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[60vh] flex flex-col"
-        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out', overscrollBehavior: 'contain', pointerEvents: 'auto' }}
-        onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
+    <div className="fixed inset-0 z-50" style={{ pointerEvents: 'none' }}>
+      <div ref={panelRef} className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[60vh] flex flex-col"
+        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 200ms ease-out', pointerEvents: 'auto' }}
+        onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
         <div className="flex justify-center pt-2 pb-1">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
