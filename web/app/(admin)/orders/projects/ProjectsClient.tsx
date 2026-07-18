@@ -65,7 +65,11 @@ export default function ProjectsClient({ initialProjects, initialCompanies, init
       return a.name.localeCompare(b.name, 'ja')
     })
 
-  const isFiltered = search.trim() !== '' || filterStatus !== 'all'
+  const hasSearch = search.trim() !== ''
+  const hasStatusFilter = filterStatus !== 'all'
+  const isFiltered = hasSearch || hasStatusFilter
+  const clearSearch = () => setSearch('')
+  const clearAll = () => { setSearch(''); setFilterStatus('all') }
 
   return (
     <div className="p-4">
@@ -83,10 +87,33 @@ export default function ProjectsClient({ initialProjects, initialCompanies, init
         </button>
       </div>
 
-      <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="案件名・取引先名で検索"
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3" />
+      <div className="mb-1">
+        <div className="relative">
+          <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Escape') setSearch('')
+              if (e.key === 'Enter') e.preventDefault()
+            }}
+            placeholder="案件名・取引先名で検索"
+            className="w-full pl-9 pr-9 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {search && (
+            <button type="button" onClick={clearSearch} aria-label="検索文字をクリア"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+              ×
+            </button>
+          )}
+        </div>
+        <p className="text-[11px] text-gray-400 mt-1">入力すると自動で絞り込みます</p>
+      </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <div className="flex gap-1">
           {(['all', 'active', 'completed', 'cancelled'] as const).map(s => (
             <button key={s} onClick={() => setFilterStatus(s)}
@@ -108,14 +135,52 @@ export default function ProjectsClient({ initialProjects, initialCompanies, init
         </select>
       </div>
 
-      <div className="text-xs text-gray-500 mb-2">{displayed.length}件</div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-xs text-gray-500">
+        {hasSearch ? (
+          <span>「{search}」の検索結果：{displayed.length}件</span>
+        ) : (
+          <span>{displayed.length}件</span>
+        )}
+        {hasSearch && (
+          <button type="button" onClick={clearSearch} className="text-blue-600 hover:underline">検索を解除</button>
+        )}
+        {hasSearch && hasStatusFilter && (
+          <div className="flex items-center gap-1">
+            <span className="text-gray-400">検索条件：</span>
+            <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 rounded-full pl-2 pr-1 py-0.5">
+              {search}
+              <button type="button" onClick={clearSearch} aria-label="検索文字の条件を解除" className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-200 hover:text-gray-900">×</button>
+            </span>
+            <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 rounded-full pl-2 pr-1 py-0.5">
+              {STATUS_LABELS[filterStatus as ProjectStatus]}
+              <button type="button" onClick={() => setFilterStatus('all')} aria-label="ステータス条件を解除" className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-200 hover:text-gray-900">×</button>
+            </span>
+          </div>
+        )}
+      </div>
 
       {loading ? (
         <div className="text-sm text-gray-500 py-8 text-center">読み込み中...</div>
       ) : displayed.length === 0 ? (
-        <div className="py-10 text-center">
-          <p className="text-sm text-gray-500">{isFiltered ? '該当する案件がありません' : '案件がありません'}</p>
-          {!isFiltered && (
+        <div className="py-10 text-center border border-gray-200 rounded-lg bg-white">
+          <p className="text-sm text-gray-500">{isFiltered ? '条件に一致する案件がありません' : '案件がありません'}</p>
+          {isFiltered ? (
+            <>
+              <p className="text-xs text-gray-400 mt-1">検索文字やステータス条件を変更してください</p>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                {hasSearch && (
+                  <button onClick={clearSearch}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                    検索を解除
+                  </button>
+                )}
+                <button onClick={clearAll}
+                  className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                  すべての条件を解除
+                </button>
+              </div>
+            </>
+          ) : (
             <button onClick={() => setShowAdd(true)}
               className="mt-3 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow transition-shadow">
               ＋ 新規案件を作成
