@@ -142,7 +142,6 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   const [maxPerCell, setMaxPerCell] = useState(3)
   const mobileCellRef = useRef<HTMLDivElement>(null)
   const mobileDateRowRef = useRef<HTMLDivElement>(null)
-  const [selectedWorkDate, setSelectedWorkDate] = useState<string | null>(null)
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null)
   const [editWorkRecord, setEditWorkRecord] = useState<WorkRecord | null>(null)
   const [addDate, setAddDate] = useState<string | null>(null)
@@ -700,17 +699,10 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                     const isHoliday = holidayDates.has(date)
                     const dow = new Date(`${date}T00:00:00`).getDay()
                     const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
-                    const isSelected = selectedWorkDate === date
                     const handleWorkDateClick = () => {
                       if (!isCurrentMonth) return
-                      if (isSelected) {
-                        const existing = workRecordsByDate[date] ?? null
-                        if (existing) { setEditWorkRecord(existing); setAddWorkDate(null) }
-                        else { setAddWorkDate(date); setEditWorkRecord(null) }
-                        setSelectedWorkDate(null)
-                      } else {
-                        setSelectedWorkDate(date)
-                      }
+                      if (wr) { setEditWorkRecord(wr); setAddWorkDate(null) }
+                      else { setAddWorkDate(date); setEditWorkRecord(null) }
                     }
                     const isOvertime = !!wr && wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
                     const chipLabel = wr ? (isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]) : ''
@@ -725,7 +717,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                           borderBottom: '1px solid #d1d5db',
                           overflow: 'hidden',
                           cursor: isCurrentMonth ? 'pointer' : 'default',
-                          backgroundColor: isSelected ? '#dbeafe' : isToday ? '#eff6ff' : undefined,
+                          backgroundColor: isToday ? '#eff6ff' : undefined,
                           opacity: isCurrentMonth ? 1 : 0.35,
                           padding: 2,
                         }}
@@ -861,7 +853,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
               workRecord={editWorkRecord}
               defaultDate={addWorkDate ?? undefined}
               userId={profile.id}
-              onClose={() => { setAddWorkDate(null); setEditWorkRecord(null); setSelectedWorkDate(null) }}
+              onClose={() => { setAddWorkDate(null); setEditWorkRecord(null) }}
               onSaved={fetchWorkRecords}
             />
           )}
