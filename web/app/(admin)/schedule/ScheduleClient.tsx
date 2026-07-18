@@ -588,7 +588,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                   const isHoliday = holidayDates.has(date)
                   const dow = new Date(`${date}T00:00:00`).getDay()
                   const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
-                  const maxPerCell = 2
+                  const maxPerCell = 3
                   const shownChips = dayChips.slice(0, maxPerCell)
                   const extra = dayChips.length - maxPerCell
                   const handleCellClick = () => {
