@@ -28,10 +28,17 @@
   }
 }
 
+html {
+  /* スマホでシートやリストを下にスワイプした際、ブラウザ標準の
+     「引っ張って更新」が誤って発火してページごと再読み込みされるのを防ぐ */
+  overscroll-behavior-y: contain;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overscroll-behavior-y: contain;
 }
 
 /* 型式検索候補など、候補数が多いドロップダウン内のスクロールバーを細くする */
