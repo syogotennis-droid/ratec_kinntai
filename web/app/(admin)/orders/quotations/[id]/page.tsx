@@ -202,7 +202,7 @@ export default function QuotationDetailPage() {
     setSaving(true)
     try {
       const supabase = createClient()
-      await supabase.from('quotations').update({
+      const { error: qErr } = await supabase.from('quotations').update({
         project_id: projectId,
         supplier_id: supplierId || null,
         doc_no: docNo,
@@ -214,9 +214,12 @@ export default function QuotationDetailPage() {
         tax_amount: taxAmount,
         total_amount: totalAmount,
       }).eq('id', id)
-      await supabase.from('quotation_items').delete().eq('quotation_id', Number(id))
+      if (qErr) throw qErr
+      const { error: delErr } = await supabase.from('quotation_items').delete().eq('quotation_id', Number(id))
+      if (delErr) throw delErr
       if (items.length > 0) {
-        await supabase.from('quotation_items').insert(items.map((item, i) => ({ ...item, quotation_id: Number(id), sort_order: i })))
+        const { error: itemsErr } = await supabase.from('quotation_items').insert(items.map((item, i) => ({ ...item, quotation_id: Number(id), sort_order: i })))
+        if (itemsErr) throw itemsErr
       }
       router.push('/orders/quotations')
     } catch (e: unknown) {

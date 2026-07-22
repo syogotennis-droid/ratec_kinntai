@@ -239,7 +239,12 @@ export default function NewQuotationPage() {
       }).select().single()
       if (qErr) throw qErr
       if (items.length > 0) {
-        await supabase.from('quotation_items').insert(items.map((item, i) => ({ ...item, quotation_id: q.id, sort_order: i })))
+        const { error: itemsErr } = await supabase.from('quotation_items').insert(items.map((item, i) => ({ ...item, quotation_id: q.id, sort_order: i })))
+        if (itemsErr) {
+          // 明細の保存に失敗した場合、金額0円の見積書だけが残ってしまわないよう作成した見積書自体も取り消す
+          await supabase.from('quotations').delete().eq('id', q.id)
+          throw itemsErr
+        }
       }
       router.push(`/orders/quotations/${q.id}`)
     } catch (e: unknown) {
