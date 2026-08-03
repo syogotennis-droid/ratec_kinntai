@@ -217,14 +217,22 @@ function copyTemplateStructure(template: ExcelJS.Worksheet, target: ExcelJS.Work
   for (let r = 1; r <= TEMPLATE_MAX_ROW; r++) {
     const height = template.getRow(r).height
     if (height) target.getRow(r).height = height
+  }
+  // mergeCellsは非アンカーセルの罫線・書式を消してしまうため、必ず値・スタイルの
+  // コピーより先に呼び出す
+  for (const range of template.model.merges) target.mergeCells(range)
+  for (let r = 1; r <= TEMPLATE_MAX_ROW; r++) {
     for (let c = 1; c <= TEMPLATE_MAX_COL; c++) {
       const src = template.getCell(r, c)
       const dst = target.getCell(r, c)
       dst.value = src.value
-      dst.style = src.style
+      // src.styleは同じ書式のセル同士で参照が共有されていることがあり、そのまま
+      // 代入すると後から1セルだけ罫線を変更した際に同じ書式の別セルまで
+      // 巻き添えで変わってしまう(clearSlotで未使用枠を消すと使用中の枠の罫線まで
+      // 消えるバグの原因だった)。参照を切るため複製してから代入する
+      dst.style = JSON.parse(JSON.stringify(src.style))
     }
   }
-  for (const range of template.model.merges) target.mergeCells(range)
 }
 
 // 未使用スロット(チェックされた明細がそこまで無い場合)はラベル・罫線ごと空にする
@@ -256,6 +264,9 @@ async function addProductSheet(ExcelJSCtor: typeof ExcelJS, wb: ExcelJS.Workbook
   const template = await loadProductSheetTemplate(ExcelJSCtor)
   const sheet = wb.addWorksheet('商品資料')
   copyTemplateStructure(template, sheet)
+  // 元見本は改ページプレビュー表示(印刷範囲外がグレーになる)で保存されていたため、
+  // 開いたときの見た目もそれに合わせる
+  sheet.views = [{ state: 'normal', style: 'pageBreakPreview', zoomScale: 52 }]
 
   sheet.getCell(1, 1).value = `${projectName ? projectName + '　' : ''}ご提案資料`
 
@@ -319,10 +330,9 @@ async function embedProductPhoto(
     // 画像サイズが取得できない場合は枠いっぱいのサイズのまま配置する
   }
 
-  const colOff = (block.widthPx - width) / 2 / CHAR_TO_PX
-  const rowOff = (block.heightPx - height) / 2 / (15 * PT_TO_PX)
+  // 元見本も写真は枠の左上詰めで配置されていたため、余白を空けて中央寄せにはしない
   sheet.addImage(imageId, {
-    tl: { col: anchorCol + colOff, row: anchorRow + rowOff },
+    tl: { col: anchorCol, row: anchorRow },
     ext: { width, height },
   })
 }
