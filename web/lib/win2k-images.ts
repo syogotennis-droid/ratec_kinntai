@@ -21,3 +21,29 @@ export function extractCodeImages($: CheerioAPI, baseUrl: string, code: string):
   })
   return [...urls].slice(0, 6)
 }
+
+// 同じ写真がサムネイル用・拡大用など複数サイズのURLで別々に載っていることがあり、
+// URL文字列だけでは重複を判定できないため、実際のファイルサイズ(Content-Length)が
+// 一致するものは同一画像とみなして片方だけ残す
+export async function dedupeBySize(urls: string[]): Promise<string[]> {
+  const sizes = await Promise.all(urls.map(async url => {
+    try {
+      const res = await fetch(url, { method: 'HEAD' })
+      const len = res.headers.get('content-length')
+      return len ? Number(len) : null
+    } catch {
+      return null
+    }
+  }))
+
+  const seen = new Set<number>()
+  const result: string[] = []
+  urls.forEach((url, i) => {
+    const size = sizes[i]
+    if (size == null) { result.push(url); return }
+    if (seen.has(size)) return
+    seen.add(size)
+    result.push(url)
+  })
+  return result
+}
