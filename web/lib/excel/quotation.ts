@@ -124,7 +124,7 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
   // 商品資料シート（チェックが付いた明細行だけを対象に、施工前写真とご提案商品写真を並べる）
   const productSheetItems = data.items.filter(i => i.has_product_sheet)
   if (productSheetItems.length > 0) {
-    await addProductSheet(wb, productSheetItems)
+    await addProductSheet(wb, productSheetItems, data.projectName)
   }
 
   const buffer = await wb.xlsx.writeBuffer()
@@ -163,50 +163,85 @@ function detectImageExtension(buf: ArrayBuffer): 'png' | 'jpeg' {
   return isPng ? 'png' : 'jpeg'
 }
 
-const PRODUCT_PHOTO_WIDTH = 230
-const PRODUCT_PHOTO_HEIGHT = 172
-const PRODUCT_PHOTO_ROWS = 9
+// ①②③...⑳ (それ以降は "(21)" のような表記にフォールバック)
+function circledNumber(n: number): string {
+  return n >= 1 && n <= 20 ? String.fromCodePoint(0x2460 + n - 1) : `(${n})`
+}
 
-// 商品資料シート: チェックされた明細行ごとに「施工前写真／既存商品名」と
-// 「ご提案商品写真／ご提案商品名」を上から順に並べる（1件ずつ縦積みのシンプルな構成）
-async function addProductSheet(wb: ExcelJS.Workbook, items: QuotationExcelItem[]) {
-  const sheet = wb.addWorksheet('商品資料')
-  sheet.getColumn(1).width = 34
-  sheet.getColumn(2).width = 34
-  sheet.getColumn(3).width = 3
-  sheet.getColumn(4).width = 34
-  sheet.getColumn(5).width = 34
+const ITEMS_PER_ROW = 4
+const BLOCK_COLS = 10 // 施工前写真5列 + ご提案商品5列
+const PHOTO_ROWS = 21
+const THIN_BORDER: Partial<ExcelJS.Borders> = {
+  top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' },
+}
 
-  sheet.getCell('A1').value = '商品資料'
-  sheet.getCell('A1').font = { bold: true, size: 14 }
-
-  let row = 3
-  for (const item of items) {
-    sheet.getCell(`A${row}`).value = '施工前写真'
-    sheet.getCell(`A${row}`).font = { bold: true }
-    sheet.getCell(`D${row}`).value = 'ご提案商品'
-    sheet.getCell(`D${row}`).font = { bold: true }
-
-    // ラベル行(1-indexed: row)のすぐ下の行が、0-indexedのアンカー行としては`row`に一致する
-    if (item.beforePhotoUrl) {
-      const buf = await fetchImageBuffer(item.beforePhotoUrl)
-      if (buf) {
-        const imageId = wb.addImage({ buffer: buf, extension: detectImageExtension(buf) })
-        sheet.addImage(imageId, { tl: { col: 0, row }, ext: { width: PRODUCT_PHOTO_WIDTH, height: PRODUCT_PHOTO_HEIGHT } })
-      }
-    }
-    if (item.proposedPhotoUrl) {
-      const buf = await fetchImageBuffer(item.proposedPhotoUrl)
-      if (buf) {
-        const imageId = wb.addImage({ buffer: buf, extension: detectImageExtension(buf) })
-        sheet.addImage(imageId, { tl: { col: 3, row }, ext: { width: PRODUCT_PHOTO_WIDTH, height: PRODUCT_PHOTO_HEIGHT } })
-      }
-    }
-
-    const captionRow = row + PRODUCT_PHOTO_ROWS
-    sheet.getCell(`A${captionRow}`).value = `既存商品：${item.existing_product_name || '-'}`
-    sheet.getCell(`D${captionRow}`).value = `ご提案商品：${item.name.replace(/\n/g, ' ')}`
-
-    row = captionRow + 2
+function mergeLabelCell(
+  sheet: ExcelJS.Worksheet, r1: number, c1: number, r2: number, c2: number, value: string,
+  font: Partial<ExcelJS.Font>,
+) {
+  sheet.mergeCells(r1, c1, r2, c2)
+  const cell = sheet.getCell(r1, c1)
+  cell.value = value
+  cell.font = { name: 'ＭＳ Ｐゴシック', size: 14, ...font }
+  cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  for (let r = r1; r <= r2; r++) {
+    for (let c = c1; c <= c2; c++) sheet.getCell(r, c).border = THIN_BORDER
   }
+}
+
+// 商品資料シート: 元々ユーザーが手作業で作っていた提案資料(①②③…と番号を振り、
+// 施工前写真とご提案商品を4件ずつ横に並べるグリッド)を再現する
+async function addProductSheet(wb: ExcelJS.Workbook, items: QuotationExcelItem[], projectName: string) {
+  const sheet = wb.addWorksheet('商品資料')
+  const totalCols = ITEMS_PER_ROW * BLOCK_COLS
+  for (let c = 1; c <= totalCols; c++) sheet.getColumn(c).width = 8
+
+  sheet.mergeCells(1, 1, 3, totalCols)
+  const titleCell = sheet.getCell(1, 1)
+  titleCell.value = `${projectName ? projectName + '　' : ''}ご提案資料`
+  titleCell.font = { name: 'ＭＳ Ｐゴシック', size: 20, bold: true }
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+
+  let row = 5
+  for (let batchStart = 0; batchStart < items.length; batchStart += ITEMS_PER_ROW) {
+    const batch = items.slice(batchStart, batchStart + ITEMS_PER_ROW)
+    sheet.getRow(row).height = 20.25
+    sheet.getRow(row + 1).height = 20.25
+
+    for (let i = 0; i < batch.length; i++) {
+      const item = batch[i]
+      const num = batchStart + i + 1
+      const beforeCol = i * BLOCK_COLS + 1
+      const proposedCol = beforeCol + 5
+
+      mergeLabelCell(sheet, row, beforeCol, row + 1, beforeCol + 4, '施工前写真', {})
+      mergeLabelCell(sheet, row, proposedCol, row + 1, proposedCol + 4, 'ご提案商品', {})
+
+      mergeLabelCell(sheet, row + 2, beforeCol, row + 3, beforeCol + 4, '既設商品', { name: 'HGP創英角ｺﾞｼｯｸUB', bold: true })
+      mergeLabelCell(sheet, row + 2, proposedCol, row + 3, proposedCol + 4, `ご提案商品${circledNumber(num)}`, { name: 'HGP創英角ｺﾞｼｯｸUB', bold: true })
+
+      mergeLabelCell(sheet, row + 4, beforeCol, row + 5, beforeCol + 4, item.existing_product_name || '-', {})
+      mergeLabelCell(sheet, row + 4, proposedCol, row + 5, proposedCol + 4, item.name.replace(/\n/g, ' '), {})
+
+      const photoRowStart = row + 6
+      const photoRowEnd = photoRowStart + PHOTO_ROWS - 1
+      mergeLabelCell(sheet, photoRowStart, beforeCol, photoRowEnd, beforeCol + 4, '', {})
+      mergeLabelCell(sheet, photoRowStart, proposedCol, photoRowEnd, proposedCol + 4, '', {})
+
+      if (item.beforePhotoUrl) await embedProductPhoto(wb, sheet, item.beforePhotoUrl, photoRowStart - 1, beforeCol - 1)
+      if (item.proposedPhotoUrl) await embedProductPhoto(wb, sheet, item.proposedPhotoUrl, photoRowStart - 1, proposedCol - 1)
+    }
+
+    row += 6 + PHOTO_ROWS
+  }
+}
+
+async function embedProductPhoto(wb: ExcelJS.Workbook, sheet: ExcelJS.Worksheet, url: string, anchorRow: number, anchorCol: number) {
+  const buf = await fetchImageBuffer(url)
+  if (!buf) return
+  const imageId = wb.addImage({ buffer: buf, extension: detectImageExtension(buf) })
+  sheet.addImage(imageId, {
+    tl: { col: anchorCol + 0.2, row: anchorRow + 0.2 },
+    ext: { width: 260, height: 300 },
+  })
 }
