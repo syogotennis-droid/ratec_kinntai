@@ -204,6 +204,11 @@ export interface QuotationItem extends DocumentItem {
   purchase_rate: number
   item_type: 'product' | 'labor'
   product_url: string | null
+  /** 商品資料(施工前写真・ご提案商品写真つきの提案資料)を作成するか */
+  has_product_sheet: boolean
+  before_photo_path: string | null
+  existing_product_name: string | null
+  proposed_photo_path: string | null
 }
 
 export interface Quotation {

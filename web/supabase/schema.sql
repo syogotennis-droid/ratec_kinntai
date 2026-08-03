@@ -232,7 +232,11 @@ CREATE TABLE quotation_items (
   markup_rate NUMERIC NOT NULL DEFAULT 0.3,
   purchase_rate NUMERIC NOT NULL DEFAULT 0.2,
   item_type TEXT NOT NULL DEFAULT 'product' CHECK (item_type IN ('product', 'labor')),
-  product_url TEXT
+  product_url TEXT,
+  has_product_sheet BOOLEAN NOT NULL DEFAULT false,
+  before_photo_path TEXT,
+  existing_product_name TEXT,
+  proposed_photo_path TEXT
 );
 
 -- 発注書
@@ -342,6 +346,9 @@ CREATE POLICY "authenticated_all" ON invoice_items FOR ALL TO authenticated USIN
 
 -- Storage バケット（写真用）
 INSERT INTO storage.buckets (id, name, public) VALUES ('sales-photos', 'sales-photos', false);
+INSERT INTO storage.buckets (id, name, public) VALUES ('quotation-photos', 'quotation-photos', false);
 
 CREATE POLICY "authenticated_storage" ON storage.objects FOR ALL TO authenticated
   USING (bucket_id = 'sales-photos') WITH CHECK (bucket_id = 'sales-photos');
+CREATE POLICY "authenticated_storage_quotation_photos" ON storage.objects FOR ALL TO authenticated
+  USING (bucket_id = 'quotation-photos') WITH CHECK (bucket_id = 'quotation-photos');
