@@ -59,8 +59,6 @@ interface ProjectWithCompany extends Project {
 // 保存前の一時状態。商品資料用の写真はアップロード前はFileとプレビューURLだけを保持し、
 // 保存時にストレージへアップロードしてbefore_photo_path/proposed_photo_pathへ差し替える
 type EditableItem = Omit<QuotationItem, 'id'> & {
-  _beforeFile?: File | null
-  _beforePreview?: string | null
   _proposedFile?: File | null
   _proposedPreview?: string | null
   /** 選択した商品の詳細ページから取れた画像候補(主画像・小組画像など)。ご提案商品写真を選べるようにするために保持する */
@@ -225,7 +223,6 @@ export default function NewQuotationPage() {
   const removeItem = (idx: number) => {
     setItems(prev => {
       const item = prev[idx]
-      if (item._beforePreview) URL.revokeObjectURL(item._beforePreview)
       if (item._proposedPreview) URL.revokeObjectURL(item._proposedPreview)
       return prev.filter((_, i) => i !== idx)
     })
@@ -235,22 +232,6 @@ export default function NewQuotationPage() {
     updateItem(idx, 'has_product_sheet', !items[idx].has_product_sheet)
   }
 
-  const setBeforePhoto = (idx: number, file: File) => {
-    setItems(prev => {
-      const next = [...prev]
-      if (next[idx]._beforePreview) URL.revokeObjectURL(next[idx]._beforePreview!)
-      next[idx] = { ...next[idx], _beforeFile: file, _beforePreview: URL.createObjectURL(file) }
-      return next
-    })
-  }
-  const removeBeforePhoto = (idx: number) => {
-    setItems(prev => {
-      const next = [...prev]
-      if (next[idx]._beforePreview) URL.revokeObjectURL(next[idx]._beforePreview!)
-      next[idx] = { ...next[idx], _beforeFile: null, _beforePreview: null, before_photo_path: null }
-      return next
-    })
-  }
   const setProposedPhoto = (idx: number, file: File) => {
     setItems(prev => {
       const next = [...prev]
@@ -341,11 +322,10 @@ export default function NewQuotationPage() {
       if (qErr) throw qErr
       if (items.length > 0) {
         // 商品資料用の写真は保存確定時にのみアップロードする(下書き段階で都度アップロードしない)
-        const itemsForInsert = await Promise.all(items.map(async ({ _beforeFile, _beforePreview, _proposedFile, _proposedPreview, _imageCandidates, ...item }) => {
+        const itemsForInsert = await Promise.all(items.map(async ({ _proposedFile, _proposedPreview, _imageCandidates, ...item }) => {
           if (!item.has_product_sheet) return item
-          const before_photo_path = _beforeFile ? await uploadQuotationPhoto(supabase, _beforeFile) : item.before_photo_path
           const proposed_photo_path = _proposedFile ? await uploadQuotationPhoto(supabase, _proposedFile) : item.proposed_photo_path
-          return { ...item, before_photo_path, proposed_photo_path }
+          return { ...item, proposed_photo_path }
         }))
         const { error: itemsErr } = await supabase.from('quotation_items').insert(itemsForInsert.map((item, i) => ({ ...item, quotation_id: q.id, sort_order: i })))
         if (itemsErr) {
@@ -572,11 +552,7 @@ export default function NewQuotationPage() {
                       商品資料を作成する
                     </label>
                     {item.has_product_sheet && (
-                      <div className="mt-2 grid grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-[11px] text-gray-500 mb-1">施工前写真</label>
-                          <PhotoPicker preview={item._beforePreview} onChange={f => setBeforePhoto(idx, f)} onRemove={() => removeBeforePhoto(idx)} />
-                        </div>
+                      <div className="mt-2 grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[11px] text-gray-500 mb-1">既存商品名</label>
                           <input value={item.existing_product_name ?? ''} onChange={e => updateItem(idx, 'existing_product_name', e.target.value)}
@@ -711,10 +687,6 @@ export default function NewQuotationPage() {
                   </label>
                   {item.has_product_sheet && (
                     <div className="mt-2 space-y-2">
-                      <div>
-                        <label className="block text-[11px] text-gray-500 mb-1">施工前写真</label>
-                        <PhotoPicker preview={item._beforePreview} onChange={f => setBeforePhoto(idx, f)} onRemove={() => removeBeforePhoto(idx)} />
-                      </div>
                       <div>
                         <label className="block text-[11px] text-gray-500 mb-1">既存商品名</label>
                         <input value={item.existing_product_name ?? ''} onChange={e => updateItem(idx, 'existing_product_name', e.target.value)}
