@@ -193,7 +193,9 @@ function mergeLabelCell(
 // 施工前写真とご提案商品を4件ずつ横に並べるグリッド)を再現する
 async function addProductSheet(wb: ExcelJS.Workbook, items: QuotationExcelItem[], projectName: string) {
   const sheet = wb.addWorksheet('商品資料')
-  const totalCols = ITEMS_PER_ROW * BLOCK_COLS
+  // 実際に使う列数(最大でも4件分)。1〜3件しかない場合は印刷範囲やタイトルの
+  // 幅も無駄に広げず、その分だけに絞る
+  const usedCols = Math.min(items.length, ITEMS_PER_ROW) * BLOCK_COLS
   // 列幅は明示的に指定せず、元の見本と同じくExcelの既定幅のままにする
 
   sheet.pageSetup = {
@@ -206,7 +208,7 @@ async function addProductSheet(wb: ExcelJS.Workbook, items: QuotationExcelItem[]
     margins: { left: 0.7, right: 0.7, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3, ...sheet.pageSetup.margins },
   }
 
-  sheet.mergeCells(1, 1, 3, totalCols)
+  sheet.mergeCells(1, 1, 3, usedCols)
   const titleCell = sheet.getCell(1, 1)
   titleCell.value = `${projectName ? projectName + '　' : ''}ご提案資料`
   titleCell.font = { name: 'ＭＳ Ｐゴシック', size: 20, bold: true }
@@ -248,11 +250,15 @@ async function addProductSheet(wb: ExcelJS.Workbook, items: QuotationExcelItem[]
     row += 6 + PHOTO_ROWS
   }
 
-  sheet.pageSetup.printArea = `A1:${sheet.getColumn(totalCols).letter}${row - 1}`
+  // 印刷範囲は実際に使った列数・行数だけに絞る(常に4件分の幅を確保すると
+  // 1〜3件しかない場合に余白だらけの印刷範囲になってしまうため)
+  sheet.pageSetup.printArea = `A1:${sheet.getColumn(usedCols).letter}${row - 1}`
 }
 
-// 写真枠(5列×21行、既定の列幅・12pt行高で組んでいる)のおおよそのピクセルサイズ
-const DEFAULT_COL_PX = 64
+// 写真枠(5列×21行、既定の列幅・12pt行高で組んでいる)のおおよそのピクセルサイズ。
+// 列幅はExcelの既定値のままだが、このシートの既定フォント(ＭＳ Ｐゴシック)では
+// 一般的なCalibri基準の目安(1列≒64px)よりかなり狭く描画されるため、その分を反映する
+const DEFAULT_COL_PX = 32
 const ROW_PX = 16
 const BLOCK_PX_WIDTH = 5 * DEFAULT_COL_PX
 const BLOCK_PX_HEIGHT = PHOTO_ROWS * ROW_PX
