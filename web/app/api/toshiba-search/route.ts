@@ -68,8 +68,8 @@ export async function GET(request: NextRequest) {
     const m = priceCell.text().replace(/\s+/g, ' ').trim().match(/[¥￥]\s*([\d,]+)/)
     const price = m ? Number(m[1].replace(/,/g, '')) : null
 
-    let imageUrl = $row.find('img.sdb_tblSmallpic').attr('src') || null
-    if (imageUrl && imageUrl.startsWith('//')) imageUrl = 'https:' + imageUrl
+    const imgSrc = $row.find('img.sdb_tblSmallpic').attr('src') || null
+    const imageUrl = imgSrc ? new URL(imgSrc, 'https://saturn.tlt.co.jp/pdocs/').toString() : null
 
     const href = $li.find('a.title').attr('href') || null
     const detailUrl = href ? new URL(href, 'https://saturn.tlt.co.jp/pdocs/').toString() : null

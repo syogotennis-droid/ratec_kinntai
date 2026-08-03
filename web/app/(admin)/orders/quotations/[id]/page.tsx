@@ -64,6 +64,28 @@ type EditableItem = Omit<QuotationItem, 'id'> & {
   _beforePreview?: string | null
   _proposedFile?: File | null
   _proposedPreview?: string | null
+  /** 型式検索で表示された候補一覧。ご提案商品写真を候補画像から選べるようにするために保持する */
+  _imageCandidates?: Win2kResult[]
+}
+
+// 型式検索の候補一覧から画像つきのものだけをサムネイルで並べ、クリックでご提案商品写真として選べるようにする
+function ImageCandidateStrip({ candidates, onSelect }: { candidates: Win2kResult[] | undefined; onSelect: (r: Win2kResult) => void }) {
+  const withImages = (candidates ?? []).filter((c): c is Win2kResult & { imageUrl: string } => !!c.imageUrl)
+  if (withImages.length === 0) return null
+  return (
+    <div className="mt-1">
+      <div className="text-[10px] text-gray-400 mb-1">型式検索の候補から選ぶ</div>
+      <div className="flex gap-1 flex-wrap">
+        {withImages.map((c, i) => (
+          <button key={i} type="button" onClick={() => onSelect(c)} title={c.code}
+            className="w-10 h-10 rounded border border-gray-200 overflow-hidden hover:border-blue-400 transition-colors shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/api/image-proxy?url=${encodeURIComponent(c.imageUrl)}`} alt={c.code} className="w-full h-full object-cover" />
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function TrashIcon({ className }: { className?: string }) {
@@ -168,12 +190,12 @@ export default function QuotationDetailPage() {
     }
   }
 
-  const applyWin2kResult = (idx: number, result: Win2kResult, maker: Maker) => {
+  const applyWin2kResult = (idx: number, result: Win2kResult, maker: Maker, allResults: Win2kResult[]) => {
     const name = buildWin2kName(maker.label, result)
     setItems(prev => {
       const next = [...prev]
       const unitPrice = result.price ?? next[idx].unit_price
-      next[idx] = { ...next[idx], name, unit_price: unitPrice, amount: Math.round(next[idx].qty * unitPrice * next[idx].markup_rate), product_url: result.detailUrl }
+      next[idx] = { ...next[idx], name, unit_price: unitPrice, amount: Math.round(next[idx].qty * unitPrice * next[idx].markup_rate), product_url: result.detailUrl, _imageCandidates: allResults }
       return next
     })
 
@@ -267,6 +289,22 @@ export default function QuotationDetailPage() {
       next[idx] = { ...next[idx], _proposedFile: null, _proposedPreview: null, proposed_photo_path: null }
       return next
     })
+  }
+
+  // 型式検索の候補画像をご提案商品写真として選ぶ（外部サイトの画像はCORSの制約で直接fetchできないため、
+  // 自サーバー経由のimage-proxyで取得してからアップロード用のFileに変換する）
+  const selectCandidateImage = async (idx: number, candidate: Win2kResult) => {
+    if (!candidate.imageUrl) return
+    try {
+      const res = await fetch(`/api/image-proxy?url=${encodeURIComponent(candidate.imageUrl)}`)
+      if (!res.ok) return
+      const blob = await res.blob()
+      const ext = blob.type.split('/')[1]?.split('+')[0] || 'jpg'
+      const file = new File([blob], `product.${ext}`, { type: blob.type })
+      setProposedPhoto(idx, file)
+    } catch {
+      // 候補画像の取得に失敗しても手動アップロードで代替できるため、エラー表示はしない
+    }
   }
 
   const handleSave = async () => {
@@ -410,7 +448,7 @@ export default function QuotationDetailPage() {
                       </select>
                     </div>
                     <div>
-                      {isLabor ? <span className="text-gray-300 text-sm">—</span> : <ProductModelSearch makers={MAKERS} onSelect={(r, m) => applyWin2kResult(idx, r, m)} />}
+                      {isLabor ? <span className="text-gray-300 text-sm">—</span> : <ProductModelSearch makers={MAKERS} onSelect={(r, m, all) => applyWin2kResult(idx, r, m, all)} />}
                     </div>
                     <div>
                       {isLabor ? (
@@ -507,6 +545,7 @@ export default function QuotationDetailPage() {
                           <PhotoPicker
                             preview={item._proposedPreview || (item.proposed_photo_path ? existingPhotoUrls[item.proposed_photo_path] : null)}
                             onChange={f => setProposedPhoto(idx, f)} onRemove={() => removeProposedPhoto(idx)} />
+                          <ImageCandidateStrip candidates={item._imageCandidates} onSelect={c => selectCandidateImage(idx, c)} />
                         </div>
                       </div>
                     )}
@@ -538,7 +577,7 @@ export default function QuotationDetailPage() {
                   <div className="mb-2">
                     <label className="block text-[11px] text-gray-500 mb-0.5">メーカー</label>
                     <label className="block text-[11px] text-gray-400 mb-0.5">型式検索</label>
-                    <ProductModelSearch makers={MAKERS} onSelect={(r, m) => applyWin2kResult(idx, r, m)} />
+                    <ProductModelSearch makers={MAKERS} onSelect={(r, m, all) => applyWin2kResult(idx, r, m, all)} />
                   </div>
                 )}
 
@@ -648,6 +687,7 @@ export default function QuotationDetailPage() {
                         <PhotoPicker
                           preview={item._proposedPreview || (item.proposed_photo_path ? existingPhotoUrls[item.proposed_photo_path] : null)}
                           onChange={f => setProposedPhoto(idx, f)} onRemove={() => removeProposedPhoto(idx)} />
+                        <ImageCandidateStrip candidates={item._imageCandidates} onSelect={c => selectCandidateImage(idx, c)} />
                       </div>
                     </div>
                   )}
