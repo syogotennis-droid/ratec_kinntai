@@ -271,8 +271,6 @@ async function addProductSheet(ExcelJSCtor: typeof ExcelJS, wb: ExcelJS.Workbook
   sheet.getCell(1, 1).value = `${projectName ? projectName + '　' : ''}ご提案資料`
 
   const templateItems = items.slice(0, TEMPLATE_SLOTS.length)
-  let maxRowUsed = 3
-  let maxColUsed = 1
 
   for (let i = 0; i < TEMPLATE_SLOTS.length; i++) {
     const slot = TEMPLATE_SLOTS[i]
@@ -281,8 +279,6 @@ async function addProductSheet(ExcelJSCtor: typeof ExcelJS, wb: ExcelJS.Workbook
       clearSlot(sheet, slot)
       continue
     }
-    maxRowUsed = Math.max(maxRowUsed, slot.photoRow[1])
-    maxColUsed = Math.max(maxColUsed, slot.proposedCol[1])
 
     sheet.getCell(slot.nameRow[0], slot.beforeCol[0]).value = item.existing_product_name || '-'
     sheet.getCell(slot.nameRow[0], slot.proposedCol[0]).value = item.name.replace(/\n/g, ' ')
@@ -297,15 +293,17 @@ async function addProductSheet(ExcelJSCtor: typeof ExcelJS, wb: ExcelJS.Workbook
     }
   }
 
-  // テンプレートの枠(7件分)を超えた分は簡易フォーマットで下に追記する
+  // 印刷範囲・タイトル幅は件数に関わらず常にひな形通り(4件分)に固定する。
+  // 実際に使った件数分だけに絞ると、fitToWidth設定と組み合わさって
+  // 1〜2件だけの少ない場合に極端に拡大印刷されてしまうため
+  // テンプレートの枠(7件分)を超えた分だけ、簡易フォーマットで下に追記して印刷範囲を広げる
   const overflowItems = items.slice(TEMPLATE_SLOTS.length)
   if (overflowItems.length > 0) {
     const extra = await appendFallbackItems(wb, sheet, overflowItems, TEMPLATE_MAX_ROW + 3, TEMPLATE_SLOTS.length)
-    maxRowUsed = Math.max(maxRowUsed, extra.maxRow)
-    maxColUsed = Math.max(maxColUsed, extra.maxCol)
+    const maxCol = Math.max(TEMPLATE_MAX_COL, extra.maxCol)
+    const maxRow = Math.max(TEMPLATE_MAX_ROW, extra.maxRow)
+    sheet.pageSetup.printArea = `A1:${sheet.getColumn(maxCol).letter}${maxRow}`
   }
-
-  sheet.pageSetup.printArea = `A1:${sheet.getColumn(maxColUsed).letter}${maxRowUsed}`
 }
 
 async function embedProductPhoto(
