@@ -341,7 +341,7 @@ export default function NewQuotationPage() {
       if (qErr) throw qErr
       if (items.length > 0) {
         // 商品資料用の写真は保存確定時にのみアップロードする(下書き段階で都度アップロードしない)
-        const itemsForInsert = await Promise.all(items.map(async ({ _beforeFile, _beforePreview, _proposedFile, _proposedPreview, ...item }) => {
+        const itemsForInsert = await Promise.all(items.map(async ({ _beforeFile, _beforePreview, _proposedFile, _proposedPreview, _imageCandidates, ...item }) => {
           if (!item.has_product_sheet) return item
           const before_photo_path = _beforeFile ? await uploadQuotationPhoto(supabase, _beforeFile) : item.before_photo_path
           const proposed_photo_path = _proposedFile ? await uploadQuotationPhoto(supabase, _proposedFile) : item.proposed_photo_path
