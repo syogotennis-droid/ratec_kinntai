@@ -1,5 +1,12 @@
+import type ExcelJS from 'exceljs'
 import { QuotationItem, Settings } from '@/lib/supabase/types'
 import { QUOTATION_TEMPLATE_B64 } from './template-b64'
+
+interface QuotationExcelItem extends Omit<QuotationItem, 'id'> {
+  /** 商品資料に埋め込む写真の取得先URL(署名付きURL、または未保存ならローカルのblob URL) */
+  beforePhotoUrl?: string | null
+  proposedPhotoUrl?: string | null
+}
 
 interface QuotationExcelData {
   docNo: string
@@ -8,7 +15,7 @@ interface QuotationExcelData {
   projectName: string
   contactPerson: string | null
   notes: string
-  items: Omit<QuotationItem, 'id'>[]
+  items: QuotationExcelItem[]
   subtotal: number
   taxAmount: number
   totalAmount: number
@@ -114,6 +121,12 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
     ws.getCell('G46').value = `担当：${data.handlerName}`
   }
 
+  // 商品資料シート（チェックが付いた明細行だけを対象に、施工前写真とご提案商品写真を並べる）
+  const productSheetItems = data.items.filter(i => i.has_product_sheet)
+  if (productSheetItems.length > 0) {
+    await addProductSheet(wb, productSheetItems)
+  }
+
   const buffer = await wb.xlsx.writeBuffer()
 
   // ExcelJS が書き換えた drawing XML を元に戻して画像サイズを保持
@@ -130,4 +143,70 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
   a.download = `見積書_${data.docNo}_${data.issueDate}.xlsx`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+async function fetchImageBuffer(url: string): Promise<ArrayBuffer | null> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    return await res.arrayBuffer()
+  } catch {
+    return null
+  }
+}
+
+// blob URL・署名付きURLには拡張子が付いていないことが多いため、URL文字列ではなく
+// 実データの先頭バイト(マジックナンバー)から画像形式を判定する
+function detectImageExtension(buf: ArrayBuffer): 'png' | 'jpeg' {
+  const bytes = new Uint8Array(buf.slice(0, 8))
+  const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
+  return isPng ? 'png' : 'jpeg'
+}
+
+const PRODUCT_PHOTO_WIDTH = 230
+const PRODUCT_PHOTO_HEIGHT = 172
+const PRODUCT_PHOTO_ROWS = 9
+
+// 商品資料シート: チェックされた明細行ごとに「施工前写真／既存商品名」と
+// 「ご提案商品写真／ご提案商品名」を上から順に並べる（1件ずつ縦積みのシンプルな構成）
+async function addProductSheet(wb: ExcelJS.Workbook, items: QuotationExcelItem[]) {
+  const sheet = wb.addWorksheet('商品資料')
+  sheet.getColumn(1).width = 34
+  sheet.getColumn(2).width = 34
+  sheet.getColumn(3).width = 3
+  sheet.getColumn(4).width = 34
+  sheet.getColumn(5).width = 34
+
+  sheet.getCell('A1').value = '商品資料'
+  sheet.getCell('A1').font = { bold: true, size: 14 }
+
+  let row = 3
+  for (const item of items) {
+    sheet.getCell(`A${row}`).value = '施工前写真'
+    sheet.getCell(`A${row}`).font = { bold: true }
+    sheet.getCell(`D${row}`).value = 'ご提案商品'
+    sheet.getCell(`D${row}`).font = { bold: true }
+
+    // ラベル行(1-indexed: row)のすぐ下の行が、0-indexedのアンカー行としては`row`に一致する
+    if (item.beforePhotoUrl) {
+      const buf = await fetchImageBuffer(item.beforePhotoUrl)
+      if (buf) {
+        const imageId = wb.addImage({ buffer: buf, extension: detectImageExtension(buf) })
+        sheet.addImage(imageId, { tl: { col: 0, row }, ext: { width: PRODUCT_PHOTO_WIDTH, height: PRODUCT_PHOTO_HEIGHT } })
+      }
+    }
+    if (item.proposedPhotoUrl) {
+      const buf = await fetchImageBuffer(item.proposedPhotoUrl)
+      if (buf) {
+        const imageId = wb.addImage({ buffer: buf, extension: detectImageExtension(buf) })
+        sheet.addImage(imageId, { tl: { col: 3, row }, ext: { width: PRODUCT_PHOTO_WIDTH, height: PRODUCT_PHOTO_HEIGHT } })
+      }
+    }
+
+    const captionRow = row + PRODUCT_PHOTO_ROWS
+    sheet.getCell(`A${captionRow}`).value = `既存商品：${item.existing_product_name || '-'}`
+    sheet.getCell(`D${captionRow}`).value = `ご提案商品：${item.name.replace(/\n/g, ' ')}`
+
+    row = captionRow + 2
+  }
 }

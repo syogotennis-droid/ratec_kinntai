@@ -6,8 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Company, CompanyOffice, Project, QuotationItem } from '@/lib/supabase/types'
 import Link from 'next/link'
 import ProductModelSearch, { Maker } from '@/components/ProductModelSearch'
+import PhotoPicker from '@/components/ui/PhotoPicker'
 import { Win2kResult } from '@/lib/win2k'
 import { buildWin2kName } from '@/lib/win2k-name'
+import { uploadQuotationPhoto } from '@/lib/quotation-photos'
 
 const MAKERS: Maker[] = [
   { key: 'mitsubishi', label: '三菱', endpoint: '/api/win2k-search', accent: 'red' },
@@ -54,6 +56,21 @@ interface ProjectWithCompany extends Project {
   companyData: Company
 }
 
+// 保存前の一時状態。商品資料用の写真はアップロード前はFileとプレビューURLだけを保持し、
+// 保存時にストレージへアップロードしてbefore_photo_path/proposed_photo_pathへ差し替える
+type EditableItem = Omit<QuotationItem, 'id'> & {
+  _beforeFile?: File | null
+  _beforePreview?: string | null
+  _proposedFile?: File | null
+  _proposedPreview?: string | null
+}
+
+const EMPTY_ITEM: EditableItem = {
+  sort_order: 0, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0,
+  markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product', product_url: null,
+  has_product_sheet: false, before_photo_path: null, existing_product_name: '', proposed_photo_path: null,
+}
+
 export default function NewQuotationPage() {
   const router = useRouter()
   const searchRef = useRef<HTMLDivElement>(null)
@@ -68,9 +85,7 @@ export default function NewQuotationPage() {
   const [projectId, setProjectId] = useState<number>(0)
   const [issueDate, setIssueDate] = useState(new Date().toLocaleDateString('sv-SE'))
   const [notes, setNotes] = useState('')
-  const [items, setItems] = useState<Omit<QuotationItem, 'id'>[]>([
-    { sort_order: 0, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product', product_url: null }
-  ])
+  const [items, setItems] = useState<EditableItem[]>([{ ...EMPTY_ITEM }])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -168,7 +183,7 @@ export default function NewQuotationPage() {
   const taxAmount = Math.floor(subtotal * TAX_RATE)
   const totalAmount = subtotal + taxAmount
 
-  const updateItem = (idx: number, field: keyof Omit<QuotationItem, 'id'>, value: string | number) => {
+  const updateItem = (idx: number, field: keyof Omit<QuotationItem, 'id'>, value: string | number | boolean) => {
     setItems(prev => {
       const next = [...prev]
       const item = { ...next[idx], [field]: value }
@@ -183,10 +198,52 @@ export default function NewQuotationPage() {
   }
 
   const addItem = () => {
-    setItems(prev => [...prev, { sort_order: prev.length, name: '', spec: '', qty: 1, unit: '式', unit_price: 0, amount: 0, markup_rate: 0.3, purchase_rate: 0.2, item_type: 'product', product_url: null }])
+    setItems(prev => [...prev, { ...EMPTY_ITEM, sort_order: prev.length }])
   }
   const removeItem = (idx: number) => {
-    setItems(prev => prev.filter((_, i) => i !== idx))
+    setItems(prev => {
+      const item = prev[idx]
+      if (item._beforePreview) URL.revokeObjectURL(item._beforePreview)
+      if (item._proposedPreview) URL.revokeObjectURL(item._proposedPreview)
+      return prev.filter((_, i) => i !== idx)
+    })
+  }
+
+  const toggleProductSheet = (idx: number) => {
+    updateItem(idx, 'has_product_sheet', !items[idx].has_product_sheet)
+  }
+
+  const setBeforePhoto = (idx: number, file: File) => {
+    setItems(prev => {
+      const next = [...prev]
+      if (next[idx]._beforePreview) URL.revokeObjectURL(next[idx]._beforePreview!)
+      next[idx] = { ...next[idx], _beforeFile: file, _beforePreview: URL.createObjectURL(file) }
+      return next
+    })
+  }
+  const removeBeforePhoto = (idx: number) => {
+    setItems(prev => {
+      const next = [...prev]
+      if (next[idx]._beforePreview) URL.revokeObjectURL(next[idx]._beforePreview!)
+      next[idx] = { ...next[idx], _beforeFile: null, _beforePreview: null, before_photo_path: null }
+      return next
+    })
+  }
+  const setProposedPhoto = (idx: number, file: File) => {
+    setItems(prev => {
+      const next = [...prev]
+      if (next[idx]._proposedPreview) URL.revokeObjectURL(next[idx]._proposedPreview!)
+      next[idx] = { ...next[idx], _proposedFile: file, _proposedPreview: URL.createObjectURL(file) }
+      return next
+    })
+  }
+  const removeProposedPhoto = (idx: number) => {
+    setItems(prev => {
+      const next = [...prev]
+      if (next[idx]._proposedPreview) URL.revokeObjectURL(next[idx]._proposedPreview!)
+      next[idx] = { ...next[idx], _proposedFile: null, _proposedPreview: null, proposed_photo_path: null }
+      return next
+    })
   }
 
   const applyWin2kResult = (idx: number, result: Win2kResult, maker: Maker) => {
@@ -239,7 +296,14 @@ export default function NewQuotationPage() {
       }).select().single()
       if (qErr) throw qErr
       if (items.length > 0) {
-        const { error: itemsErr } = await supabase.from('quotation_items').insert(items.map((item, i) => ({ ...item, quotation_id: q.id, sort_order: i })))
+        // 商品資料用の写真は保存確定時にのみアップロードする(下書き段階で都度アップロードしない)
+        const itemsForInsert = await Promise.all(items.map(async ({ _beforeFile, _beforePreview, _proposedFile, _proposedPreview, ...item }) => {
+          if (!item.has_product_sheet) return item
+          const before_photo_path = _beforeFile ? await uploadQuotationPhoto(supabase, _beforeFile) : item.before_photo_path
+          const proposed_photo_path = _proposedFile ? await uploadQuotationPhoto(supabase, _proposedFile) : item.proposed_photo_path
+          return { ...item, before_photo_path, proposed_photo_path }
+        }))
+        const { error: itemsErr } = await supabase.from('quotation_items').insert(itemsForInsert.map((item, i) => ({ ...item, quotation_id: q.id, sort_order: i })))
         if (itemsErr) {
           // 明細の保存に失敗した場合、金額0円の見積書だけが残ってしまわないよう作成した見積書自体も取り消す
           await supabase.from('quotations').delete().eq('id', q.id)
@@ -375,7 +439,8 @@ export default function NewQuotationPage() {
                 const isLabor = item.item_type === 'labor'
                 const shikiriPrice = Math.round(item.unit_price * item.markup_rate)
                 return (
-                  <div key={idx} className={`grid ${ITEM_GRID_COLS} gap-3 items-center px-3 py-2.5 bg-white border border-gray-200 rounded-lg`}>
+                  <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className={`grid ${ITEM_GRID_COLS} gap-3 items-center px-3 py-2.5 bg-white`}>
                     <div>
                       <select value={item.item_type} onChange={e => updateItem(idx, 'item_type', e.target.value)}
                         className="w-full px-1.5 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
@@ -454,6 +519,33 @@ export default function NewQuotationPage() {
                         <TrashIcon className="w-4 h-4" />
                       </button>
                     </div>
+                  </div>
+                  <div className="px-3 py-2 border-t border-gray-100 bg-gray-50">
+                    <label className="inline-flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+                      <input type="checkbox" checked={item.has_product_sheet}
+                        onChange={() => toggleProductSheet(idx)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                      商品資料を作成する
+                    </label>
+                    {item.has_product_sheet && (
+                      <div className="mt-2 grid grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-[11px] text-gray-500 mb-1">施工前写真</label>
+                          <PhotoPicker preview={item._beforePreview} onChange={f => setBeforePhoto(idx, f)} onRemove={() => removeBeforePhoto(idx)} />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-gray-500 mb-1">既存商品名</label>
+                          <input value={item.existing_product_name ?? ''} onChange={e => updateItem(idx, 'existing_product_name', e.target.value)}
+                            placeholder="例：FPL形LED蛍光灯"
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-gray-500 mb-1">ご提案商品写真</label>
+                          <PhotoPicker preview={item._proposedPreview} onChange={f => setProposedPhoto(idx, f)} onRemove={() => removeProposedPhoto(idx)} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   </div>
                 )
               })}
@@ -563,6 +655,33 @@ export default function NewQuotationPage() {
                 <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                   <span className="text-xs text-gray-500">金額</span>
                   <span className="text-base font-bold text-gray-900 tabular-nums">¥{item.amount.toLocaleString()}</span>
+                </div>
+
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                  <label className="inline-flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+                    <input type="checkbox" checked={item.has_product_sheet}
+                      onChange={() => toggleProductSheet(idx)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    商品資料を作成する
+                  </label>
+                  {item.has_product_sheet && (
+                    <div className="mt-2 space-y-2">
+                      <div>
+                        <label className="block text-[11px] text-gray-500 mb-1">施工前写真</label>
+                        <PhotoPicker preview={item._beforePreview} onChange={f => setBeforePhoto(idx, f)} onRemove={() => removeBeforePhoto(idx)} />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-gray-500 mb-1">既存商品名</label>
+                        <input value={item.existing_product_name ?? ''} onChange={e => updateItem(idx, 'existing_product_name', e.target.value)}
+                          placeholder="例：FPL形LED蛍光灯"
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-gray-500 mb-1">ご提案商品写真</label>
+                        <PhotoPicker preview={item._proposedPreview} onChange={f => setProposedPhoto(idx, f)} onRemove={() => removeProposedPhoto(idx)} />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end mt-2 pt-2 border-t border-gray-100">
