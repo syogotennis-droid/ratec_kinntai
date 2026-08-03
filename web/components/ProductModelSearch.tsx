@@ -30,7 +30,7 @@ const ITEM_EST_HEIGHT = 62
 
 interface Props {
   makers: Maker[]
-  onSelect: (result: Win2kResult, maker: Maker, allResults: Win2kResult[]) => void
+  onSelect: (result: Win2kResult, maker: Maker) => void
 }
 
 // 「-」だけ、空文字だけの商品名・仕様行はノイズになるため非表示にする
@@ -162,7 +162,7 @@ export default function ProductModelSearch({ makers, onSelect }: Props) {
   }
 
   const select = (r: Win2kResult) => {
-    onSelect(r, maker, results)
+    onSelect(r, maker)
     setQuery('')
     setResults([])
     setOpen(false)

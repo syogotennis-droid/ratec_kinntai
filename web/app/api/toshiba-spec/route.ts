@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as cheerio from 'cheerio'
 import { Win2kSpecSummary } from '@/lib/win2k'
 import { toHalfWidth } from '@/lib/halfwidth'
+import { extractCodeImages } from '@/lib/win2k-images'
 
 const SIZE_KEYS = ['埋め込みサイズ', '埋込穴', '取付穴', '器具幅', '器具径']
 const WATTAGE_KEY_PREFIX = '定格消費電力'
@@ -9,7 +10,8 @@ const PRODUCT_TYPE_KEYS = ['品種名', '品名']
 
 export async function GET(request: NextRequest) {
   const detailUrl = request.nextUrl.searchParams.get('detailUrl')
-  if (!detailUrl) return NextResponse.json({ spec: null })
+  const code = request.nextUrl.searchParams.get('code') ?? ''
+  if (!detailUrl) return NextResponse.json({ spec: null, images: [] })
 
   let html: string
   try {
@@ -17,10 +19,10 @@ export async function GET(request: NextRequest) {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ratec-kinntai/1.0)' },
       cache: 'no-store',
     })
-    if (!res.ok) return NextResponse.json({ spec: null })
+    if (!res.ok) return NextResponse.json({ spec: null, images: [] })
     html = await res.text()
   } catch {
-    return NextResponse.json({ spec: null }, { status: 502 })
+    return NextResponse.json({ spec: null, images: [] }, { status: 502 })
   }
 
   const $ = cheerio.load(html)
@@ -46,5 +48,6 @@ export async function GET(request: NextRequest) {
   const productType = productTypeKey ? toHalfWidth(table[productTypeKey]) : null
 
   const spec: Win2kSpecSummary = { size, shapeWord, wattage, productType }
-  return NextResponse.json({ spec })
+  const images = code ? extractCodeImages($, detailUrl, code) : []
+  return NextResponse.json({ spec, images })
 }

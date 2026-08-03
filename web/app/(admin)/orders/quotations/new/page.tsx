@@ -63,23 +63,23 @@ type EditableItem = Omit<QuotationItem, 'id'> & {
   _beforePreview?: string | null
   _proposedFile?: File | null
   _proposedPreview?: string | null
-  /** 型式検索で表示された候補一覧。ご提案商品写真を候補画像から選べるようにするために保持する */
-  _imageCandidates?: Win2kResult[]
+  /** 選択した商品の詳細ページから取れた画像候補(主画像・小組画像など)。ご提案商品写真を選べるようにするために保持する */
+  _imageCandidates?: string[]
 }
 
-// 型式検索の候補一覧から画像つきのものだけをサムネイルで並べ、クリックでご提案商品写真として選べるようにする
-function ImageCandidateStrip({ candidates, onSelect }: { candidates: Win2kResult[] | undefined; onSelect: (r: Win2kResult) => void }) {
-  const withImages = (candidates ?? []).filter((c): c is Win2kResult & { imageUrl: string } => !!c.imageUrl)
-  if (withImages.length === 0) return null
+// 選択した商品の画像候補(主画像・小組画像など、その商品自身のものだけ)をサムネイルで並べ、
+// クリックでご提案商品写真として選べるようにする
+function ImageCandidateStrip({ candidates, onSelect }: { candidates: string[] | undefined; onSelect: (url: string) => void }) {
+  if (!candidates || candidates.length === 0) return null
   return (
     <div className="mt-1">
-      <div className="text-[10px] text-gray-400 mb-1">型式検索の候補から選ぶ</div>
+      <div className="text-[10px] text-gray-400 mb-1">この商品の写真から選ぶ</div>
       <div className="flex gap-1 flex-wrap">
-        {withImages.map((c, i) => (
-          <button key={i} type="button" onClick={() => onSelect(c)} title={c.code}
-            className="w-10 h-10 rounded border border-gray-200 overflow-hidden hover:border-blue-400 transition-colors shrink-0">
+        {candidates.map((url, i) => (
+          <button key={i} type="button" onClick={() => onSelect(url)}
+            className="w-16 h-16 rounded border border-gray-200 overflow-hidden hover:border-blue-400 transition-colors shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/api/image-proxy?url=${encodeURIComponent(c.imageUrl)}`} alt={c.code} className="w-full h-full object-cover" />
+            <img src={`/api/image-proxy?url=${encodeURIComponent(url)}`} alt="候補写真" className="w-full h-full object-cover" />
           </button>
         ))}
       </div>
@@ -268,12 +268,11 @@ export default function NewQuotationPage() {
     })
   }
 
-  // 型式検索の候補画像をご提案商品写真として選ぶ（外部サイトの画像はCORSの制約で直接fetchできないため、
+  // 候補画像をご提案商品写真として選ぶ（外部サイトの画像はCORSの制約で直接fetchできないため、
   // 自サーバー経由のimage-proxyで取得してからアップロード用のFileに変換する）
-  const selectCandidateImage = async (idx: number, candidate: Win2kResult) => {
-    if (!candidate.imageUrl) return
+  const selectCandidateImage = async (idx: number, imageUrl: string) => {
     try {
-      const res = await fetch(`/api/image-proxy?url=${encodeURIComponent(candidate.imageUrl)}`)
+      const res = await fetch(`/api/image-proxy?url=${encodeURIComponent(imageUrl)}`)
       if (!res.ok) return
       const blob = await res.blob()
       const ext = blob.type.split('/')[1]?.split('+')[0] || 'jpg'
@@ -284,28 +283,33 @@ export default function NewQuotationPage() {
     }
   }
 
-  const applyWin2kResult = (idx: number, result: Win2kResult, maker: Maker, allResults: Win2kResult[]) => {
+  const applyWin2kResult = (idx: number, result: Win2kResult, maker: Maker) => {
     const name = buildWin2kName(maker.label, result)
     setItems(prev => {
       const next = [...prev]
       const unitPrice = result.price ?? next[idx].unit_price
-      next[idx] = { ...next[idx], name, unit_price: unitPrice, amount: Math.round(next[idx].qty * unitPrice * next[idx].markup_rate), product_url: result.detailUrl, _imageCandidates: allResults }
+      next[idx] = {
+        ...next[idx], name, unit_price: unitPrice, amount: Math.round(next[idx].qty * unitPrice * next[idx].markup_rate),
+        product_url: result.detailUrl, _imageCandidates: result.imageUrl ? [result.imageUrl] : [],
+      }
       return next
     })
 
     // 検索結果だけでは品名情報が不十分なため、商品詳細ページから埋込穴・消費電力・
-    // 製品タイプ名を追加取得できたら品名を補強する（LED照明器具のみ有効な項目のため失敗は無視）
+    // 製品タイプ名を追加取得できたら品名を補強する（LED照明器具のみ有効な項目のため失敗は無視）。
+    // 同じ商品詳細ページから、型番を含む画像(主画像・小組画像など)も候補として追加取得する
     const specEndpoint = SPEC_ENDPOINTS[maker.key]
     if (specEndpoint && result.detailUrl) {
-      fetch(`${specEndpoint}?detailUrl=${encodeURIComponent(result.detailUrl)}`)
+      fetch(`${specEndpoint}?detailUrl=${encodeURIComponent(result.detailUrl)}&code=${encodeURIComponent(result.code)}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
-          if (!data?.spec) return
-          const enrichedName = buildWin2kName(maker.label, result, data.spec)
+          if (!data) return
           setItems(prev => {
             if (!prev[idx] || prev[idx].name !== name) return prev
             const next = [...prev]
-            next[idx] = { ...next[idx], name: enrichedName }
+            const enrichedName = data.spec ? buildWin2kName(maker.label, result, data.spec) : name
+            const mergedImages = [...new Set([...(next[idx]._imageCandidates ?? []), ...(data.images ?? [])])]
+            next[idx] = { ...next[idx], name: enrichedName, _imageCandidates: mergedImages }
             return next
           })
         })
@@ -487,7 +491,7 @@ export default function NewQuotationPage() {
                       </select>
                     </div>
                     <div>
-                      {isLabor ? <span className="text-gray-300 text-sm">—</span> : <ProductModelSearch makers={MAKERS} onSelect={(r, m, all) => applyWin2kResult(idx, r, m, all)} />}
+                      {isLabor ? <span className="text-gray-300 text-sm">—</span> : <ProductModelSearch makers={MAKERS} onSelect={(r, m) => applyWin2kResult(idx, r, m)} />}
                     </div>
                     <div>
                       {isLabor ? (
@@ -612,7 +616,7 @@ export default function NewQuotationPage() {
                   <div className="mb-2">
                     <label className="block text-[11px] text-gray-500 mb-0.5">メーカー</label>
                     <label className="block text-[11px] text-gray-400 mb-0.5">型式検索</label>
-                    <ProductModelSearch makers={MAKERS} onSelect={(r, m, all) => applyWin2kResult(idx, r, m, all)} />
+                    <ProductModelSearch makers={MAKERS} onSelect={(r, m) => applyWin2kResult(idx, r, m)} />
                   </div>
                 )}
 

@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as cheerio from 'cheerio'
 import { Win2kSpecSummary } from '@/lib/win2k'
+import { extractCodeImages } from '@/lib/win2k-images'
 
 const SIZE_KEYS = ['埋込穴', '取付穴', '器具径']
 const WATTAGE_KEY_PREFIX = '定格消費電力'
 
 export async function GET(request: NextRequest) {
   const detailUrl = request.nextUrl.searchParams.get('detailUrl')
-  if (!detailUrl) return NextResponse.json({ spec: null })
+  const code = request.nextUrl.searchParams.get('code') ?? ''
+  if (!detailUrl) return NextResponse.json({ spec: null, images: [] })
 
   let ccd: string | null = null
   let pid: string | null = null
@@ -16,31 +18,42 @@ export async function GET(request: NextRequest) {
     ccd = u.searchParams.get('ccd')
     pid = u.searchParams.get('pid')
   } catch {
-    return NextResponse.json({ spec: null })
+    return NextResponse.json({ spec: null, images: [] })
   }
-  if (!ccd || !pid) return NextResponse.json({ spec: null })
+  if (!ccd || !pid) return NextResponse.json({ spec: null, images: [] })
 
   const specUrl = `https://www.mitsubishielectric.co.jp/ldg/wink/ssl/sp/displayProductSpec.do?spid=&pid=${encodeURIComponent(pid)}&ccd=${encodeURIComponent(ccd)}`
-
-  let html: string
-  try {
-    const res = await fetch(specUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ratec-kinntai/1.0)' },
-      cache: 'no-store',
-    })
-    if (!res.ok) return NextResponse.json({ spec: null })
-    html = await res.text()
-  } catch {
-    return NextResponse.json({ spec: null }, { status: 502 })
+  const fetchHtml = async (url: string) => {
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ratec-kinntai/1.0)' },
+        cache: 'no-store',
+      })
+      return res.ok ? await res.text() : null
+    } catch {
+      return null
+    }
   }
 
-  const $ = cheerio.load(html)
+  const [specHtml, detailHtml] = await Promise.all([fetchHtml(specUrl), fetchHtml(detailUrl)])
+  if (!specHtml && !detailHtml) return NextResponse.json({ spec: null, images: [] }, { status: 502 })
+
   const table: Record<string, string> = {}
-  $('table.tableFormat01 tr').each((_, tr) => {
-    const th = $(tr).find('th').text().replace(/\s+/g, ' ').trim()
-    const td = $(tr).find('td').text().replace(/\s+/g, ' ').trim()
-    if (th) table[th] = td
-  })
+  const images = new Set<string>()
+
+  if (specHtml) {
+    const $spec = cheerio.load(specHtml)
+    $spec('table.tableFormat01 tr').each((_, tr) => {
+      const th = $spec(tr).find('th').text().replace(/\s+/g, ' ').trim()
+      const td = $spec(tr).find('td').text().replace(/\s+/g, ' ').trim()
+      if (th) table[th] = td
+    })
+    if (code) extractCodeImages($spec, specUrl, code).forEach(u => images.add(u))
+  }
+  if (detailHtml && code) {
+    const $detail = cheerio.load(detailHtml)
+    extractCodeImages($detail, detailUrl, code).forEach(u => images.add(u))
+  }
 
   const sizeKey = SIZE_KEYS.find(k => k in table)
   const sizeValue = sizeKey ? table[sizeKey] : null
@@ -52,5 +65,5 @@ export async function GET(request: NextRequest) {
   const wattage = wattageMatch ? wattageMatch[0] : null
 
   const spec: Win2kSpecSummary = { size: sizeValue, shapeWord, wattage }
-  return NextResponse.json({ spec })
+  return NextResponse.json({ spec, images: [...images].slice(0, 6) })
 }
