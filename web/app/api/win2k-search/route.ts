@@ -48,10 +48,11 @@ export async function GET(request: NextRequest) {
     const price = priceMatch ? Number(priceMatch[1].replace(/,/g, '')) : null
 
     const imgSrc = $el.find('.img img').attr('src') || null
+    const imageUrl = imgSrc ? new URL(imgSrc, 'https://www.mitsubishielectric.co.jp').toString() : null
     const href = $el.find('.r-box .title a').attr('href') || null
     const detailUrl = href ? new URL(href, 'https://www.mitsubishielectric.co.jp').toString() : null
 
-    results.push({ code, category, price, imageUrl: imgSrc, detailUrl })
+    results.push({ code, category, price, imageUrl, detailUrl })
   })
 
   return NextResponse.json({ results: results.slice(0, 20) })
