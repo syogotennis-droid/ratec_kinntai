@@ -1,6 +1,7 @@
 import type ExcelJS from 'exceljs'
 import { QuotationItem, Settings } from '@/lib/supabase/types'
 import { QUOTATION_TEMPLATE_B64 } from './template-b64'
+import { PRODUCT_SHEET_TEMPLATE_B64 } from './product-sheet-template-b64'
 
 interface QuotationExcelItem extends Omit<QuotationItem, 'id'> {
   /** 商品資料に埋め込む写真の取得先URL(署名付きURL、または未保存ならローカルのblob URL) */
@@ -124,7 +125,7 @@ export async function downloadQuotationExcel(data: QuotationExcelData) {
   // 商品資料シート（チェックが付いた明細行だけを対象に、施工前写真とご提案商品写真を並べる）
   const productSheetItems = data.items.filter(i => i.has_product_sheet)
   if (productSheetItems.length > 0) {
-    await addProductSheet(wb, productSheetItems, data.projectName)
+    await addProductSheet(ExcelJSModule.default, wb, productSheetItems, data.projectName)
   }
 
   const buffer = await wb.xlsx.writeBuffer()
@@ -168,9 +169,168 @@ function circledNumber(n: number): string {
   return n >= 1 && n <= 20 ? String.fromCodePoint(0x2460 + n - 1) : `(${n})`
 }
 
-const ITEMS_PER_ROW = 4
-const BLOCK_COLS = 10 // 施工前写真5列 + ご提案商品5列
-const PHOTO_ROWS = 21
+interface ProductSlot {
+  headerRow: [number, number]
+  subRow: [number, number]
+  nameRow: [number, number]
+  photoRow: [number, number]
+  beforeCol: [number, number]
+  proposedCol: [number, number]
+}
+
+// 元の手作りテンプレート(product-sheet-template-b64)の実際のセル座標。
+// バッチ1(1〜4件目・21行の写真枠)とバッチ2(5〜7件目・22行の写真枠)は
+// 元ファイルのまま微妙にサイズが異なるため、それぞれ実測値をそのまま使う
+const TEMPLATE_SLOTS: ProductSlot[] = [
+  { headerRow: [5, 6], subRow: [7, 8], nameRow: [9, 10], photoRow: [11, 31], beforeCol: [1, 5], proposedCol: [6, 10] },
+  { headerRow: [5, 6], subRow: [7, 8], nameRow: [9, 10], photoRow: [11, 31], beforeCol: [11, 15], proposedCol: [16, 20] },
+  { headerRow: [5, 6], subRow: [7, 8], nameRow: [9, 10], photoRow: [11, 31], beforeCol: [21, 25], proposedCol: [26, 30] },
+  { headerRow: [5, 6], subRow: [7, 8], nameRow: [9, 10], photoRow: [11, 31], beforeCol: [31, 34], proposedCol: [35, 38] },
+  { headerRow: [32, 33], subRow: [34, 35], nameRow: [36, 37], photoRow: [38, 59], beforeCol: [1, 5], proposedCol: [6, 10] },
+  { headerRow: [32, 33], subRow: [34, 35], nameRow: [36, 37], photoRow: [38, 59], beforeCol: [11, 15], proposedCol: [16, 20] },
+  { headerRow: [32, 33], subRow: [34, 35], nameRow: [36, 37], photoRow: [38, 59], beforeCol: [21, 25], proposedCol: [26, 30] },
+]
+const TEMPLATE_MAX_ROW = 59
+const TEMPLATE_MAX_COL = 38
+// Excelの列幅(文字数単位)→pxのおおよその換算値。このシートの既定フォント
+// (ＭＳ Ｐゴシック)は一般的なCalibri基準の目安(1文字幅≒8px)よりかなり
+// 狭く描画されるため、実測に基づいた値を使う
+const CHAR_TO_PX = 4
+const PT_TO_PX = 4 / 3
+
+async function loadProductSheetTemplate(ExcelJSCtor: typeof ExcelJS): Promise<ExcelJS.Worksheet> {
+  const bytes = Uint8Array.from(atob(PRODUCT_SHEET_TEMPLATE_B64), c => c.charCodeAt(0))
+  const tmpWb = new ExcelJSCtor.Workbook()
+  await tmpWb.xlsx.load(bytes.buffer as ArrayBuffer)
+  const ws = tmpWb.getWorksheet('商品資料')
+  if (!ws) throw new Error('商品資料テンプレートの読み込みに失敗しました')
+  return ws
+}
+
+// 罫線・列幅・行の高さ・フォントなど、テンプレートの見た目をそのまま出力シートへ複製する
+function copyTemplateStructure(template: ExcelJS.Worksheet, target: ExcelJS.Worksheet) {
+  target.pageSetup = { ...template.pageSetup }
+  for (let c = 1; c <= TEMPLATE_MAX_COL; c++) {
+    const width = template.getColumn(c).width
+    if (width) target.getColumn(c).width = width
+  }
+  for (let r = 1; r <= TEMPLATE_MAX_ROW; r++) {
+    const height = template.getRow(r).height
+    if (height) target.getRow(r).height = height
+    for (let c = 1; c <= TEMPLATE_MAX_COL; c++) {
+      const src = template.getCell(r, c)
+      const dst = target.getCell(r, c)
+      dst.value = src.value
+      dst.style = src.style
+    }
+  }
+  for (const range of template.model.merges) target.mergeCells(range)
+}
+
+// 未使用スロット(チェックされた明細がそこまで無い場合)はラベル・罫線ごと空にする
+function clearSlot(sheet: ExcelJS.Worksheet, slot: ProductSlot) {
+  for (const [r1, r2] of [slot.headerRow, slot.subRow, slot.nameRow, slot.photoRow]) {
+    for (let r = r1; r <= r2; r++) {
+      for (let c = slot.beforeCol[0]; c <= slot.proposedCol[1]; c++) {
+        const cell = sheet.getCell(r, c)
+        if (r === r1 && c === slot.beforeCol[0]) cell.value = null
+        if (r === r1 && c === slot.proposedCol[0]) cell.value = null
+        cell.border = {}
+      }
+    }
+  }
+}
+
+function computeBlockPx(template: ExcelJS.Worksheet, colRange: [number, number], rowRange: [number, number]) {
+  let widthUnits = 0
+  for (let c = colRange[0]; c <= colRange[1]; c++) widthUnits += template.getColumn(c).width || 8.43
+  let heightPt = 0
+  for (let r = rowRange[0]; r <= rowRange[1]; r++) heightPt += template.getRow(r).height || 15
+  return { widthPx: widthUnits * CHAR_TO_PX, heightPx: heightPt * PT_TO_PX }
+}
+
+// 商品資料シート: 元々ユーザーが手作業で作っていた提案資料ファイルをテンプレートとして
+// そのまま流用し(罫線・列幅・行の高さ・フォント・印刷設定はテンプレートのものを複製)、
+// 明細テキストと写真だけをコードで埋め込む
+async function addProductSheet(ExcelJSCtor: typeof ExcelJS, wb: ExcelJS.Workbook, items: QuotationExcelItem[], projectName: string) {
+  const template = await loadProductSheetTemplate(ExcelJSCtor)
+  const sheet = wb.addWorksheet('商品資料')
+  copyTemplateStructure(template, sheet)
+
+  sheet.getCell(1, 1).value = `${projectName ? projectName + '　' : ''}ご提案資料`
+
+  const templateItems = items.slice(0, TEMPLATE_SLOTS.length)
+  let maxRowUsed = 3
+  let maxColUsed = 1
+
+  for (let i = 0; i < TEMPLATE_SLOTS.length; i++) {
+    const slot = TEMPLATE_SLOTS[i]
+    const item = templateItems[i]
+    if (!item) {
+      clearSlot(sheet, slot)
+      continue
+    }
+    maxRowUsed = Math.max(maxRowUsed, slot.photoRow[1])
+    maxColUsed = Math.max(maxColUsed, slot.proposedCol[1])
+
+    sheet.getCell(slot.nameRow[0], slot.beforeCol[0]).value = item.existing_product_name || '-'
+    sheet.getCell(slot.nameRow[0], slot.proposedCol[0]).value = item.name.replace(/\n/g, ' ')
+
+    if (item.beforePhotoUrl) {
+      const block = computeBlockPx(template, slot.beforeCol, slot.photoRow)
+      await embedProductPhoto(wb, sheet, item.beforePhotoUrl, slot.photoRow[0] - 1, slot.beforeCol[0] - 1, block)
+    }
+    if (item.proposedPhotoUrl) {
+      const block = computeBlockPx(template, slot.proposedCol, slot.photoRow)
+      await embedProductPhoto(wb, sheet, item.proposedPhotoUrl, slot.photoRow[0] - 1, slot.proposedCol[0] - 1, block)
+    }
+  }
+
+  // テンプレートの枠(7件分)を超えた分は簡易フォーマットで下に追記する
+  const overflowItems = items.slice(TEMPLATE_SLOTS.length)
+  if (overflowItems.length > 0) {
+    const extra = await appendFallbackItems(wb, sheet, overflowItems, TEMPLATE_MAX_ROW + 3, TEMPLATE_SLOTS.length)
+    maxRowUsed = Math.max(maxRowUsed, extra.maxRow)
+    maxColUsed = Math.max(maxColUsed, extra.maxCol)
+  }
+
+  sheet.pageSetup.printArea = `A1:${sheet.getColumn(maxColUsed).letter}${maxRowUsed}`
+}
+
+async function embedProductPhoto(
+  wb: ExcelJS.Workbook, sheet: ExcelJS.Worksheet, url: string, anchorRow: number, anchorCol: number,
+  block: { widthPx: number; heightPx: number },
+) {
+  const buf = await fetchImageBuffer(url)
+  if (!buf) return
+  const imageId = wb.addImage({ buffer: buf, extension: detectImageExtension(buf) })
+
+  // 元見本は写真ごとに縦横比を保ったまま枠いっぱいに大きく配置していたため、
+  // 実際の画像サイズを取得して枠に収まる最大サイズへ拡大・縮小し、中央に配置する
+  let width = block.widthPx
+  let height = block.heightPx
+  try {
+    const bitmap = await createImageBitmap(new Blob([buf]))
+    const scale = Math.min(block.widthPx / bitmap.width, block.heightPx / bitmap.height)
+    width = bitmap.width * scale
+    height = bitmap.height * scale
+    bitmap.close()
+  } catch {
+    // 画像サイズが取得できない場合は枠いっぱいのサイズのまま配置する
+  }
+
+  const colOff = (block.widthPx - width) / 2 / CHAR_TO_PX
+  const rowOff = (block.heightPx - height) / 2 / (15 * PT_TO_PX)
+  sheet.addImage(imageId, {
+    tl: { col: anchorCol + colOff, row: anchorRow + rowOff },
+    ext: { width, height },
+  })
+}
+
+// テンプレートの7件枠を超えた分は、コードで組んだシンプルな1件ずつのブロックを追記する
+const FALLBACK_BLOCK_COLS = 10
+const FALLBACK_PHOTO_ROWS = 21
+const FALLBACK_ITEMS_PER_ROW = 4
 const THIN_BORDER: Partial<ExcelJS.Borders> = {
   top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' },
 }
@@ -189,103 +349,41 @@ function mergeLabelCell(
   }
 }
 
-// 商品資料シート: 元々ユーザーが手作業で作っていた提案資料(①②③…と番号を振り、
-// 施工前写真とご提案商品を4件ずつ横に並べるグリッド)を再現する
-async function addProductSheet(wb: ExcelJS.Workbook, items: QuotationExcelItem[], projectName: string) {
-  const sheet = wb.addWorksheet('商品資料')
-  // 実際に使う列数(最大でも4件分)。1〜3件しかない場合は印刷範囲やタイトルの
-  // 幅も無駄に広げず、その分だけに絞る
-  const usedCols = Math.min(items.length, ITEMS_PER_ROW) * BLOCK_COLS
-  // 列幅は明示的に指定せず、元の見本と同じくExcelの既定幅のままにする
+// コードで組んだフォールバックブロックの、既定列幅(8.43)・12pt行高でのおおよそのpxサイズ
+const FALLBACK_BLOCK_PX = { widthPx: 5 * 8.43 * CHAR_TO_PX, heightPx: FALLBACK_PHOTO_ROWS * 12 * PT_TO_PX }
 
-  sheet.pageSetup = {
-    ...sheet.pageSetup,
-    orientation: 'landscape',
-    paperSize: 9,
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: 0,
-    margins: { left: 0.7, right: 0.7, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3, ...sheet.pageSetup.margins },
-  }
-
-  sheet.mergeCells(1, 1, 3, usedCols)
-  const titleCell = sheet.getCell(1, 1)
-  titleCell.value = `${projectName ? projectName + '　' : ''}ご提案資料`
-  titleCell.font = { name: 'ＭＳ Ｐゴシック', size: 20, bold: true }
-  titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
-  for (let r = 1; r <= 4; r++) sheet.getRow(r).height = 12
-
-  let row = 5
-  for (let batchStart = 0; batchStart < items.length; batchStart += ITEMS_PER_ROW) {
-    const batch = items.slice(batchStart, batchStart + ITEMS_PER_ROW)
-    // 見出し行(施工前写真／ご提案商品)だけ少し高く、それ以外は元の見本と同じ12ptに揃える
+async function appendFallbackItems(wb: ExcelJS.Workbook, sheet: ExcelJS.Worksheet, items: QuotationExcelItem[], startRow: number, numberOffset: number) {
+  let row = startRow
+  let maxCol = 1
+  for (let batchStart = 0; batchStart < items.length; batchStart += FALLBACK_ITEMS_PER_ROW) {
+    const batch = items.slice(batchStart, batchStart + FALLBACK_ITEMS_PER_ROW)
     sheet.getRow(row).height = 20.25
     sheet.getRow(row + 1).height = 20.25
-    for (let r = row + 2; r <= row + 5 + PHOTO_ROWS; r++) sheet.getRow(r).height = 12
+    for (let r = row + 2; r <= row + 5 + FALLBACK_PHOTO_ROWS; r++) sheet.getRow(r).height = 12
 
     for (let i = 0; i < batch.length; i++) {
       const item = batch[i]
-      const num = batchStart + i + 1
-      const beforeCol = i * BLOCK_COLS + 1
+      const num = numberOffset + batchStart + i + 1
+      const beforeCol = i * FALLBACK_BLOCK_COLS + 1
       const proposedCol = beforeCol + 5
+      maxCol = Math.max(maxCol, proposedCol + 4)
 
       mergeLabelCell(sheet, row, beforeCol, row + 1, beforeCol + 4, '施工前写真', {})
       mergeLabelCell(sheet, row, proposedCol, row + 1, proposedCol + 4, 'ご提案商品', {})
-
       mergeLabelCell(sheet, row + 2, beforeCol, row + 3, beforeCol + 4, '既設商品', { name: 'HGP創英角ｺﾞｼｯｸUB', bold: true })
       mergeLabelCell(sheet, row + 2, proposedCol, row + 3, proposedCol + 4, `ご提案商品${circledNumber(num)}`, { name: 'HGP創英角ｺﾞｼｯｸUB', bold: true })
-
       mergeLabelCell(sheet, row + 4, beforeCol, row + 5, beforeCol + 4, item.existing_product_name || '-', {})
       mergeLabelCell(sheet, row + 4, proposedCol, row + 5, proposedCol + 4, item.name.replace(/\n/g, ' '), {})
 
       const photoRowStart = row + 6
-      const photoRowEnd = photoRowStart + PHOTO_ROWS - 1
+      const photoRowEnd = photoRowStart + FALLBACK_PHOTO_ROWS - 1
       mergeLabelCell(sheet, photoRowStart, beforeCol, photoRowEnd, beforeCol + 4, '', {})
       mergeLabelCell(sheet, photoRowStart, proposedCol, photoRowEnd, proposedCol + 4, '', {})
 
-      if (item.beforePhotoUrl) await embedProductPhoto(wb, sheet, item.beforePhotoUrl, photoRowStart - 1, beforeCol - 1)
-      if (item.proposedPhotoUrl) await embedProductPhoto(wb, sheet, item.proposedPhotoUrl, photoRowStart - 1, proposedCol - 1)
+      if (item.beforePhotoUrl) await embedProductPhoto(wb, sheet, item.beforePhotoUrl, photoRowStart - 1, beforeCol - 1, FALLBACK_BLOCK_PX)
+      if (item.proposedPhotoUrl) await embedProductPhoto(wb, sheet, item.proposedPhotoUrl, photoRowStart - 1, proposedCol - 1, FALLBACK_BLOCK_PX)
     }
-
-    row += 6 + PHOTO_ROWS
+    row += 6 + FALLBACK_PHOTO_ROWS
   }
-
-  // 印刷範囲は実際に使った列数・行数だけに絞る(常に4件分の幅を確保すると
-  // 1〜3件しかない場合に余白だらけの印刷範囲になってしまうため)
-  sheet.pageSetup.printArea = `A1:${sheet.getColumn(usedCols).letter}${row - 1}`
-}
-
-// 写真枠(5列×21行、既定の列幅・12pt行高で組んでいる)のおおよそのピクセルサイズ。
-// 列幅はExcelの既定値のままだが、このシートの既定フォント(ＭＳ Ｐゴシック)では
-// 一般的なCalibri基準の目安(1列≒64px)よりかなり狭く描画されるため、その分を反映する
-const DEFAULT_COL_PX = 32
-const ROW_PX = 16
-const BLOCK_PX_WIDTH = 5 * DEFAULT_COL_PX
-const BLOCK_PX_HEIGHT = PHOTO_ROWS * ROW_PX
-
-async function embedProductPhoto(wb: ExcelJS.Workbook, sheet: ExcelJS.Worksheet, url: string, anchorRow: number, anchorCol: number) {
-  const buf = await fetchImageBuffer(url)
-  if (!buf) return
-  const imageId = wb.addImage({ buffer: buf, extension: detectImageExtension(buf) })
-
-  // 元見本は写真ごとに縦横比を保ったまま枠いっぱいに大きく配置していたため、
-  // 実際の画像サイズを取得して枠に収まる最大サイズへ拡大・縮小し、中央に配置する
-  let width = BLOCK_PX_WIDTH
-  let height = BLOCK_PX_HEIGHT
-  try {
-    const bitmap = await createImageBitmap(new Blob([buf]))
-    const scale = Math.min(BLOCK_PX_WIDTH / bitmap.width, BLOCK_PX_HEIGHT / bitmap.height)
-    width = bitmap.width * scale
-    height = bitmap.height * scale
-    bitmap.close()
-  } catch {
-    // 画像サイズが取得できない場合は枠いっぱいのサイズのまま配置する
-  }
-
-  const colOff = (BLOCK_PX_WIDTH - width) / 2 / DEFAULT_COL_PX
-  const rowOff = (BLOCK_PX_HEIGHT - height) / 2 / ROW_PX
-  sheet.addImage(imageId, {
-    tl: { col: anchorCol + colOff, row: anchorRow + rowOff },
-    ext: { width, height },
-  })
+  return { maxRow: row - 1, maxCol }
 }
