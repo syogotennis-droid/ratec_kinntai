@@ -251,12 +251,35 @@ async function addProductSheet(wb: ExcelJS.Workbook, items: QuotationExcelItem[]
   sheet.pageSetup.printArea = `A1:${sheet.getColumn(totalCols).letter}${row - 1}`
 }
 
+// 写真枠(5列×21行、既定の列幅・12pt行高で組んでいる)のおおよそのピクセルサイズ
+const DEFAULT_COL_PX = 64
+const ROW_PX = 16
+const BLOCK_PX_WIDTH = 5 * DEFAULT_COL_PX
+const BLOCK_PX_HEIGHT = PHOTO_ROWS * ROW_PX
+
 async function embedProductPhoto(wb: ExcelJS.Workbook, sheet: ExcelJS.Worksheet, url: string, anchorRow: number, anchorCol: number) {
   const buf = await fetchImageBuffer(url)
   if (!buf) return
   const imageId = wb.addImage({ buffer: buf, extension: detectImageExtension(buf) })
+
+  // 元見本は写真ごとに縦横比を保ったまま枠いっぱいに大きく配置していたため、
+  // 実際の画像サイズを取得して枠に収まる最大サイズへ拡大・縮小し、中央に配置する
+  let width = BLOCK_PX_WIDTH
+  let height = BLOCK_PX_HEIGHT
+  try {
+    const bitmap = await createImageBitmap(new Blob([buf]))
+    const scale = Math.min(BLOCK_PX_WIDTH / bitmap.width, BLOCK_PX_HEIGHT / bitmap.height)
+    width = bitmap.width * scale
+    height = bitmap.height * scale
+    bitmap.close()
+  } catch {
+    // 画像サイズが取得できない場合は枠いっぱいのサイズのまま配置する
+  }
+
+  const colOff = (BLOCK_PX_WIDTH - width) / 2 / DEFAULT_COL_PX
+  const rowOff = (BLOCK_PX_HEIGHT - height) / 2 / ROW_PX
   sheet.addImage(imageId, {
-    tl: { col: anchorCol + 0.2, row: anchorRow + 0.2 },
-    ext: { width: 260, height: 300 },
+    tl: { col: anchorCol + colOff, row: anchorRow + rowOff },
+    ext: { width, height },
   })
 }
