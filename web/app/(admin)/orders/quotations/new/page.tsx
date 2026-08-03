@@ -308,8 +308,10 @@ export default function NewQuotationPage() {
             if (!prev[idx] || prev[idx].name !== name) return prev
             const next = [...prev]
             const enrichedName = data.spec ? buildWin2kName(maker.label, result, data.spec) : name
-            const mergedImages = [...new Set([...(next[idx]._imageCandidates ?? []), ...(data.images ?? [])])]
-            next[idx] = { ...next[idx], name: enrichedName, _imageCandidates: mergedImages }
+            // 詳細ページ側の画像一覧が取れたらそちらを正とする(一覧ページの1枚だけの候補は
+            // 詳細ページの写真と重複しがちなため、置き換えて二重に出さないようにする)
+            const detailImages: string[] = data.images ?? []
+            next[idx] = { ...next[idx], name: enrichedName, _imageCandidates: detailImages.length > 0 ? detailImages : next[idx]._imageCandidates }
             return next
           })
         })

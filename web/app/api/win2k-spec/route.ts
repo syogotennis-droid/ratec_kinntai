@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as cheerio from 'cheerio'
 import { Win2kSpecSummary } from '@/lib/win2k'
-import { extractCodeImages } from '@/lib/win2k-images'
+import { extractCodeImages, dedupeBySize } from '@/lib/win2k-images'
 
 const SIZE_KEYS = ['埋込穴', '取付穴', '器具径']
 const WATTAGE_KEY_PREFIX = '定格消費電力'
@@ -65,5 +65,7 @@ export async function GET(request: NextRequest) {
   const wattage = wattageMatch ? wattageMatch[0] : null
 
   const spec: Win2kSpecSummary = { size: sizeValue, shapeWord, wattage }
-  return NextResponse.json({ spec, images: [...images].slice(0, 6) })
+  const rawImages = [...images].slice(0, 6)
+  const dedupedImages = rawImages.length > 1 ? await dedupeBySize(rawImages) : rawImages
+  return NextResponse.json({ spec, images: dedupedImages })
 }

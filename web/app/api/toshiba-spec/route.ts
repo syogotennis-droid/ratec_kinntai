@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as cheerio from 'cheerio'
 import { Win2kSpecSummary } from '@/lib/win2k'
 import { toHalfWidth } from '@/lib/halfwidth'
-import { extractCodeImages } from '@/lib/win2k-images'
+import { extractCodeImages, dedupeBySize } from '@/lib/win2k-images'
 
 const SIZE_KEYS = ['埋め込みサイズ', '埋込穴', '取付穴', '器具幅', '器具径']
 const WATTAGE_KEY_PREFIX = '定格消費電力'
@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
   const productType = productTypeKey ? toHalfWidth(table[productTypeKey]) : null
 
   const spec: Win2kSpecSummary = { size, shapeWord, wattage, productType }
-  const images = code ? extractCodeImages($, detailUrl, code) : []
+  const rawImages = code ? extractCodeImages($, detailUrl, code) : []
+  const images = rawImages.length > 1 ? await dedupeBySize(rawImages) : rawImages
   return NextResponse.json({ spec, images })
 }
