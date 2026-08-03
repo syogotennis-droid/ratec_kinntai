@@ -194,19 +194,32 @@ function mergeLabelCell(
 async function addProductSheet(wb: ExcelJS.Workbook, items: QuotationExcelItem[], projectName: string) {
   const sheet = wb.addWorksheet('商品資料')
   const totalCols = ITEMS_PER_ROW * BLOCK_COLS
-  for (let c = 1; c <= totalCols; c++) sheet.getColumn(c).width = 8
+  // 列幅は明示的に指定せず、元の見本と同じくExcelの既定幅のままにする
+
+  sheet.pageSetup = {
+    ...sheet.pageSetup,
+    orientation: 'landscape',
+    paperSize: 9,
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: { left: 0.7, right: 0.7, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3, ...sheet.pageSetup.margins },
+  }
 
   sheet.mergeCells(1, 1, 3, totalCols)
   const titleCell = sheet.getCell(1, 1)
   titleCell.value = `${projectName ? projectName + '　' : ''}ご提案資料`
   titleCell.font = { name: 'ＭＳ Ｐゴシック', size: 20, bold: true }
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+  for (let r = 1; r <= 4; r++) sheet.getRow(r).height = 12
 
   let row = 5
   for (let batchStart = 0; batchStart < items.length; batchStart += ITEMS_PER_ROW) {
     const batch = items.slice(batchStart, batchStart + ITEMS_PER_ROW)
+    // 見出し行(施工前写真／ご提案商品)だけ少し高く、それ以外は元の見本と同じ12ptに揃える
     sheet.getRow(row).height = 20.25
     sheet.getRow(row + 1).height = 20.25
+    for (let r = row + 2; r <= row + 5 + PHOTO_ROWS; r++) sheet.getRow(r).height = 12
 
     for (let i = 0; i < batch.length; i++) {
       const item = batch[i]
@@ -234,6 +247,8 @@ async function addProductSheet(wb: ExcelJS.Workbook, items: QuotationExcelItem[]
 
     row += 6 + PHOTO_ROWS
   }
+
+  sheet.pageSetup.printArea = `A1:${sheet.getColumn(totalCols).letter}${row - 1}`
 }
 
 async function embedProductPhoto(wb: ExcelJS.Workbook, sheet: ExcelJS.Worksheet, url: string, anchorRow: number, anchorCol: number) {
