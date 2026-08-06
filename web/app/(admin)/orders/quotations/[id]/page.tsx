@@ -15,7 +15,7 @@ import { uploadQuotationPhoto, removeQuotationPhoto, getQuotationPhotoSignedUrls
 const MAKERS: Maker[] = [
   { key: 'mitsubishi', label: '三菱', endpoint: '/api/win2k-search', accent: 'red' },
   { key: 'toshiba', label: '東芝', endpoint: '/api/toshiba-search', accent: 'blue' },
-  { key: 'yrs', label: 'ユアーズ', endpoint: '/api/yrs-search', accent: 'green' },
+  { key: 'yrs', label: 'YS', endpoint: '/api/yrs-search', accent: 'green' },
 ]
 
 const SPEC_ENDPOINTS: Record<string, string> = {
