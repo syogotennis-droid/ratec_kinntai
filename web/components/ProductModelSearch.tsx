@@ -8,7 +8,7 @@ export interface Maker {
   key: string
   label: string
   endpoint: string
-  accent: 'red' | 'blue'
+  accent: 'red' | 'blue' | 'green'
 }
 
 const ACCENT = {
@@ -21,6 +21,11 @@ const ACCENT = {
     border: 'border-blue-300', ring: 'focus:ring-blue-500', bg: 'bg-blue-50',
     code: 'text-blue-700', hover: 'hover:bg-blue-50', hi: 'bg-blue-50',
     on: 'bg-blue-600 text-white', off: 'text-blue-600 bg-white hover:bg-blue-50',
+  },
+  green: {
+    border: 'border-emerald-300', ring: 'focus:ring-emerald-500', bg: 'bg-emerald-50',
+    code: 'text-emerald-700', hover: 'hover:bg-emerald-50', hi: 'bg-emerald-50',
+    on: 'bg-emerald-600 text-white', off: 'text-emerald-600 bg-white hover:bg-emerald-50',
   },
 } as const
 
