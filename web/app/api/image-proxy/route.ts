@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 // 型式検索(三菱・東芝)の商品画像だけを中継する。任意のURLを中継するとSSRFの
 // 踏み台になり得るため、検索結果として想定されるホストのみ許可する。
 // 画像はCDN等の別サブドメインから配信されることがあるため、サブドメイン単位で許可する
-const ALLOWED_DOMAINS = ['mitsubishielectric.co.jp', 'tlt.co.jp']
+const ALLOWED_DOMAINS = ['mitsubishielectric.co.jp', 'tlt.co.jp', 'yrstrade.com']
 
 function isAllowedHost(hostname: string): boolean {
   return ALLOWED_DOMAINS.some(domain => hostname === domain || hostname.endsWith(`.${domain}`))
