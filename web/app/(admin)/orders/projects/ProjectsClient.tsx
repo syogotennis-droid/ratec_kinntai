@@ -285,6 +285,7 @@ function ProjectModal({ project, companies, offices, onClose, onSaved }: Project
   const [status, setStatus] = useState<ProjectStatus>(project?.status as ProjectStatus ?? 'active')
   const [notes, setNotes] = useState(project?.notes ?? '')
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const filteredCompanies = companies.filter(c =>
@@ -320,6 +321,30 @@ function ProjectModal({ project, companies, offices, onClose, onSaved }: Project
       setError(e instanceof Error ? e.message : '保存に失敗しました')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!project) return
+    if (!confirm(`「${project.name}」を削除しますか？この操作は取り消せません。`)) return
+    setError(null)
+    setDeleting(true)
+    try {
+      const supabase = createClient()
+      const { error: delError } = await supabase.from('projects').delete().eq('id', project.id)
+      if (delError) {
+        // 見積書・注文書・請求書が紐づいている場合、外部キー制約により削除できない
+        if (delError.code === '23503') {
+          throw new Error('この案件には見積書・注文書・請求書などの書類が紐づいているため削除できません。先にそれらを削除してください。')
+        }
+        throw new Error(delError.message)
+      }
+      onSaved()
+      onClose()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '削除に失敗しました')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -390,9 +415,15 @@ function ProjectModal({ project, companies, offices, onClose, onSaved }: Project
         </div>
         {error && <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
         <div className="mt-5 flex gap-2">
+          {project && (
+            <button onClick={handleDelete} disabled={deleting || saving}
+              className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:text-red-300 rounded-lg">
+              {deleting ? '削除中...' : '削除'}
+            </button>
+          )}
           <div className="flex-1" />
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">キャンセル</button>
-          <button onClick={handleSave} disabled={saving || !name || !companyId || (needsOffice && !officeId)}
+          <button onClick={handleSave} disabled={saving || deleting || !name || !companyId || (needsOffice && !officeId)}
             className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">
             {saving ? '保存中...' : '保存'}
           </button>
