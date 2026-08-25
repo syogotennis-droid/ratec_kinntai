@@ -34,7 +34,7 @@ CREATE TABLE work_records (
   break_minutes INTEGER NOT NULL DEFAULT 60,
   actual_minutes INTEGER,
   work_type TEXT NOT NULL DEFAULT 'normal'
-    CHECK (work_type IN ('normal', 'overtime', 'holiday', 'training', 'paid_leave')),
+    CHECK (work_type IN ('normal', 'overtime', 'holiday', 'training', 'paid_leave', 'hourly_leave')),
   notes TEXT,
   created_by UUID REFERENCES profiles(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

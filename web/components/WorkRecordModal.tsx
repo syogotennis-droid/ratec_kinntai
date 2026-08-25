@@ -1,16 +1,23 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { WorkRecord, WorkType } from '@/lib/supabase/types'
 
-const WORK_TYPES: { value: WorkType; label: string }[] = [
-  { value: 'normal', label: '通常' },
-  { value: 'overtime', label: '残業' },
-  { value: 'holiday', label: '休日' },
-  { value: 'training', label: '研修' },
-  { value: 'paid_leave', label: '有給' },
+// 従業員側(予定カレンダー)の勤怠入力と揃えるため、選択できる勤務区分は
+// 通常・有休・時間休の3種類のみ。残業・休日出勤は自動計算されるため手入力の対象外
+// (勤怠管理の集計ロジック側で実働時間から自動算出している)
+const WORK_TYPES: { value: WorkType; label: string; color: string }[] = [
+  { value: 'normal', label: '通常', color: '#16a34a' },
+  { value: 'paid_leave', label: '有休', color: '#9333ea' },
+  { value: 'hourly_leave', label: '時間休', color: '#0891b2' },
 ]
+
+const LEGACY_LABELS: Partial<Record<WorkType, string>> = {
+  overtime: '残業',
+  holiday: '休日',
+  training: '研修',
+}
 
 function toMinutes(time: string) {
   const [h, m] = time.split(':').map(Number)
@@ -32,13 +39,21 @@ interface Props {
 
 export default function WorkRecordModal({ userId, date, record, onClose, onSaved }: Props) {
   const [workDate, setWorkDate] = useState(record?.work_date ?? date ?? '')
-  const [startTime, setStartTime] = useState(record?.start_time ?? '09:00')
-  const [endTime, setEndTime] = useState(record?.end_time ?? '18:00')
+  const [startTime, setStartTime] = useState(record?.start_time?.slice(0, 5) ?? '09:00')
+  const [endTime, setEndTime] = useState(record?.end_time?.slice(0, 5) ?? '18:00')
   const [breakMin, setBreakMin] = useState(record?.break_minutes ?? 60)
   const [workType, setWorkType] = useState<WorkType>(record?.work_type ?? 'normal')
   const [notes, setNotes] = useState(record?.notes ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const isPaidLeave = workType === 'paid_leave'
+
+  // 既存データが旧区分(残業・休日・研修)の場合、選択肢から消えていても
+  // そのまま表示・保存できるよう一時的に選べる候補に加える
+  const options = WORK_TYPES.some(t => t.value === workType)
+    ? WORK_TYPES
+    : [...WORK_TYPES, { value: workType, label: LEGACY_LABELS[workType] ?? workType, color: '#6b7280' }]
 
   const yearMonth = workDate.slice(0, 7)
 
@@ -54,7 +69,7 @@ export default function WorkRecordModal({ userId, date, record, onClose, onSaved
   }
 
   const handleSave = async () => {
-    if (!workDate) return
+    if (!workDate || (!isPaidLeave && (!startTime || !endTime))) return
     setError(null)
     setSaving(true)
     try {
@@ -63,13 +78,13 @@ export default function WorkRecordModal({ userId, date, record, onClose, onSaved
         return
       }
       const supabase = createClient()
-      const actual_minutes = calcActualMinutes(startTime, endTime, breakMin)
+      const actual_minutes = isPaidLeave ? 0 : calcActualMinutes(startTime, endTime, breakMin)
       const payload = {
         user_id: userId,
         work_date: workDate,
-        start_time: startTime,
-        end_time: endTime,
-        break_minutes: breakMin,
+        start_time: isPaidLeave ? '00:00' : startTime,
+        end_time: isPaidLeave ? '00:00' : endTime,
+        break_minutes: isPaidLeave ? 0 : breakMin,
         actual_minutes,
         work_type: workType,
         notes: notes || null,
@@ -114,12 +129,12 @@ export default function WorkRecordModal({ userId, date, record, onClose, onSaved
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
         <h2 className="text-base font-bold text-gray-900 mb-4">
-          {record ? '勤務記録を編集' : '勤務記録を追加'}
+          {record ? '勤怠を編集' : '勤怠を追加'}
         </h2>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">日付</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">日付 *</label>
             <input
               type="date"
               value={workDate}
@@ -128,58 +143,72 @@ export default function WorkRecordModal({ userId, date, record, onClose, onSaved
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">開始</label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={e => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">終了</label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={e => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-700 mb-1">休憩（分）</label>
-              <input
-                type="number"
-                value={breakMin}
-                onChange={e => setBreakMin(Number(e.target.value))}
-                min={0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex-1 pt-5">
-              <p className="text-xs text-gray-500">実働</p>
-              <p className="text-sm font-medium text-gray-900">
-                {Math.floor(actualMin / 60)}h{actualMin % 60 > 0 ? `${actualMin % 60}m` : ''}
-              </p>
-            </div>
-          </div>
-
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">勤務種別</label>
-            <select
-              value={workType}
-              onChange={e => setWorkType(e.target.value as WorkType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {WORK_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
+            <label className="block text-xs font-medium text-gray-700 mb-2">勤務区分</label>
+            <div className="flex flex-wrap gap-2">
+              {options.map(t => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setWorkType(t.value)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
+                  style={{
+                    backgroundColor: workType === t.value ? t.color : 'white',
+                    color: workType === t.value ? 'white' : '#374151',
+                    borderColor: workType === t.value ? t.color : '#d1d5db',
+                  }}
+                >
+                  {t.label}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
+
+          {!isPaidLeave && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">開始時刻 *</label>
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={e => setStartTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">終了時刻 *</label>
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={e => setEndTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">休憩時間（分）</label>
+                  <select
+                    value={breakMin}
+                    onChange={e => setBreakMin(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {[0, 15, 30, 45, 60, 75, 90, 120].map(m => (
+                      <option key={m} value={m}>{m}分</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1 pt-5">
+                  <p className="text-xs text-gray-500">実働</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {Math.floor(actualMin / 60)}h{actualMin % 60 > 0 ? `${actualMin % 60}m` : ''}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">メモ</label>
@@ -217,7 +246,7 @@ export default function WorkRecordModal({ userId, date, record, onClose, onSaved
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || !workDate}
+            disabled={saving || !workDate || (!isPaidLeave && (!startTime || !endTime))}
             className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg transition-colors"
           >
             {saving ? '保存中...' : '保存'}
