@@ -16,6 +16,7 @@ const WORK_TYPE_COLORS: Record<string, string> = {
   holiday: '#ef4444',
   training: '#22c55e',
   paid_leave: '#a855f7',
+  hourly_leave: '#0891b2',
 }
 
 const WORK_TYPE_LABELS: Record<string, string> = {
@@ -23,7 +24,8 @@ const WORK_TYPE_LABELS: Record<string, string> = {
   overtime: '残業',
   holiday: '休日',
   training: '研修',
-  paid_leave: '有給',
+  paid_leave: '有休',
+  hourly_leave: '時間休',
 }
 
 const WORK_TYPE_BADGE: Record<string, string> = {
@@ -32,6 +34,7 @@ const WORK_TYPE_BADGE: Record<string, string> = {
   holiday: 'bg-red-100 text-red-700',
   training: 'bg-green-100 text-green-700',
   paid_leave: 'bg-purple-100 text-purple-700',
+  hourly_leave: 'bg-cyan-100 text-cyan-700',
 }
 
 export default function WorkPage() {

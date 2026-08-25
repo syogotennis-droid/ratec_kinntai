@@ -1,5 +1,5 @@
 export type EmploymentType = 'hourly' | 'daily' | 'monthly'
-export type WorkType = 'normal' | 'overtime' | 'holiday' | 'training' | 'paid_leave'
+export type WorkType = 'normal' | 'overtime' | 'holiday' | 'training' | 'paid_leave' | 'hourly_leave'
 export type ClosingStatus = 'open' | 'closed'
 export type InvoiceStatus = '下書き' | '発行済' | '送付済' | '入金済'
 export type QuotationStatus = '作成中' | '確定' | '失注'
