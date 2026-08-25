@@ -105,10 +105,15 @@ function familyName(fullName: string) {
 }
 
 
+// 終了時刻が開始時刻以下の場合は日をまたぐ勤務とみなし、終了時刻に24時間分足して計算する
+// (24時間以上勤務することは無い前提)
 function actualMinutes(start: string, end: string, breakMin: number): number {
   const [sh, sm] = start.slice(0, 5).split(':').map(Number)
   const [eh, em] = end.slice(0, 5).split(':').map(Number)
-  return (eh * 60 + em) - (sh * 60 + sm) - breakMin
+  const startMin = sh * 60 + sm
+  let endMin = eh * 60 + em
+  if (endMin <= startMin) endMin += 24 * 60
+  return endMin - startMin - breakMin
 }
 
 function formatTime(t: string | null) {
@@ -1516,12 +1521,14 @@ function WorkRecordModal({ workRecord, defaultDate, userId, onClose, onSaved }: 
     setError(null)
     setSaving(true)
     try {
+      const breakMin = isPaidLeave ? 0 : (Number(breakMinutes) || 0)
       const payload = {
         user_id: userId,
         work_date: date,
         start_time: isPaidLeave ? '00:00' : startTime,
         end_time: isPaidLeave ? '00:00' : endTime,
-        break_minutes: isPaidLeave ? 0 : (Number(breakMinutes) || 0),
+        break_minutes: breakMin,
+        actual_minutes: isPaidLeave ? 0 : actualMinutes(startTime, endTime, breakMin),
         work_type: workType,
         notes: notes || null,
       }
