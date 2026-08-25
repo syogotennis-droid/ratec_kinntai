@@ -114,10 +114,10 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
   const [name, setName] = useState(profile?.name ?? '')
   const [nameKana, setNameKana] = useState(profile?.name_kana ?? '')
   const [department, setDepartment] = useState(profile?.department ?? '')
-  const [employmentType, setEmploymentType] = useState<EmploymentType>(profile?.employment_type ?? 'hourly')
+  // 雇用形態は時給のみ運用のため固定。日給・交通費は入力項目自体を廃止し、
+  // データ送信時は0を渡す(既存データ・DBスキーマには影響しない)
+  const employmentType: EmploymentType = 'hourly'
   const [hourlyWage, setHourlyWage] = useState(String(profile?.hourly_wage ?? ''))
-  const [dailyWage, setDailyWage] = useState(String(profile?.daily_wage ?? ''))
-  const [transportation, setTransportation] = useState(String(profile?.transportation ?? ''))
   const [fixedAllowance, setFixedAllowance] = useState(String(profile?.fixed_allowance ?? ''))
   const [overtimeRate, setOvertimeRate] = useState(String(profile?.overtime_rate ?? '1.25'))
   const [holidayRate, setHolidayRate] = useState(String(profile?.holiday_rate ?? '1.35'))
@@ -136,15 +136,14 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
     try {
       const supabase = createClient()
       if (profile) {
+        // 日給・交通費は入力欄が無いため、既存データを上書きしないよう
+        // employment_type/daily_wage/transportationは更新対象に含めない
         await supabase.from('profiles').update({
           employee_id: employeeId,
           name,
           name_kana: nameKana || null,
           department: department || null,
-          employment_type: employmentType,
           hourly_wage: Number(hourlyWage) || 0,
-          daily_wage: Number(dailyWage) || 0,
-          transportation: Number(transportation) || 0,
           fixed_allowance: Number(fixedAllowance) || 0,
           overtime_rate: Number(overtimeRate) || 1.25,
           holiday_rate: Number(holidayRate) || 1.35,
@@ -162,8 +161,8 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
           department,
           employmentType,
           hourlyWage: Number(hourlyWage) || 0,
-          dailyWage: Number(dailyWage) || 0,
-          transportation: Number(transportation) || 0,
+          dailyWage: 0,
+          transportation: 0,
           fixedAllowance: Number(fixedAllowance) || 0,
           overtimeRate: Number(overtimeRate) || 1.25,
           holidayRate: Number(holidayRate) || 1.35,
@@ -211,38 +210,14 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">雇用形態</label>
-            <select value={employmentType} onChange={e => setEmploymentType(e.target.value as EmploymentType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="daily">日給</option>
-              <option value="hourly">時給</option>
-            </select>
+            <label className="block text-xs font-medium text-gray-700 mb-1">時給（円）</label>
+            <input type="number" value={hourlyWage} onChange={e => setHourlyWage(e.target.value)} min={0}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          {employmentType === 'hourly' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">時給（円）</label>
-              <input type="number" value={hourlyWage} onChange={e => setHourlyWage(e.target.value)} min={0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          )}
-          {employmentType === 'daily' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">日給（円）</label>
-              <input type="number" value={dailyWage} onChange={e => setDailyWage(e.target.value)} min={0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">交通費（円）</label>
-              <input type="number" value={transportation} onChange={e => setTransportation(e.target.value)} min={0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">固定手当（円）</label>
-              <input type="number" value={fixedAllowance} onChange={e => setFixedAllowance(e.target.value)} min={0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">固定手当（円）</label>
+            <input type="number" value={fixedAllowance} onChange={e => setFixedAllowance(e.target.value)} min={0}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
