@@ -6,12 +6,6 @@ import { Profile, EmploymentType } from '@/lib/supabase/types'
 import { createEmployee } from './actions'
 import MobileMenuButton from '@/components/ui/MobileMenuButton'
 
-const EMPLOYMENT_LABELS: Record<EmploymentType, string> = {
-  hourly: '時給',
-  daily: '日給',
-  monthly: '月給',
-}
-
 interface EmployeesClientProps {
   initialProfiles: Profile[]
 }
@@ -80,12 +74,7 @@ export default function EmployeesClient({ initialProfiles }: EmployeesClientProp
                   {p.is_admin && <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">管理者</span>}
                   {!p.is_active && <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">退職</span>}
                 </div>
-                <p className="text-xs text-gray-400">{p.employee_id} · {EMPLOYMENT_LABELS[p.employment_type]}</p>
-              </div>
-              <div className="text-xs text-gray-500 text-right shrink-0">
-                {p.employment_type === 'hourly' && `¥${p.hourly_wage.toLocaleString()}/h`}
-                {p.employment_type === 'daily' && `¥${p.daily_wage.toLocaleString()}/日`}
-                {p.employment_type === 'monthly' && `¥${p.hourly_wage.toLocaleString()}/月`}
+                <p className="text-xs text-gray-400">{p.employee_id}</p>
               </div>
             </div>
           ))}
@@ -114,13 +103,10 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
   const [name, setName] = useState(profile?.name ?? '')
   const [nameKana, setNameKana] = useState(profile?.name_kana ?? '')
   const [department, setDepartment] = useState(profile?.department ?? '')
-  // 雇用形態は時給のみ運用のため固定。日給・交通費は入力項目自体を廃止し、
-  // データ送信時は0を渡す(既存データ・DBスキーマには影響しない)
+  // 時給・固定手当・残業率・休日率など給与計算に関わる項目は、別の給与ソフトで
+  // 管理しているためこのアプリでは扱わない。データ送信時は既定値を渡す
+  // (既存データ・DBスキーマには影響しない)
   const employmentType: EmploymentType = 'hourly'
-  const [hourlyWage, setHourlyWage] = useState(String(profile?.hourly_wage ?? ''))
-  const [fixedAllowance, setFixedAllowance] = useState(String(profile?.fixed_allowance ?? ''))
-  const [overtimeRate, setOvertimeRate] = useState(String(profile?.overtime_rate ?? '1.25'))
-  const [holidayRate, setHolidayRate] = useState(String(profile?.holiday_rate ?? '1.35'))
   const [avatarChar, setAvatarChar] = useState(profile?.avatar_char ?? '')
   const [color, setColor] = useState(profile?.color ?? '')
   const [isAdmin, setIsAdmin] = useState(profile?.is_admin ?? false)
@@ -136,17 +122,13 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
     try {
       const supabase = createClient()
       if (profile) {
-        // 日給・交通費は入力欄が無いため、既存データを上書きしないよう
-        // employment_type/daily_wage/transportationは更新対象に含めない
+        // 給与関連(時給・日給・交通費・固定手当・残業率・休日率)は入力欄が無いため、
+        // 既存データを上書きしないよう更新対象に含めない
         await supabase.from('profiles').update({
           employee_id: employeeId,
           name,
           name_kana: nameKana || null,
           department: department || null,
-          hourly_wage: Number(hourlyWage) || 0,
-          fixed_allowance: Number(fixedAllowance) || 0,
-          overtime_rate: Number(overtimeRate) || 1.25,
-          holiday_rate: Number(holidayRate) || 1.35,
           is_admin: isAdmin,
           is_active: isActive,
           avatar_char: avatarChar || null,
@@ -160,12 +142,12 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
           nameKana,
           department,
           employmentType,
-          hourlyWage: Number(hourlyWage) || 0,
+          hourlyWage: 0,
           dailyWage: 0,
           transportation: 0,
-          fixedAllowance: Number(fixedAllowance) || 0,
-          overtimeRate: Number(overtimeRate) || 1.25,
-          holidayRate: Number(holidayRate) || 1.35,
+          fixedAllowance: 0,
+          overtimeRate: 1.25,
+          holidayRate: 1.35,
           isAdmin,
           password,
         })
@@ -208,28 +190,6 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
             <label className="block text-xs font-medium text-gray-700 mb-1">氏名（かな）</label>
             <input type="text" value={nameKana} onChange={e => setNameKana(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">時給（円）</label>
-            <input type="number" value={hourlyWage} onChange={e => setHourlyWage(e.target.value)} min={0}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">固定手当（円）</label>
-            <input type="number" value={fixedAllowance} onChange={e => setFixedAllowance(e.target.value)} min={0}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">残業率</label>
-              <input type="number" value={overtimeRate} onChange={e => setOvertimeRate(e.target.value)} step="0.01" min={1}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">休日率</label>
-              <input type="number" value={holidayRate} onChange={e => setHolidayRate(e.target.value)} step="0.01" min={1}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
           </div>
           {!profile && (
             <div>
