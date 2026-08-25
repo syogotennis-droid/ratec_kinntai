@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, EmploymentType } from '@/lib/supabase/types'
-import { createEmployee } from './actions'
+import { createEmployee, updateEmployeePassword } from './actions'
 import MobileMenuButton from '@/components/ui/MobileMenuButton'
 
 interface EmployeesClientProps {
@@ -101,7 +101,6 @@ interface EmployeeModalProps {
 function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
   const [employeeId, setEmployeeId] = useState(profile?.employee_id ?? '')
   const [name, setName] = useState(profile?.name ?? '')
-  const [nameKana, setNameKana] = useState(profile?.name_kana ?? '')
   const [department, setDepartment] = useState(profile?.department ?? '')
   // 時給・固定手当・残業率・休日率など給与計算に関わる項目は、別の給与ソフトで
   // 管理しているためこのアプリでは扱わない。データ送信時は既定値を渡す
@@ -122,24 +121,27 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
     try {
       const supabase = createClient()
       if (profile) {
-        // 給与関連(時給・日給・交通費・固定手当・残業率・休日率)は入力欄が無いため、
-        // 既存データを上書きしないよう更新対象に含めない
+        // 給与関連(時給・日給・交通費・固定手当・残業率・休日率)・氏名（かな）は
+        // 入力欄が無いため、既存データを上書きしないよう更新対象に含めない
         await supabase.from('profiles').update({
           employee_id: employeeId,
           name,
-          name_kana: nameKana || null,
           department: department || null,
           is_admin: isAdmin,
           is_active: isActive,
           avatar_char: avatarChar || null,
           color: color || null,
         }).eq('id', profile.id)
+        if (password) {
+          const result = await updateEmployeePassword(profile.id, password)
+          if (result.error) throw new Error(result.error)
+        }
       } else {
         if (!password) { setError('パスワードを入力してください'); setSaving(false); return }
         const result = await createEmployee({
           employeeId,
           name,
-          nameKana,
+          nameKana: '',
           department,
           employmentType,
           hourlyWage: 0,
@@ -187,17 +189,12 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">氏名（かな）</label>
-            <input type="text" value={nameKana} onChange={e => setNameKana(e.target.value)}
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              {profile ? 'パスワード（変更する場合のみ入力）' : 'パスワード *'}
+            </label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          {!profile && (
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">パスワード *</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          )}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">カレンダー表示</label>
             <div className="flex items-center gap-3">

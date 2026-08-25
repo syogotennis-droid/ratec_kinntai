@@ -65,3 +65,14 @@ export async function createEmployee(input: CreateEmployeeInput): Promise<{ erro
     return { error: e instanceof Error ? e.message : String(e) }
   }
 }
+
+export async function updateEmployeePassword(userId: string, password: string): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const admin = createAdminClient()
+    const { error } = await admin.auth.admin.updateUserById(userId, { password })
+    if (error) return { error: error.message }
+    return { success: true }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) }
+  }
+}
