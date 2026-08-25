@@ -24,9 +24,13 @@ function toMinutes(time: string) {
   return h * 60 + m
 }
 
+// 終了時刻が開始時刻以下の場合は日をまたぐ勤務とみなし、終了時刻に24時間分足して計算する
+// (24時間以上勤務することは無い前提)
 function calcActualMinutes(start: string, end: string, breakMin: number) {
-  const diff = toMinutes(end) - toMinutes(start)
-  return Math.max(0, diff - breakMin)
+  const startMin = toMinutes(start)
+  let endMin = toMinutes(end)
+  if (endMin <= startMin) endMin += 24 * 60
+  return Math.max(0, endMin - startMin - breakMin)
 }
 
 interface Props {
