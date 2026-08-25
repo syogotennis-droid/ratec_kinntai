@@ -114,7 +114,7 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
   const [name, setName] = useState(profile?.name ?? '')
   const [nameKana, setNameKana] = useState(profile?.name_kana ?? '')
   const [department, setDepartment] = useState(profile?.department ?? '')
-  const [employmentType, setEmploymentType] = useState<EmploymentType>(profile?.employment_type ?? 'monthly')
+  const [employmentType, setEmploymentType] = useState<EmploymentType>(profile?.employment_type ?? 'hourly')
   const [hourlyWage, setHourlyWage] = useState(String(profile?.hourly_wage ?? ''))
   const [dailyWage, setDailyWage] = useState(String(profile?.daily_wage ?? ''))
   const [transportation, setTransportation] = useState(String(profile?.transportation ?? ''))
@@ -214,7 +214,6 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
             <label className="block text-xs font-medium text-gray-700 mb-1">雇用形態</label>
             <select value={employmentType} onChange={e => setEmploymentType(e.target.value as EmploymentType)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="monthly">月給</option>
               <option value="daily">日給</option>
               <option value="hourly">時給</option>
             </select>
@@ -230,13 +229,6 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">日給（円）</label>
               <input type="number" value={dailyWage} onChange={e => setDailyWage(e.target.value)} min={0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          )}
-          {employmentType === 'monthly' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">月給（円）</label>
-              <input type="number" value={hourlyWage} onChange={e => setHourlyWage(e.target.value)} min={0}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           )}
