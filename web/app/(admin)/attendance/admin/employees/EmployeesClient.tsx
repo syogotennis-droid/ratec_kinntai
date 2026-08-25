@@ -111,6 +111,7 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
   const [isAdmin, setIsAdmin] = useState(profile?.is_admin ?? false)
   const [isActive, setIsActive] = useState(profile?.is_active ?? true)
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -192,8 +193,18 @@ function EmployeeModal({ profile, onClose, onSaved }: EmployeeModalProps) {
             <label className="block text-xs font-medium text-gray-700 mb-1">
               {profile ? 'パスワード（変更する場合のみ入力）' : 'パスワード *'}
             </label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div className="relative">
+              <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                tabIndex={-1}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? '隠す' : '表示'}
+              </button>
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">カレンダー表示</label>
