@@ -1170,9 +1170,40 @@ function to24h(ampm: string, hour: string, minute: string) {
   return `${String(h).padStart(2, '0')}:${minute}`
 }
 
+// PC(md以上)ではドラム式のタップ選択UIをやめ、キーボード・マウスで打ちやすい
+// ネイティブの時刻入力にする。スマホは従来通りドラム式ボトムシートのまま。
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+  )
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 768px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [])
+  return isDesktop
+}
+
 function TimePicker({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const [open, setOpen] = useState(false)
+  const isDesktop = useIsDesktop()
   const display = value ? formatTime(value) : '-- : --'
+
+  if (isDesktop) {
+    return (
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+        <input
+          type="time"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+    )
+  }
+
   return (
     <div>
       <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
