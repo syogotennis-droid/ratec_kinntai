@@ -107,6 +107,7 @@ export default function QuotationDetailPage() {
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [savedMessage, setSavedMessage] = useState(false)
 
   const [projectId, setProjectId] = useState<number>(0)
   const [supplierId, setSupplierId] = useState<number>(0)
@@ -295,6 +296,7 @@ export default function QuotationDetailPage() {
 
   const handleSave = async () => {
     setError(null)
+    setSavedMessage(false)
     setSaving(true)
     try {
       const supabase = createClient()
@@ -323,7 +325,8 @@ export default function QuotationDetailPage() {
         const { error: itemsErr } = await supabase.from('quotation_items').insert(itemsForInsert.map((item, i) => ({ ...item, quotation_id: Number(id), sort_order: i })))
         if (itemsErr) throw itemsErr
       }
-      router.push('/orders/quotations')
+      // 保存後にすぐExcel出力することが多いため、一覧には戻らずこの画面のまま留まる
+      setSavedMessage(true)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '保存に失敗しました')
     } finally {
@@ -514,7 +517,7 @@ export default function QuotationDetailPage() {
                     {item.has_product_sheet && (
                       <div className="mt-2 grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[11px] text-gray-500 mb-1">既存商品名</label>
+                          <label className="block text-[11px] text-gray-500 mb-1">既存商品名（品番は不要）</label>
                           <input value={item.existing_product_name ?? ''} onChange={e => updateItem(idx, 'existing_product_name', e.target.value)}
                             placeholder="例：FPL形LED蛍光灯"
                             className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
@@ -650,7 +653,7 @@ export default function QuotationDetailPage() {
                   {item.has_product_sheet && (
                     <div className="mt-2 space-y-2">
                       <div>
-                        <label className="block text-[11px] text-gray-500 mb-1">既存商品名</label>
+                        <label className="block text-[11px] text-gray-500 mb-1">既存商品名（品番は不要）</label>
                         <input value={item.existing_product_name ?? ''} onChange={e => updateItem(idx, 'existing_product_name', e.target.value)}
                           placeholder="例：FPL形LED蛍光灯"
                           className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
@@ -686,6 +689,7 @@ export default function QuotationDetailPage() {
       </div>
 
       {error && <p className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+      {savedMessage && <p className="mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">保存しました</p>}
 
       <button onClick={handleSave} disabled={saving}
         className="w-full py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg">

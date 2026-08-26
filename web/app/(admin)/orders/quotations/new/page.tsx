@@ -555,7 +555,7 @@ export default function NewQuotationPage() {
                     {item.has_product_sheet && (
                       <div className="mt-2 grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[11px] text-gray-500 mb-1">既存商品名</label>
+                          <label className="block text-[11px] text-gray-500 mb-1">既存商品名（品番は不要）</label>
                           <input value={item.existing_product_name ?? ''} onChange={e => updateItem(idx, 'existing_product_name', e.target.value)}
                             placeholder="例：FPL形LED蛍光灯"
                             className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
@@ -689,7 +689,7 @@ export default function NewQuotationPage() {
                   {item.has_product_sheet && (
                     <div className="mt-2 space-y-2">
                       <div>
-                        <label className="block text-[11px] text-gray-500 mb-1">既存商品名</label>
+                        <label className="block text-[11px] text-gray-500 mb-1">既存商品名（品番は不要）</label>
                         <input value={item.existing_product_name ?? ''} onChange={e => updateItem(idx, 'existing_product_name', e.target.value)}
                           placeholder="例：FPL形LED蛍光灯"
                           className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
