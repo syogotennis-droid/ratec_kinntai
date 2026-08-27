@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/lib/supabase/types'
 import { ProfileContext } from '@/lib/profile-context'
 import { SidebarContext } from '@/lib/sidebar-context'
+import BackNavigationGuard from '@/components/BackNavigationGuard'
 
 interface NavItem {
   to: string
@@ -82,7 +83,7 @@ export default function AppShell({ profile, children }: Props) {
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
+    router.replace('/login')
     router.refresh()
   }
 
@@ -98,6 +99,7 @@ export default function AppShell({ profile, children }: Props) {
                 <Link
                   key={item.to}
                   href={item.to}
+                  replace
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
@@ -146,6 +148,7 @@ export default function AppShell({ profile, children }: Props) {
   return (
     <ProfileContext.Provider value={profile}>
     <SidebarContext.Provider value={() => setSidebarOpen(true)}>
+    <BackNavigationGuard />
     <div className="flex h-screen overflow-hidden">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:w-60 md:flex-col md:flex-shrink-0 bg-slate-900">
