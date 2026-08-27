@@ -389,8 +389,8 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
           </svg>
         </button>
         <h1 className="text-sm font-bold text-gray-900 mr-1 hidden sm:block">勤怠・予定</h1>
-        <button onClick={goPrev} className="p-1.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full shrink-0">
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button onClick={goPrev} className="p-1 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full shrink-0">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
@@ -398,8 +398,8 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
           className="text-xl font-bold text-gray-900 px-1.5 py-1 rounded-lg hover:bg-gray-100">
           {displayYear}年{displayMonth}月
         </button>
-        <button onClick={goNext} className="p-1.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full shrink-0">
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button onClick={goNext} className="p-1 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full shrink-0">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
           </svg>
         </button>
