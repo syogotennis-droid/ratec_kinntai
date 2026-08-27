@@ -206,7 +206,7 @@ CREATE TABLE suppliers (
 -- 見積書
 CREATE TABLE quotations (
   id SERIAL PRIMARY KEY,
-  project_id INTEGER NOT NULL REFERENCES projects(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   supplier_id INTEGER REFERENCES suppliers(id),
   doc_no TEXT NOT NULL,
   issue_date DATE NOT NULL,
@@ -242,7 +242,7 @@ CREATE TABLE quotation_items (
 -- 発注書
 CREATE TABLE purchase_orders (
   id SERIAL PRIMARY KEY,
-  project_id INTEGER NOT NULL REFERENCES projects(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   quotation_id INTEGER REFERENCES quotations(id),
   supplier_id INTEGER REFERENCES suppliers(id),
   doc_no TEXT NOT NULL,
@@ -272,7 +272,7 @@ CREATE TABLE purchase_order_items (
 -- 請求書
 CREATE TABLE invoices (
   id SERIAL PRIMARY KEY,
-  project_id INTEGER NOT NULL REFERENCES projects(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   quotation_id INTEGER REFERENCES quotations(id),
   doc_no TEXT NOT NULL,
   issue_date DATE NOT NULL,

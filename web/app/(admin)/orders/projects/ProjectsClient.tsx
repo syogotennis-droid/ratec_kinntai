@@ -326,7 +326,7 @@ function ProjectModal({ project, companies, offices, onClose, onSaved }: Project
 
   const handleDelete = async () => {
     if (!project) return
-    if (!confirm(`「${project.name}」を削除しますか？この操作は取り消せません。`)) return
+    if (!confirm(`「${project.name}」を削除しますか？\nこの案件に紐づく見積書・注文書・請求書などの書類も全て削除されます。この操作は取り消せません。`)) return
     setError(null)
     setDeleting(true)
     try {
@@ -334,6 +334,7 @@ function ProjectModal({ project, companies, offices, onClose, onSaved }: Project
       const { error: delError } = await supabase.from('projects').delete().eq('id', project.id)
       if (delError) {
         // 見積書・注文書・請求書が紐づいている場合、外部キー制約により削除できない
+        // (DBのON DELETE CASCADE設定が未反映の場合のフォールバック)
         if (delError.code === '23503') {
           throw new Error('この案件には見積書・注文書・請求書などの書類が紐づいているため削除できません。先にそれらを削除してください。')
         }
