@@ -335,13 +335,13 @@ export default function QuotationDetailPage() {
   }
 
   const handleDelete = async () => {
-    if (!confirm('削除しますか？')) return
+    if (!confirm('削除しますか？\nこの見積書から作成された注文書・請求書も全て削除されます。この操作は取り消せません。')) return
     setError(null)
     setSaving(true)
     try {
       const { error: delError } = await createClient().from('quotations').delete().eq('id', id)
       if (delError) {
-        // 注文書・請求書がこの見積書から作成されている場合、外部キー制約により削除できない
+        // DBのON DELETE CASCADE設定が未反映の場合のフォールバック
         if (delError.code === '23503') {
           throw new Error('この見積書には注文書・請求書が紐づいているため削除できません。先にそれらを削除してください。')
         }

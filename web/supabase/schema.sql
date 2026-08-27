@@ -243,7 +243,7 @@ CREATE TABLE quotation_items (
 CREATE TABLE purchase_orders (
   id SERIAL PRIMARY KEY,
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  quotation_id INTEGER REFERENCES quotations(id),
+  quotation_id INTEGER REFERENCES quotations(id) ON DELETE CASCADE,
   supplier_id INTEGER REFERENCES suppliers(id),
   doc_no TEXT NOT NULL,
   issue_date DATE NOT NULL,
@@ -273,7 +273,7 @@ CREATE TABLE purchase_order_items (
 CREATE TABLE invoices (
   id SERIAL PRIMARY KEY,
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  quotation_id INTEGER REFERENCES quotations(id),
+  quotation_id INTEGER REFERENCES quotations(id) ON DELETE CASCADE,
   doc_no TEXT NOT NULL,
   issue_date DATE NOT NULL,
   status TEXT DEFAULT '下書き' CHECK (status IN ('下書き', '発行済', '送付済', '入金済')),
