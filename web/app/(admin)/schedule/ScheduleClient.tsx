@@ -912,17 +912,19 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
         />
       )}
 
-      {/* スマホ: 新規追加FAB(日付詳細シートを開いている場合はその日付を対象にする) */}
-      <button
-        onClick={() => {
-          if (view === 'schedule') { setAddDate(daySheet ?? fabDefaultDate); setDaySheet(null) }
-          else { setAddWorkDate(workDaySheetDate ?? fabDefaultDate); setWorkDaySheetDate(null) }
-        }}
-        className="md:hidden fixed bottom-5 right-5 z-[60] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-2xl font-light shadow-lg flex items-center justify-center"
-        aria-label={view === 'schedule' ? '予定を追加' : '勤怠を追加'}
-      >
-        +
-      </button>
+      {/* スマホ: 新規追加FAB(日付詳細シートを開いている間は、シート側の＋と重複するので隠す) */}
+      {!daySheet && !workDaySheetDate && (
+        <button
+          onClick={() => {
+            if (view === 'schedule') { setAddDate(fabDefaultDate) }
+            else { setAddWorkDate(fabDefaultDate) }
+          }}
+          className="md:hidden fixed bottom-5 right-5 z-[60] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-2xl font-light shadow-lg flex items-center justify-center"
+          aria-label={view === 'schedule' ? '予定を追加' : '勤怠を追加'}
+        >
+          +
+        </button>
+      )}
 
       {/* スマホ: 担当者を絞る ボトムシート */}
       {showEmployeeFilterSheet && (
