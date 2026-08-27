@@ -262,12 +262,14 @@ export default function PurchaseOrderDetailPage() {
 
   const handleDelete = async () => {
     if (!confirm('削除しますか？')) return
+    setError(null)
     setSaving(true)
     try {
-      await createClient().from('purchase_orders').delete().eq('id', id)
+      const { error: delError } = await createClient().from('purchase_orders').delete().eq('id', id)
+      if (delError) throw new Error(delError.message)
       router.push('/orders/purchase-orders')
-    } catch {
-      setError('削除に失敗しました')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '削除に失敗しました')
       setSaving(false)
     }
   }
