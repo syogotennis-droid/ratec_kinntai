@@ -750,19 +750,19 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                           const chipLabel = isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]
                           const chipStyle = WORK_TYPE_LIGHT[isOvertime ? 'overtime' : wr.work_type]
                           return (
-                            <div key={wr.id} className="cal-chip" style={{ backgroundColor: chipStyle.bg, borderLeft: `4px solid ${chipStyle.border}`, borderRadius: 4, padding: '4px 6px', margin: '1px 1px 0' }}>
-                              <div style={{ fontSize: 10, fontWeight: 700, color: chipStyle.fg, lineHeight: '13px' }}>
+                            <div key={wr.id} className="cal-chip" style={{ backgroundColor: chipStyle.bg, borderLeft: `3px solid ${chipStyle.border}`, borderRadius: 3, padding: '2px 5px', margin: '1px 1px 0' }}>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: chipStyle.fg, lineHeight: '11px' }}>
                                 {chipLabel}
                               </div>
                               {wr.work_type !== 'paid_leave' ? (
-                                <div style={{ fontSize: 15, fontWeight: 800, color: '#111827', lineHeight: '19px', whiteSpace: 'nowrap' }}>
+                                <div style={{ fontSize: 12, fontWeight: 800, color: '#111827', lineHeight: '15px', whiteSpace: 'nowrap' }}>
                                   {wr.start_time.slice(0, 5)}–{wr.end_time.slice(0, 5)}
                                 </div>
                               ) : (
-                                <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', lineHeight: '17px' }}>終日</div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: '#111827', lineHeight: '14px' }}>終日</div>
                               )}
                               {wr.notes && (
-                                <div style={{ fontSize: 10.5, color: '#57606f', lineHeight: '13px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', marginTop: 1 }} title={wr.notes}>
+                                <div style={{ fontSize: 9.5, color: '#57606f', lineHeight: '11px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', marginTop: 1 }} title={wr.notes}>
                                   {wr.notes}
                                 </div>
                               )}
@@ -804,10 +804,9 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                       setWorkDaySheetDate(date)
                     }
                   }
-                  const firstRecord = dayRecords[0] ?? null
-                  const isOvertime = !!firstRecord && firstRecord.work_type === 'normal' && actualMinutes(firstRecord.start_time, firstRecord.end_time, firstRecord.break_minutes) > 480
-                  const chipLabel = firstRecord ? (isOvertime ? '残業' : WORK_TYPE_LABEL[firstRecord.work_type]) : ''
-                  const chipStyle = firstRecord ? WORK_TYPE_LIGHT[isOvertime ? 'overtime' : firstRecord.work_type] : null
+                  const maxMobileChips = 2
+                  const shownMobileRecords = dayRecords.slice(0, maxMobileChips)
+                  const extraMobileCount = dayRecords.length - maxMobileChips
                   return (
                     <div key={date} className="cal-cell" onClick={handleCellTap}
                       style={{
@@ -828,22 +827,27 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                           {dayNum}
                         </span>
                       </div>
-                      {firstRecord && chipStyle && (
-                        <div style={{ backgroundColor: chipStyle.bg, borderLeft: `2px solid ${chipStyle.border}`, borderRadius: 2, padding: '1.5px 2px', margin: '3px 1px 0', overflow: 'hidden', flexShrink: 0 }}>
-                          <div style={{ fontSize: 9.5, fontWeight: 700, color: chipStyle.fg, lineHeight: '12px', whiteSpace: 'nowrap' }}>
-                            {chipLabel}
-                          </div>
-                          {firstRecord.work_type !== 'paid_leave' ? (
-                            <div style={{ fontSize: 11, fontWeight: 800, color: '#111827', lineHeight: '13px', whiteSpace: 'nowrap' }}>
-                              {shortHour(firstRecord.start_time)}–{shortHour(firstRecord.end_time)}
+                      {shownMobileRecords.map(wr => {
+                        const isOvertime = wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
+                        const chipLabel = isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]
+                        const chipStyle = WORK_TYPE_LIGHT[isOvertime ? 'overtime' : wr.work_type]
+                        return (
+                          <div key={wr.id} style={{ backgroundColor: chipStyle.bg, borderLeft: `2px solid ${chipStyle.border}`, borderRadius: 2, padding: '1px 2px', margin: '2px 1px 0', overflow: 'hidden', flexShrink: 0 }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: chipStyle.fg, lineHeight: '9px', whiteSpace: 'nowrap' }}>
+                              {chipLabel}
                             </div>
-                          ) : (
-                            <div style={{ fontSize: 9.5, fontWeight: 700, color: '#111827', lineHeight: '12px', whiteSpace: 'nowrap' }}>終日</div>
-                          )}
-                        </div>
-                      )}
-                      {dayRecords.length > 1 && (
-                        <div style={{ fontSize: 9, color: '#6b7280', lineHeight: '11px', paddingLeft: 2, flexShrink: 0 }}>+{dayRecords.length - 1}</div>
+                            {wr.work_type !== 'paid_leave' ? (
+                              <div style={{ fontSize: 9.5, fontWeight: 800, color: '#111827', lineHeight: '11px', whiteSpace: 'nowrap' }}>
+                                {shortHour(wr.start_time)}–{shortHour(wr.end_time)}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 8, fontWeight: 700, color: '#111827', lineHeight: '9px' }}>終日</div>
+                            )}
+                          </div>
+                        )
+                      })}
+                      {extraMobileCount > 0 && (
+                        <div style={{ fontSize: 8, color: '#6b7280', lineHeight: '9px', paddingLeft: 2, flexShrink: 0 }}>+{extraMobileCount}</div>
                       )}
                     </div>
                   )
