@@ -366,11 +366,14 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
   // FABの新規追加は、表示中の月に「今日」が含まれる場合は今日、それ以外はその月の1日を初期値にする
   const fabDefaultDate = todayStr.slice(0, 7) === yearMonth ? todayStr : `${yearMonth}-01`
 
+  // 1日に出退勤を複数回に分けて入力するケース(中抜けなど)があるため、日付ごとに配列で持つ
   const workRecordsByDate = useMemo(() => {
-    return workRecords.reduce<Record<string, WorkRecord>>((acc, r) => {
-      acc[r.work_date] = r
+    const grouped = workRecords.reduce<Record<string, WorkRecord[]>>((acc, r) => {
+      (acc[r.work_date] ??= []).push(r)
       return acc
     }, {})
+    Object.values(grouped).forEach(list => list.sort((a, b) => a.start_time.localeCompare(b.start_time)))
+    return grouped
   }, [workRecords])
 
   const daySchedules = daySheet ? (schedules.filter(s => s.date === daySheet)) : []
@@ -699,19 +702,20 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                 </div>
                 <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, 1fr)` }}>
                   {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
-                    const wr = workRecordsByDate[date]
+                    const dayRecords = workRecordsByDate[date] ?? []
                     const isToday = date === todayStr
                     const isHoliday = holidayDates.has(date)
                     const dow = new Date(`${date}T00:00:00`).getDay()
                     const numColor = isHoliday || dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : ''
+                    // 1日に複数回(中抜けなど)入力できるよう、既に記録がある日もまず一覧シートを開く
                     const handleWorkDateClick = () => {
                       if (!isCurrentMonth) return
-                      if (wr) { setEditWorkRecord(wr); setAddWorkDate(null) }
-                      else { setAddWorkDate(date); setEditWorkRecord(null) }
+                      if (dayRecords.length === 0) { setAddWorkDate(date); setEditWorkRecord(null) }
+                      else { setWorkDaySheetDate(date) }
                     }
-                    const isOvertime = !!wr && wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
-                    const chipLabel = wr ? (isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]) : ''
-                    const chipStyle = wr ? WORK_TYPE_LIGHT[isOvertime ? 'overtime' : wr.work_type] : null
+                    const maxChips = 2
+                    const shownRecords = dayRecords.slice(0, maxChips)
+                    const extraCount = dayRecords.length - maxChips
                     return (
                       <div
                         key={date}
@@ -737,28 +741,36 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                           }}>
                             {dayNum}
                           </span>
-                          {isCurrentMonth && !wr && (
+                          {isCurrentMonth && dayRecords.length === 0 && (
                             <span className="cal-hint" style={{ fontSize: 13, color: '#9ca3af', paddingRight: 2 }}>＋</span>
                           )}
                         </div>
-                        {wr && chipStyle && (
-                          <div className="cal-chip" style={{ backgroundColor: chipStyle.bg, borderLeft: `4px solid ${chipStyle.border}`, borderRadius: 4, padding: '4px 6px', margin: '1px 1px 0' }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: chipStyle.fg, lineHeight: '13px' }}>
-                              {chipLabel}
+                        {shownRecords.map(wr => {
+                          const isOvertime = wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
+                          const chipLabel = isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]
+                          const chipStyle = WORK_TYPE_LIGHT[isOvertime ? 'overtime' : wr.work_type]
+                          return (
+                            <div key={wr.id} className="cal-chip" style={{ backgroundColor: chipStyle.bg, borderLeft: `4px solid ${chipStyle.border}`, borderRadius: 4, padding: '4px 6px', margin: '1px 1px 0' }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: chipStyle.fg, lineHeight: '13px' }}>
+                                {chipLabel}
+                              </div>
+                              {wr.work_type !== 'paid_leave' ? (
+                                <div style={{ fontSize: 15, fontWeight: 800, color: '#111827', lineHeight: '19px', whiteSpace: 'nowrap' }}>
+                                  {wr.start_time.slice(0, 5)}–{wr.end_time.slice(0, 5)}
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', lineHeight: '17px' }}>終日</div>
+                              )}
+                              {wr.notes && (
+                                <div style={{ fontSize: 10.5, color: '#57606f', lineHeight: '13px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', marginTop: 1 }} title={wr.notes}>
+                                  {wr.notes}
+                                </div>
+                              )}
                             </div>
-                            {wr.work_type !== 'paid_leave' ? (
-                              <div style={{ fontSize: 15, fontWeight: 800, color: '#111827', lineHeight: '19px', whiteSpace: 'nowrap' }}>
-                                {wr.start_time.slice(0, 5)}–{wr.end_time.slice(0, 5)}
-                              </div>
-                            ) : (
-                              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', lineHeight: '17px' }}>終日</div>
-                            )}
-                            {wr.notes && (
-                              <div style={{ fontSize: 10.5, color: '#57606f', lineHeight: '13px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', marginTop: 1 }} title={wr.notes}>
-                                {wr.notes}
-                              </div>
-                            )}
-                          </div>
+                          )
+                        })}
+                        {extraCount > 0 && (
+                          <div className="cal-more" style={{ fontSize: 10, color: '#6b7280', lineHeight: '14px', paddingLeft: 4, fontWeight: 500, flexShrink: 0 }}>ほか{extraCount}件</div>
                         )}
                       </div>
                     )
@@ -775,7 +787,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numWeeks}, minmax(0, 1fr))`, flex: 1, minHeight: 0 }}>
                   {calendarDays.map(({ date, dayNum, isCurrentMonth }) => {
-                  const wr = workRecordsByDate[date]
+                  const dayRecords = workRecordsByDate[date] ?? []
                   const isToday = date === todayStr
                   const isHoliday = holidayDates.has(date)
                   const dow = new Date(`${date}T00:00:00`).getDay()
@@ -783,15 +795,19 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                   const handleCellTap = () => {
                     if (!isCurrentMonth) return
                     if (workDaySheetDate === date) {
-                      if (wr) { setEditWorkRecord(wr) } else { setAddWorkDate(date) }
+                      // 2回目のタップでシートを経由せず直接開く(記録が1件のみの時だけ有効なショートカット)
+                      if (dayRecords.length === 1) { setEditWorkRecord(dayRecords[0]) }
+                      else if (dayRecords.length === 0) { setAddWorkDate(date) }
+                      else { setWorkDaySheetDate(date); return }
                       setWorkDaySheetDate(null)
                     } else {
                       setWorkDaySheetDate(date)
                     }
                   }
-                  const isOvertime = !!wr && wr.work_type === 'normal' && actualMinutes(wr.start_time, wr.end_time, wr.break_minutes) > 480
-                  const chipLabel = wr ? (isOvertime ? '残業' : WORK_TYPE_LABEL[wr.work_type]) : ''
-                  const chipStyle = wr ? WORK_TYPE_LIGHT[isOvertime ? 'overtime' : wr.work_type] : null
+                  const firstRecord = dayRecords[0] ?? null
+                  const isOvertime = !!firstRecord && firstRecord.work_type === 'normal' && actualMinutes(firstRecord.start_time, firstRecord.end_time, firstRecord.break_minutes) > 480
+                  const chipLabel = firstRecord ? (isOvertime ? '残業' : WORK_TYPE_LABEL[firstRecord.work_type]) : ''
+                  const chipStyle = firstRecord ? WORK_TYPE_LIGHT[isOvertime ? 'overtime' : firstRecord.work_type] : null
                   return (
                     <div key={date} className="cal-cell" onClick={handleCellTap}
                       style={{
@@ -812,19 +828,22 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
                           {dayNum}
                         </span>
                       </div>
-                      {wr && chipStyle && (
+                      {firstRecord && chipStyle && (
                         <div style={{ backgroundColor: chipStyle.bg, borderLeft: `2px solid ${chipStyle.border}`, borderRadius: 2, padding: '1.5px 2px', margin: '3px 1px 0', overflow: 'hidden', flexShrink: 0 }}>
                           <div style={{ fontSize: 9.5, fontWeight: 700, color: chipStyle.fg, lineHeight: '12px', whiteSpace: 'nowrap' }}>
                             {chipLabel}
                           </div>
-                          {wr.work_type !== 'paid_leave' ? (
+                          {firstRecord.work_type !== 'paid_leave' ? (
                             <div style={{ fontSize: 11, fontWeight: 800, color: '#111827', lineHeight: '13px', whiteSpace: 'nowrap' }}>
-                              {shortHour(wr.start_time)}–{shortHour(wr.end_time)}
+                              {shortHour(firstRecord.start_time)}–{shortHour(firstRecord.end_time)}
                             </div>
                           ) : (
                             <div style={{ fontSize: 9.5, fontWeight: 700, color: '#111827', lineHeight: '12px', whiteSpace: 'nowrap' }}>終日</div>
                           )}
                         </div>
+                      )}
+                      {dayRecords.length > 1 && (
+                        <div style={{ fontSize: 9, color: '#6b7280', lineHeight: '11px', paddingLeft: 2, flexShrink: 0 }}>+{dayRecords.length - 1}</div>
                       )}
                     </div>
                   )
@@ -847,7 +866,7 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
           {workDaySheetDate && (
             <WorkDaySheet
               date={workDaySheetDate}
-              workRecord={workRecordsByDate[workDaySheetDate] ?? null}
+              workRecords={workRecordsByDate[workDaySheetDate] ?? []}
               onClose={() => setWorkDaySheetDate(null)}
               onAdd={() => { setAddWorkDate(workDaySheetDate); setWorkDaySheetDate(null) }}
               onEdit={(wr) => { setEditWorkRecord(wr); setWorkDaySheetDate(null) }}
@@ -1430,13 +1449,13 @@ function ScheduleModal({ schedule, defaultDate, userId, profiles, onClose, onSav
 
 interface WorkDaySheetProps {
   date: string
-  workRecord: WorkRecord | null
+  workRecords: WorkRecord[]
   onClose: () => void
   onEdit: (wr: WorkRecord) => void
   onAdd: () => void
 }
 
-function WorkDaySheet({ date, workRecord, onClose, onEdit, onAdd }: WorkDaySheetProps) {
+function WorkDaySheet({ date, workRecords, onClose, onEdit, onAdd }: WorkDaySheetProps) {
   const [, m, d] = date.split('-').map(Number)
   const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][new Date(date).getDay()]
   const isWeekend = new Date(date).getDay() === 0 || new Date(date).getDay() === 6
@@ -1494,29 +1513,31 @@ function WorkDaySheet({ date, workRecord, onClose, onEdit, onAdd }: WorkDaySheet
           <h2 className={`text-lg font-bold ${isWeekend ? 'text-red-500' : 'text-gray-900'}`}>
             {m}月{d}日 {dayOfWeek}曜日
           </h2>
-          {!workRecord && (
-            <button onClick={onAdd}
-              className="w-9 h-9 bg-gray-900 rounded-full flex items-center justify-center text-white text-xl font-light">
-              +
-            </button>
-          )}
+          <button onClick={onAdd}
+            className="w-9 h-9 bg-gray-900 rounded-full flex items-center justify-center text-white text-xl font-light">
+            +
+          </button>
         </div>
         <div ref={listRef} className="overflow-y-auto flex-1 px-5 pb-8" style={{ overscrollBehavior: 'contain' }}>
-          {workRecord ? (
-            <div onClick={() => onEdit(workRecord)}
-              className="flex items-center gap-3 py-3 px-2 rounded-xl hover:bg-gray-50 cursor-pointer">
-              <div style={{ backgroundColor: WORK_TYPE_COLOR[workRecord.work_type] }}
-                className="px-2 py-1 rounded text-white text-xs font-bold shrink-0">
-                {WORK_TYPE_LABEL[workRecord.work_type]}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">
-                  {fmtTime(workRecord.start_time)} 〜 {fmtTime(workRecord.end_time)}
-                  <span className="text-xs text-gray-400 ml-2">休憩{workRecord.break_minutes}分</span>
-                </p>
-                {workRecord.notes && <p className="text-xs text-gray-400 mt-0.5">{workRecord.notes}</p>}
-              </div>
-              <span className="text-xs text-gray-400">編集 ›</span>
+          {workRecords.length > 0 ? (
+            <div className="space-y-2">
+              {workRecords.map(workRecord => (
+                <div key={workRecord.id} onClick={() => onEdit(workRecord)}
+                  className="flex items-center gap-3 py-3 px-2 rounded-xl hover:bg-gray-50 cursor-pointer">
+                  <div style={{ backgroundColor: WORK_TYPE_COLOR[workRecord.work_type] }}
+                    className="px-2 py-1 rounded text-white text-xs font-bold shrink-0">
+                    {WORK_TYPE_LABEL[workRecord.work_type]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">
+                      {fmtTime(workRecord.start_time)} 〜 {fmtTime(workRecord.end_time)}
+                      <span className="text-xs text-gray-400 ml-2">休憩{workRecord.break_minutes}分</span>
+                    </p>
+                    {workRecord.notes && <p className="text-xs text-gray-400 mt-0.5">{workRecord.notes}</p>}
+                  </div>
+                  <span className="text-xs text-gray-400">編集 ›</span>
+                </div>
+              ))}
             </div>
           ) : (
             <p className="text-sm text-gray-400 py-6 text-center">勤怠記録なし</p>
