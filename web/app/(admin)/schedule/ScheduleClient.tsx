@@ -209,11 +209,6 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
     setYearMonth(`${y}-${String(m).padStart(2, '0')}`)
     setShowMonthPicker(false)
   }
-  const goToday = () => {
-    const d = new Date()
-    setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
-  }
-
   const toggleUser = (id: string) => {
     setVisibleUserIds(prev => {
       const base = prev ?? new Set(profiles.map(p => p.id))
@@ -394,13 +389,12 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
           </svg>
         </button>
         <h1 className="text-sm font-bold text-gray-900 mr-1 hidden sm:block">勤怠・予定</h1>
-        <button onClick={goPrev} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-2xl leading-none">‹</button>
+        <button onClick={goPrev} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-4xl leading-none">‹</button>
         <button onClick={() => setShowMonthPicker(true)}
           className="text-xl font-bold text-gray-900 px-1.5 py-1 rounded-lg hover:bg-gray-100">
           {displayYear}年{displayMonth}月
         </button>
-        <button onClick={goNext} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-2xl leading-none">›</button>
-        <button onClick={goToday} className="px-2 py-0.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">今日</button>
+        <button onClick={goNext} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-4xl leading-none">›</button>
         {!profile.is_admin && <div className="ml-auto">{viewToggle}</div>}
       </div>
       {view === 'schedule' && (
