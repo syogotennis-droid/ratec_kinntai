@@ -336,12 +336,20 @@ export default function QuotationDetailPage() {
 
   const handleDelete = async () => {
     if (!confirm('削除しますか？')) return
+    setError(null)
     setSaving(true)
     try {
-      await createClient().from('quotations').delete().eq('id', id)
+      const { error: delError } = await createClient().from('quotations').delete().eq('id', id)
+      if (delError) {
+        // 注文書・請求書がこの見積書から作成されている場合、外部キー制約により削除できない
+        if (delError.code === '23503') {
+          throw new Error('この見積書には注文書・請求書が紐づいているため削除できません。先にそれらを削除してください。')
+        }
+        throw new Error(delError.message)
+      }
       router.push('/orders/quotations')
-    } catch {
-      setError('削除に失敗しました')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '削除に失敗しました')
       setSaving(false)
     }
   }

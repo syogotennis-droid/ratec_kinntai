@@ -269,12 +269,14 @@ export default function InvoiceDetailPage() {
 
   const handleDelete = async () => {
     if (!confirm('削除しますか？')) return
+    setError(null)
     setSaving(true)
     try {
-      await createClient().from('invoices').delete().eq('id', id)
+      const { error: delError } = await createClient().from('invoices').delete().eq('id', id)
+      if (delError) throw new Error(delError.message)
       router.push('/orders/invoices')
-    } catch {
-      setError('削除に失敗しました')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '削除に失敗しました')
       setSaving(false)
     }
   }
