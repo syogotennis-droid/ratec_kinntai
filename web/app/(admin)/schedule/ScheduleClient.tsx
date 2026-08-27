@@ -63,12 +63,6 @@ const WORK_TYPE_LIGHT: Record<'normal' | 'overtime' | WorkType, { bg: string; fg
   paid_leave: { bg: '#e9d5ff', fg: '#7e22ce', border: '#9333ea' },
   hourly_leave: { bg: '#a5f3fc', fg: '#0e7490', border: '#0891b2' },
 }
-const LEGEND_ITEMS: Array<{ key: 'normal' | 'overtime' | WorkType; label: string }> = [
-  { key: 'normal', label: '通常' },
-  { key: 'overtime', label: '残業' },
-  { key: 'paid_leave', label: '有休' },
-  { key: 'hourly_leave', label: '時間休' },
-]
 
 // 従業員ごとの色（profile.colorが未設定な場合のフォールバック）。
 // 隣り合う従業員が似た色にならないよう、赤系（祝日カラーと混同するため除外）を避けつつ色相を大きく離して並べている。
@@ -395,30 +389,20 @@ export default function ScheduleClient({ initialYearMonth, initialSchedules, ini
     <div className="px-1 mb-0 shrink-0">
       <div className="flex flex-wrap items-center gap-1" style={{ minHeight: 28 }}>
         <button onClick={openSidebar} className="p-1.5 -ml-1 text-gray-500 hover:bg-gray-100 rounded-lg shrink-0 md:hidden">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
         <h1 className="text-sm font-bold text-gray-900 mr-1 hidden sm:block">勤怠・予定</h1>
-        <button onClick={goPrev} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-base leading-none">‹</button>
+        <button onClick={goPrev} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-2xl leading-none">‹</button>
         <button onClick={() => setShowMonthPicker(true)}
-          className="text-sm font-bold text-gray-900 px-1.5 py-1 rounded-lg hover:bg-gray-100">
+          className="text-xl font-bold text-gray-900 px-1.5 py-1 rounded-lg hover:bg-gray-100">
           {displayYear}年{displayMonth}月
         </button>
-        <button onClick={goNext} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-base leading-none">›</button>
+        <button onClick={goNext} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-2xl leading-none">›</button>
         <button onClick={goToday} className="px-2 py-0.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">今日</button>
         {!profile.is_admin && <div className="ml-auto">{viewToggle}</div>}
       </div>
-      {view === 'attendance' && (
-        <div className="flex items-center gap-2.5 flex-wrap px-1 mt-0.5">
-          {LEGEND_ITEMS.map(item => (
-            <span key={item.key} className="inline-flex items-center gap-1 text-[11px] text-gray-500">
-              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: WORK_TYPE_LIGHT[item.key].bg, border: `1px solid ${WORK_TYPE_LIGHT[item.key].border}` }} />
-              {item.label}
-            </span>
-          ))}
-        </div>
-      )}
       {view === 'schedule' && (
         <>
         {/* PC: 従業員チップを常時表示 */}
